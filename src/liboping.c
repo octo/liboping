@@ -35,10 +35,6 @@
 # include <unistd.h>
 #endif
 
-#ifndef __USE_BSD
-# define __USE_BSD
-#endif
-
 #if HAVE_FCNTL_H
 # include <fcntl.h>
 #endif
