@@ -1,0 +1,58 @@
+=head1 NAME
+
+oping - send ICMP ECHO_REQUEST to network hosts
+
+=head1 SYNOPSIS
+
+B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] I<host> [I<host> [I<host> ...]]
+
+=head1 DESCRIPTION
+
+oping uses ICMPv4 or ICMPv6 ECHO_REQUEST packets to measure a hosts
+reachability and the network latency. In contrast to the original L<ping(8)>
+utility B<oping> can send ICMP packets to multiple hosts in parallel and wait
+for all ECHO_RESPONSE packets to arrive. In contrast to the
+B<fping> utility (URL is listed in L<"SEE ALSO">) B<oping> can use both, IPv4
+and IPv6 transparently and side by side.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-4>
+
+Force the use of IPv4. 
+
+=item B<-6>
+
+Force the use of IPv6
+
+=item B<-c> I<count>
+
+Send (and receive) I<count> ICMP packets, then stop and exit.
+
+=item B<-i> I<interval>
+
+Send one ICMP packet (per host) each I<interval> seconds. This can be a
+floating-point number to specify sub-second precision.
+
+=back
+
+=head1 BUGS
+
+=over 4
+
+=item The TTL cannot be set
+
+=back
+
+=head1 SEE ALSO
+
+L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
+It's homepage can be found at L<http://verplant.org/liboping/>.
+
+(c) 2005, 2006 by Florian octo Forster.

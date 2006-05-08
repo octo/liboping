@@ -1,0 +1,96 @@
+=head1 NAME
+
+ping_iterator_get_info - Constructor for the liboping class
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  int ping_iterator_get_info (pingobj_iter_t *iter,
+		  int info,
+		  void *buffer,
+		  size_t *buffer_len);
+
+=head1 DESCRIPTION
+
+The B<ping_iterator_get_info> method can be used on an host iterator to return
+various information about the current host.
+
+The I<iter> argument is an iterator as returned by L<ping_iterator_get(3)> or
+L<ping_iterator_next(3)>.
+
+The I<info> argument specifies the type of information returned. Use the
+following defines:
+
+=over 4
+
+=item B<PING_INFO_HOSTNAME>
+
+Return the hostname of the host the iterator points to. Since the name is
+looked up using the socket address this may differ from the hostname passed to
+L<ping_host_add(3)>. The hostname is actually looked up every time you call
+this method, no cache is involved within liboping.
+
+It is recommended to include C<netdb.h> and allocate B<NI_MAXHOST> bytes of
+buffer.
+
+=item B<PING_INFO_ADDRESS>
+
+Return the address used in ASCII (i.e. human readable) format. The address is
+looked up every time you call this method. 40 bytes should be sufficient for
+the buffer (16 octets in hex format, seven colons and one null byte), but more
+won't hurt.
+
+=item B<PING_INFO_FAMILY>
+
+Returns the address family of the host. The buffer should be ig enough to hold
+an integer. The value is either B<AF_INET> or B<AF_INET6>.
+
+=item B<PING_INFO_LATENCY>
+
+Return the last measured latency or less than zero if the timeout occured
+before a echo response was received. The buffer should be big enough to hold a
+double value.
+
+=item B<PING_INFO_SEQUENCE>
+
+Return the last sequence number sent. This number is increased regardless of
+echo responses being received or not. The buffer should hold an integer.
+
+=item B<PING_INFO_IDENT>
+
+Return the ident that is put into every ICMP packet sent to this host. Per
+convention this usually is the PID of the sending process, but since liboping
+can handle several hosts in parallel it uses a (pseudo-)random number here. The
+buffer should be big enough to hold an integer value.
+
+=back
+
+The I<buffer> argument is a pointer to an appropriately sized area of memory
+where the result of the call will be stored. The I<buffer_len> value is used as
+input and output: When calling B<ping_iterator_get_info> it reports the size of
+the memory region pointed to by I<buffer>. The method will write the number of
+bytes actually written to the memory into I<buffer_len> before returning.
+
+=head1 RETURN VALUE
+
+B<ping_iterator_get_info> returns zero if it succeeds.
+
+B<EINVAL> is returned if the value passed as I<info> is unknown. Both,
+I<buffer> and I<buffer_len>, will be left untouched in this case.
+
+If the requested information didn't fit into I<buffer> then the size that would
+have been needed is written into I<buffer_len>; I<buffer> itself is left
+untouched. The return value is B<ENOMEM> in this case.
+
+=head1 SEE ALSO
+
+L<ping_iterator_get(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
+It's homepage can be found at L<http://verplant.org/liboping/>.
+
+(c) 2005, 2006 by Florian octo Forster.

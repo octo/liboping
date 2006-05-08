@@ -1,0 +1,36 @@
+Source: liboping
+Section: libs
+Priority: optional
+Maintainer: Florian Forster <octo@verplant.org>
+Build-Depends: debhelper (>= 4.0.0), autotools-dev
+Standards-Version: 3.6.2
+
+Package: liboping
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: Library to send ICMPv4/ICMPv6 echo packets to multiple hosts
+ liboping was inspired by ping, libping and fping: It differs from these
+ existing solutions in that it can `ping' multiple hosts in parallel using IPv4
+ or IPv6 transparently. Other design principles were an object oriented
+ interface, simplicity and extensibility.
+
+Package: liboping-dev
+Section: libdevel
+Architecture: any
+Depends: liboping (= ${Source-Version})
+Description: Development files for the liboping library
+ liboping was inspired by ping, libping and fping: It differs from these
+ existing solutions in that it can `ping' multiple hosts in parallel using IPv4
+ or IPv6 transparently. Other design principles were an object oriented
+ interface, simplicity and extensibility.
+
+Package: oping
+Section: net
+Architecture: any
+Depends: liboping (= ${Source-Version}), ${shlibs:Depends}
+Description: Sends ICMPv4/ICMPv6 echo packets to multiple remote hosts
+ liboping was inspired by ping, libping and fping: It differs from these
+ existing solutions in that it can `ping' multiple hosts in parallel using IPv4
+ or IPv6 transparently. Other design principles were an object oriented
+ interface, simplicity and extensibility.
