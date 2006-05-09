@@ -260,7 +260,7 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 	for (ptr = ph; ptr != NULL; ptr = ptr->next)
 	{
 		dprintf ("hostname = %s, ident = 0x%04x, seq = %i\n",
-				ptr->hostname, ptr->ident, ptr->sequence - 1);
+				ptr->hostname, ptr->ident, ((ptr->sequence - 1) & 0xFFFF));
 
 		if (ptr->addrfamily != AF_INET)
 			continue;
@@ -271,7 +271,7 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 		if (ptr->ident != ident)
 			continue;
 
-		if ((ptr->sequence - 1) != seq)
+		if (((ptr->sequence - 1) & 0xFFFF) != seq)
 			continue;
 
 		dprintf ("Match found: hostname = %s, ident = 0x%04x, seq = %i\n",
@@ -323,7 +323,7 @@ static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffe
 	for (ptr = ph; ptr != NULL; ptr = ptr->next)
 	{
 		dprintf ("hostname = %s, ident = 0x%04x, seq = %i\n",
-				ptr->hostname, ptr->ident, ptr->sequence - 1);
+				ptr->hostname, ptr->ident, ((ptr->sequence - 1) & 0xFFFF));
 
 		if (ptr->addrfamily != AF_INET6)
 			continue;
@@ -334,7 +334,7 @@ static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffe
 		if (ptr->ident != ident)
 			continue;
 
-		if ((ptr->sequence - 1) != seq)
+		if (((ptr->sequence - 1) & 0xFFFF) != seq)
 			continue;
 
 		dprintf ("Match found: hostname = %s, ident = 0x%04x, seq = %i\n",
@@ -1139,6 +1139,7 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			ret = 0;
 			break;
 
+		/* FIXME Return the sequence as an unsigned int */
 		case PING_INFO_SEQUENCE:
 			ret = ENOMEM;
 			*buffer_len = sizeof (uint16_t);
