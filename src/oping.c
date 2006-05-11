@@ -67,6 +67,7 @@ typedef struct ping_context
 	double latency_min;
 	double latency_max;
 	double latency_total;
+	double latency_total_square;
 } ping_context_t;
 
 static double opt_interval   = 1.0;
@@ -91,6 +92,7 @@ ping_context_t *context_create (void)
 	ret->latency_min   = -1.0;
 	ret->latency_max   = -1.0;
 	ret->latency_total = 0.0;
+	ret->latency_total_square = 0.0;
 
 	return (ret);
 }
@@ -173,6 +175,7 @@ void print_host (pingobj_iter_t *iter)
 	{
 		context->req_rcvd++;
 		context->latency_total += latency;
+		context->latency_total_square += (latency * latency);
 
 		if ((context->latency_max < 0.0) || (context->latency_max < latency))
 			context->latency_max = latency;
@@ -379,8 +382,14 @@ int main (int argc, char **argv)
 			iter = ping_iterator_next (iter))
 	{
 		ping_context_t *context;
+		double average;
+		double deviation;
 
 		context = ping_iterator_get_context (iter);
+
+		average = context->latency_total / ((double) context->req_rcvd);
+		deviation = context->latency_total_square / ((double) context->req_rcvd);
+		deviation = sqrt (deviation - (average * average));
 
 		printf ("\n--- %s ping statistics ---\n"
 				"%i packets transmitted, %i received, %.2f%% packet loss, time %.1fms\n"
@@ -389,9 +398,9 @@ int main (int argc, char **argv)
 				100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
 				context->latency_total,
 				context->latency_min,
-				context->latency_total / ((double) context->req_rcvd),
+				average,
 				context->latency_max,
-				0.00);
+				deviation);
 
 		ping_iterator_set_context (iter, NULL);
 		free (context);
