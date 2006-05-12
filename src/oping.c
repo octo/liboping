@@ -182,7 +182,7 @@ void print_host (pingobj_iter_t *iter)
 		if ((context->latency_min < 0.0) || (context->latency_min > latency))
 			context->latency_min = latency;
 
-		printf ("echo reply from %s (%s): icmp_seq=%u time=%.1f ms\n",
+		printf ("echo reply from %s (%s): icmp_seq=%u time=%.2f ms\n",
 				context->host, context->addr,
 				(unsigned int) sequence, latency);
 	}
@@ -382,25 +382,32 @@ int main (int argc, char **argv)
 			iter = ping_iterator_next (iter))
 	{
 		ping_context_t *context;
-		double average;
-		double deviation;
 
 		context = ping_iterator_get_context (iter);
 
-		average = context->latency_total / ((double) context->req_rcvd);
-		deviation = context->latency_total_square / ((double) context->req_rcvd);
-		deviation = sqrt (deviation - (average * average));
-
 		printf ("\n--- %s ping statistics ---\n"
-				"%i packets transmitted, %i received, %.2f%% packet loss, time %.1fms\n"
-				"rtt min/avg/max/mdev = %.3f/%.3f/%.3f/%.3f ms\n",
+				"%i packets transmitted, %i received, %.2f%% packet loss, time %.1fms\n",
 				context->host, context->req_sent, context->req_rcvd,
 				100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
-				context->latency_total,
-				context->latency_min,
-				average,
-				context->latency_max,
-				deviation);
+				context->latency_total);
+
+		if (context->req_rcvd != 0)
+		{
+			double num_total;
+			double average;
+			double deviation;
+
+			num_total = (double) context->req_rcvd;
+
+			average = context->latency_total / num_total;
+			deviation = sqrt ((context->latency_total_square / num_total) - (average * average));
+
+			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
+					context->latency_min,
+					average,
+					context->latency_max,
+					deviation);
+		}
 
 		ping_iterator_set_context (iter, NULL);
 		free (context);
