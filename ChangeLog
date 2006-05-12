@@ -1,2 +1,8 @@
+2006-05-12, Version 0.1.1
+	* A bug in the library has been fixed: When the sequence got higher
+	  than 2^16 the counter in the packets wrapped around, but the
+	  internal counter didn't, causing the library to ignore all further
+	  ICMP packets. This affected both, ICMPv4 and ICMPv6.
+
 2006-05-08, Version 0.1.0
 	* Initial release.
