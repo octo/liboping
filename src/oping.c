@@ -115,7 +115,7 @@ int read_options (int argc, char **argv)
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:i:");
+		optchar = getopt (argc, argv, "46c:hi:");
 
 		if (optchar == -1)
 			break;
@@ -145,6 +145,7 @@ int read_options (int argc, char **argv)
 				}
 				break;
 
+			case 'h':
 			default:
 				usage_exit (argv[0]);
 		}
@@ -256,16 +257,16 @@ int main (int argc, char **argv)
 	int optind;
 	int i;
 
+	optind = read_options (argc, argv);
+
+	if (optind >= argc)
+		usage_exit (argv[0]);
+
 	if (geteuid () != 0)
 	{
 		fprintf (stderr, "Need superuser privileges to open a RAW socket. Sorry.\n");
 		return (1);
 	}
-
-	optind = read_options (argc, argv);
-
-	if (optind >= argc)
-		usage_exit (argv[0]);
 
 	if ((ping = ping_construct ()) == NULL)
 	{
@@ -400,7 +401,7 @@ int main (int argc, char **argv)
 			num_total = (double) context->req_rcvd;
 
 			average = context->latency_total / num_total;
-			deviation = sqrt ((context->latency_total_square / num_total) - (average * average));
+			deviation = sqrt (context->latency_total_square - (num_total * average * average));
 
 			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
 					context->latency_min,
