@@ -35,10 +35,6 @@
 # include <unistd.h>
 #endif
 
-#ifndef __USE_BSD
-# define __USE_BSD
-#endif
-
 #if HAVE_FCNTL_H
 # include <fcntl.h>
 #endif
@@ -1142,10 +1138,10 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 		/* FIXME Return the sequence as an unsigned int */
 		case PING_INFO_SEQUENCE:
 			ret = ENOMEM;
-			*buffer_len = sizeof (uint16_t);
-			if (orig_buffer_len < sizeof (uint16_t))
+			*buffer_len = sizeof (unsigned int);
+			if (orig_buffer_len < sizeof (unsigned int))
 				break;
-			*((uint16_t *) buffer) = (uint16_t) iter->sequence;
+			*((unsigned int *) buffer) = (unsigned int) iter->sequence;
 			ret = 0;
 			break;
 
