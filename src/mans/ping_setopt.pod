@@ -40,6 +40,13 @@ integer and must be either B<AF_UNSPEC>, B<AF_INET>, or B<AF_INET6>. This
 option only effects hosts that are being added B<after> this option has been
 set. Default is B<PING_DEF_AF>.
 
+=item B<PING_OPT_DATA>
+
+Set the data to send. The value passed must be a char-pointer to a
+null-terminated string. By default a 56 byte long string is used so that the
+packet size of an ICMPv4 packet is exactly 64 bytes. That's the behavior of the
+L<ping(1)> command.
+
 =back
 
 The I<val> argument is a pointer to the new value. It must not be NULL. It is

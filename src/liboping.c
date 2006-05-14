@@ -95,8 +95,6 @@
 
 #define PING_ERRMSG_LEN 256
 
-#define PING_DATA "Florian Forster <octo@verplant.org> http://verplant.org/"
-
 struct pinghost
 {
 	char                    *hostname;
@@ -119,6 +117,7 @@ struct pingobj
 	double      timeout;
 	int         ttl;
 	int         addrfamily;
+	char       *data;
 
 	char        errmsg[PING_ERRMSG_LEN];
 
@@ -565,7 +564,11 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	icmp4->icmp_id    = htons (ph->ident);
 	icmp4->icmp_seq   = htons (ph->sequence);
 
-	strcpy (data, PING_DATA);
+	buflen = 4096 - sizeof (struct icmp);
+	if (obj->data != NULL)
+		strncpy (data, obj->data, buflen);
+	else
+		strncpy (data, PING_DEF_DATA, buflen);
 	datalen = strlen (data);
 
 	buflen = datalen + sizeof (struct icmp);
@@ -610,7 +613,11 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	icmp6->icmp6_id    = htons (ph->ident);
 	icmp6->icmp6_seq   = htons (ph->sequence);
 
-	strcpy (data, PING_DATA);
+	buflen = 4096 - sizeof (struct icmp6_hdr);
+	if (obj->data != NULL)
+		strncpy (data, obj->data, buflen);
+	else
+		strncpy (data, PING_DEF_DATA, buflen);
 	datalen = strlen (data);
 
 	buflen = datalen + sizeof (struct icmp6_hdr);
@@ -852,6 +859,15 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				obj->addrfamily = PING_DEF_AF;
 				ret = -1;
 			}
+			break;
+
+		case PING_OPT_DATA:
+			if (obj->data != NULL)
+			{
+				free (obj->data);
+				obj->data = NULL;
+			}
+			obj->data = strdup ((const char *) value);
 			break;
 
 		default:

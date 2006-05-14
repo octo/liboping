@@ -48,10 +48,12 @@ typedef struct pingobj pingobj_t;
 #define PING_OPT_TIMEOUT 0x01
 #define PING_OPT_TTL     0x02
 #define PING_OPT_AF      0x04
+#define PING_OPT_DATA    0x08
 
 #define PING_DEF_TIMEOUT 1.0
 #define PING_DEF_TTL     255
 #define PING_DEF_AF      AF_UNSPEC
+#define PING_DEF_DATA    "Florian Forster <octo@verplant.org> http://verplant.org/"
 
 /*
  * Method definitions
