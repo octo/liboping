@@ -77,6 +77,7 @@ pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter);
 #define PING_INFO_LATENCY  4
 #define PING_INFO_SEQUENCE 5
 #define PING_INFO_IDENT    6
+#define PING_INFO_DATA     7
 int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 		void *buffer, size_t *buffer_len);
 

@@ -106,6 +106,7 @@ struct pinghost
 	int                      sequence;
 	struct timeval          *timer;
 	double                   latency;
+	char                    *data;
 
 	void                    *context;
 
@@ -565,10 +566,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	icmp4->icmp_seq   = htons (ph->sequence);
 
 	buflen = 4096 - sizeof (struct icmp);
-	if (obj->data != NULL)
-		strncpy (data, obj->data, buflen);
-	else
-		strncpy (data, PING_DEF_DATA, buflen);
+	strncpy (data, ph->data, buflen);
 	datalen = strlen (data);
 
 	buflen = datalen + sizeof (struct icmp);
@@ -609,15 +607,13 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	icmp6->icmp6_type  = ICMP6_ECHO_REQUEST;
 	icmp6->icmp6_code  = 0;
 	/* The checksum will be calculated by the TCP/IP stack.  */
+	/* FIXME */
 	icmp6->icmp6_cksum = 0;
 	icmp6->icmp6_id    = htons (ph->ident);
 	icmp6->icmp6_seq   = htons (ph->sequence);
 
 	buflen = 4096 - sizeof (struct icmp6_hdr);
-	if (obj->data != NULL)
-		strncpy (data, obj->data, buflen);
-	else
-		strncpy (data, PING_DEF_DATA, buflen);
+	strncpy (data, ph->data, buflen);
 	datalen = strlen (data);
 
 	buflen = datalen + sizeof (struct icmp6_hdr);
@@ -780,6 +776,9 @@ static void ping_free (pinghost_t *ph)
 	if (ph->hostname != NULL)
 		free (ph->hostname);
 
+	if (ph->data != NULL)
+		free (ph->data);
+
 	free (ph);
 }
 
@@ -802,6 +801,7 @@ pingobj_t *ping_construct (void)
 	obj->timeout    = PING_DEF_TIMEOUT;
 	obj->ttl        = PING_DEF_TTL;
 	obj->addrfamily = PING_DEF_AF;
+	obj->data       = strdup (PING_DEF_DATA);
 
 	return (obj);
 }
@@ -820,6 +820,9 @@ void ping_destroy (pingobj_t *obj)
 		ping_free (current);
 		current = next;
 	}
+
+	if (obj->data != NULL)
+		free (obj->data);
 
 	free (obj);
 
@@ -935,6 +938,15 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	}
 
 	if ((ph->hostname = strdup (host)) == NULL)
+	{
+		dprintf ("Out of memory!\n");
+		ping_set_error (obj, "strdup", strerror (errno));
+		ping_free (ph);
+		return (-1);
+	}
+
+	/* obj->data is not garuanteed to be != NULL */
+	if ((ph->data = strdup (obj->data == NULL ? PING_DEF_DATA : obj->data)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
 		ping_set_error (obj, "strdup", strerror (errno));
@@ -1151,7 +1163,6 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			ret = 0;
 			break;
 
-		/* FIXME Return the sequence as an unsigned int */
 		case PING_INFO_SEQUENCE:
 			ret = ENOMEM;
 			*buffer_len = sizeof (unsigned int);
@@ -1167,6 +1178,15 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			if (orig_buffer_len < sizeof (uint16_t))
 				break;
 			*((uint16_t *) buffer) = (uint16_t) iter->ident;
+			ret = 0;
+			break;
+
+		case PING_INFO_DATA:
+			ret = ENOMEM;
+			*buffer_len = strlen (iter->data);
+			if (orig_buffer_len < *buffer_len)
+				break;
+			strncpy ((char *) buffer, iter->data, orig_buffer_len);
 			ret = 0;
 			break;
 	}
