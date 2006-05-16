@@ -1,3 +1,7 @@
+	* It's now possible to set the data to be send to the remote host and
+	  to get the data received from the host.
+	* The `oping' binary now calculates the standard deviation.
+
 2006-05-12, Version 0.1.1
 	* A bug in the library has been fixed: When the sequence got higher
 	  than 2^16 the counter in the packets wrapped around, but the
