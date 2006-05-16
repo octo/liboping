@@ -401,7 +401,8 @@ int main (int argc, char **argv)
 			num_total = (double) context->req_rcvd;
 
 			average = context->latency_total / num_total;
-			deviation = sqrt (context->latency_total_square - (num_total * average * average));
+			deviation = sqrt (((num_total * context->latency_total_square) - (context->latency_total * context->latency_total))
+					/ (num_total * (num_total - 1.0)));
 
 			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
 					context->latency_min,
