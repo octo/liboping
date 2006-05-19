@@ -318,6 +318,12 @@ int main (int argc, char **argv)
 		buffer_size = sizeof (context->addr);
 		ping_iterator_get_info (iter, PING_INFO_ADDRESS, context->addr, &buffer_size);
 
+		buffer_size = 0;
+		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
+
+		printf ("PING %s (%s) %u bytes of data.\n",
+				context->host, context->addr, buffer_size);
+
 		ping_iterator_set_context (iter, (void *) context);
 	}
 
