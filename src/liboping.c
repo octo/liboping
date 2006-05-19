@@ -1048,8 +1048,26 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		return (-1);
 	}
 
-	ph->next  = obj->head;
-	obj->head = ph;
+	/*
+	 * Adding in the front is much easier, but then the iterator will
+	 * return the host that was added last as first host. That's just not
+	 * nice. -octo
+	 */
+	if (obj->head == NULL)
+	{
+		obj->head = ph;
+	}
+	else
+	{
+		pinghost_t *hptr;
+
+		hptr = obj->head;
+		while (hptr->next != NULL)
+			hptr = hptr->next;
+
+		assert ((hptr != NULL) && (hptr->next == NULL));
+		hptr->next = ph;
+	}
 
 	ping_set_ttl (ph, obj->ttl);
 
