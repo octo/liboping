@@ -1,6 +1,11 @@
+2006-05-29, Version 0.2.0
 	* It's now possible to set the data to be send to the remote host and
 	  to get the data received from the host.
-	* The `oping' binary now calculates the standard deviation.
+	* The `oping' binary now calculates the standard deviation. Also, it
+	  displays the number of byes that were received and other output
+	  changes.
+	* Hosts are now returned in the same order as they were added by
+	  `ping_host_add'. This is not guaranteed, but makes `oping' prettier.
 
 2006-05-12, Version 0.1.1
 	* A bug in the library has been fixed: When the sequence got higher
