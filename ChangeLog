@@ -1,3 +1,8 @@
+2006-06-01, Version 0.2.1
+	* Build fixes for non-GNU/Linux platforms: Mac OS X doesn't define
+	  `size_t' as `unsigned int' and therefore needs casting and FreeBSD
+	  needs to have `sys/types.h' included before `netinet/*.h'
+
 2006-05-29, Version 0.2.0
 	* It's now possible to set the data to be send to the remote host and
 	  to get the data received from the host.
