@@ -322,7 +322,7 @@ int main (int argc, char **argv)
 		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
 
 		printf ("PING %s (%s) %u bytes of data.\n",
-				context->host, context->addr, buffer_size);
+				context->host, context->addr, (unsigned int) buffer_size);
 
 		ping_iterator_set_context (iter, (void *) context);
 	}
