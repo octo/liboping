@@ -87,7 +87,7 @@
 
 #include "oping.h"
 
-#if DEBUG
+#if WITH_DEBUG
 # define dprintf(...) printf ("%s[%4i]: %-20s: ", __FILE__, __LINE__, __FUNCTION__); printf (__VA_ARGS__)
 #else
 # define dprintf(...) /**/
