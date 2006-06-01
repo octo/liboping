@@ -1,4 +1,4 @@
-AC_INIT(liboping, 0.2.0)
+AC_INIT(liboping, 0.2.1-alpha0)
 AC_CONFIG_SRCDIR(src/liboping.c)
 AC_CONFIG_HEADERS(src/config.h)
 AM_INIT_AUTOMAKE(dist-bzip2)
@@ -46,10 +46,16 @@ AC_CHECK_HEADERS(netinet/in_systm.h, [], [],
 [#if HAVE_STDINT_H
 # include <stdint.h>
 #endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 ])
 AC_CHECK_HEADERS(netinet/in.h, [], [],
 [#if HAVE_STDINT_H
 # include <stdint.h>
+#endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
 #endif
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
@@ -58,6 +64,9 @@ AC_CHECK_HEADERS(netinet/in.h, [], [],
 AC_CHECK_HEADERS(netinet/ip.h, [], [],
 [#if HAVE_STDINT_H
 # include <stdint.h>
+#endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
 #endif
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
@@ -69,6 +78,9 @@ AC_CHECK_HEADERS(netinet/ip.h, [], [],
 AC_CHECK_HEADERS(netinet/ip_icmp.h, [], [],
 [#if HAVE_STDINT_H
 # include <stdint.h>
+#endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
 #endif
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
@@ -84,6 +96,9 @@ AC_CHECK_HEADERS(netinet/ip_var.h, [], [],
 [#if HAVE_STDINT_H
 # include <stdint.h>
 #endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
 #endif
@@ -97,6 +112,9 @@ AC_CHECK_HEADERS(netinet/ip_var.h, [], [],
 AC_CHECK_HEADERS(netinet/ip6.h, [], [],
 [#if HAVE_STDINT_H
 # include <stdint.h>
+#endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
 #endif
 #if HAVE_SYS_TYPES_H
 # include <sys/types.h>
