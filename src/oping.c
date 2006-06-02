@@ -298,7 +298,9 @@ int main (int argc, char **argv)
 	{
 		if (ping_host_add (ping, argv[i]) < 0)
 		{
-			fprintf (stderr, "ping_host_add (%s) failed\n", argv[i]);
+			const char *errmsg = ping_get_error (ping);
+
+			fprintf (stderr, "Adding host `%s' failed: %s\n", argv[i], errmsg);
 			continue;
 		}
 	}
@@ -331,10 +333,7 @@ int main (int argc, char **argv)
 	}
 
 	if (i == 0)
-	{
-		fprintf (stderr, "No valid hosts left.\n");
 		exit (1);
-	}
 
 	memset (&sigint_action, '\0', sizeof (sigint_action));
 	sigint_action.sa_handler = sigint_handler;
