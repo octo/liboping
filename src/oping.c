@@ -296,13 +296,14 @@ int main (int argc, char **argv)
 
 	for (i = optind; i < argc; i++)
 	{
-		if (ping_host_add (ping, argv[i]) > 0)
+		if (ping_host_add (ping, argv[i]) < 0)
 		{
 			fprintf (stderr, "ping_host_add (%s) failed\n", argv[i]);
 			continue;
 		}
 	}
 
+	i = 0;
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
 			iter = ping_iterator_next (iter))
@@ -325,6 +326,14 @@ int main (int argc, char **argv)
 				context->host, context->addr, (unsigned int) buffer_size);
 
 		ping_iterator_set_context (iter, (void *) context);
+
+		i++;
+	}
+
+	if (i == 0)
+	{
+		fprintf (stderr, "No valid hosts left.\n");
+		exit (1);
 	}
 
 	memset (&sigint_action, '\0', sizeof (sigint_action));
