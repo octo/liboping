@@ -333,7 +333,7 @@ int main (int argc, char **argv)
 	}
 
 	if (i == 0)
-		exit (1);
+		return (1);
 
 	memset (&sigint_action, '\0', sizeof (sigint_action));
 	sigint_action.sa_handler = sigint_handler;
