@@ -1,3 +1,7 @@
+2006-06-05, Version 0.2.2
+	* The `oping' application didn't exit if no hosts could be resolved.
+	  This release fixes it's behavior.
+
 2006-06-01, Version 0.2.1
 	* Fix the behavior for non GNU-Linux systems. liboping tried to
 	  `bind(2)' to the raw-socket it uses to send ICMP packets. Apparently
