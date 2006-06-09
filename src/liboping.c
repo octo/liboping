@@ -928,6 +928,9 @@ int ping_host_add (pingobj_t *obj, const char *host)
 #ifdef AI_ADDRCONFIG
 	ai_hints.ai_flags    |= AI_ADDRCONFIG;
 #endif
+#ifdef AI_CANONNAME
+	ai_hints.ai_flags    |= AI_CANONNAME;
+#endif
 	ai_hints.ai_family    = obj->addrfamily;
 	ai_hints.ai_socktype  = SOCK_RAW;
 
@@ -1042,6 +1045,28 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		memcpy (ph->addr, ai_ptr->ai_addr, ai_ptr->ai_addrlen);
 		ph->addrlen = ai_ptr->ai_addrlen;
 		ph->addrfamily = ai_ptr->ai_family;
+
+#ifdef AI_CANONNAME
+		if ((ai_ptr->ai_canonname != NULL)
+				&& (strcmp (ph->hostname, ai_ptr->ai_canonname) != 0))
+		{
+			char *old_hostname;
+
+			dprintf ("ph->hostname = %s; ai_ptr->ai_canonname = %s;\n",
+					ph->hostname, ai_ptr->ai_canonname);
+
+			old_hostname = ph->hostname;
+			if ((ph->hostname = strdup (ai_ptr->ai_canonname)) == NULL)
+			{
+				/* strdup failed, falling back to old hostname */
+				ph->hostname = old_hostname;
+			}
+			else if (old_hostname != NULL)
+			{
+				free (old_hostname);
+			}
+		}
+#endif /* AI_CANONNAME */
 
 		break;
 	}
