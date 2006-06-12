@@ -1092,21 +1092,20 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			continue;
 		}
 
-/*
- * The majority vote of operating systems has decided that you don't need to
- * bind here. This code should be reactivated to bind to a specific address,
- * though. See the `-I' option of `ping(1)' (GNU).  -octo
- */
-#if 0
-		if (bind (ph->fd, (struct sockaddr *) &sockaddr, sockaddr_len) == -1)
+		if (obj->srcaddr != NULL)
 		{
-			dprintf ("bind: %s\n", strerror (errno));
-			ping_set_error (obj, "bind", strerror (errno));
-			close (ph->fd);
-			ph->fd = -1;
-			continue;
+			assert (obj->srcaddrlen > 0);
+			assert (obj->srcaddrlen <= sizeof (struct sockaddr_storage));
+
+			if (bind (ph->fd, (struct sockaddr *) obj->srcaddr, obj->srcaddrlen) == -1)
+			{
+				dprintf ("bind: %s\n", strerror (errno));
+				ping_set_error (obj, "bind", strerror (errno));
+				close (ph->fd);
+				ph->fd = -1;
+				continue;
+			}
 		}
-#endif
 
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));
