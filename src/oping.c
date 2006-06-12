@@ -70,9 +70,10 @@ typedef struct ping_context
 	double latency_total_square;
 } ping_context_t;
 
-static double opt_interval   = 1.0;
-static int    opt_addrfamily = PING_DEF_AF;
-static int    opt_count      = -1;
+static double  opt_interval   = 1.0;
+static int     opt_addrfamily = PING_DEF_AF;
+static char   *opt_srcaddr    = NULL;
+static int     opt_count      = -1;
 
 void sigint_handler (int signal)
 {
@@ -115,7 +116,7 @@ int read_options (int argc, char **argv)
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:");
+		optchar = getopt (argc, argv, "46c:hi:I:");
 
 		if (optchar == -1)
 			break;
@@ -142,6 +143,13 @@ int read_options (int argc, char **argv)
 					new_interval = atof (optarg);
 					if (new_interval >= 0.2)
 						opt_interval = new_interval;
+				}
+				break;
+			case 'I':
+				{
+					if (opt_srcaddr != NULL)
+						free (opt_srcaddr);
+					opt_srcaddr = strdup (optarg);
 				}
 				break;
 
@@ -293,6 +301,15 @@ int main (int argc, char **argv)
 
 	if (opt_addrfamily != PING_DEF_AF)
 		ping_setopt (ping, PING_OPT_AF, (void *) &opt_addrfamily);
+
+	if (opt_srcaddr != NULL)
+	{
+		if (ping_setopt (ping, PING_OPT_SOURCE, (void *) opt_srcaddr) != 0)
+		{
+			fprintf (stderr, "Setting source address failed: %s\n",
+					ping_get_error (ping));
+		}
+	}
 
 	for (i = optind; i < argc; i++)
 	{
