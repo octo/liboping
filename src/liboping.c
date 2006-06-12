@@ -890,9 +890,14 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			struct addrinfo  ai_hints;
 			struct addrinfo *ai_list;
 			int              status;
-
+#if WITH_DEBUG
+			if (obj->addrfamily != AF_UNSPEC)
+			{
+				dprintf ("Resetting obj->addrfamily to AF_UNSPEC.\n");
+			}
+#endif
 			memset ((void *) &ai_hints, '\0', sizeof (ai_hints));
-			ai_hints.ai_family = obj->addrfamily;
+			ai_hints.ai_family = obj->addrfamily = AF_UNSPEC;
 #if defined(AI_ADDRCONFIG)
 			ai_hints.ai_flags = AI_ADDRCONFIG;
 #endif
@@ -930,6 +935,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			memcpy ((void *) obj->srcaddr, (const void *) ai_list->ai_addr,
 					ai_list->ai_addrlen);
 			obj->srcaddrlen = ai_list->ai_addrlen;
+			obj->addrfamily = ai_list->ai_family;
 
 			freeaddrinfo (ai_list);
 		} /* case PING_OPT_SOURCE */
