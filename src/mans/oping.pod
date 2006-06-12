@@ -36,6 +36,11 @@ Send (and receive) I<count> ICMP packets, then stop and exit.
 Send one ICMP packet (per host) each I<interval> seconds. This can be a
 floating-point number to specify sub-second precision.
 
+=item B<-I> I<address>
+
+Set the source address to use. You B<cannot> pass the interface name, as you
+can with GNU's L<ping(8)>.
+
 =back
 
 =head1 BUGS
