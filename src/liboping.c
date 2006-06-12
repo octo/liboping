@@ -115,14 +115,17 @@ struct pinghost
 
 struct pingobj
 {
-	double      timeout;
-	int         ttl;
-	int         addrfamily;
-	char       *data;
+	double                   timeout;
+	int                      ttl;
+	int                      addrfamily;
+	char                    *data;
 
-	char        errmsg[PING_ERRMSG_LEN];
+	struct sockaddr_storage *srcaddr;
+	socklen_t                srcaddrlen;
 
-	pinghost_t *head;
+	char                     errmsg[PING_ERRMSG_LEN];
+
+	pinghost_t              *head;
 };
 
 /*
@@ -824,6 +827,9 @@ void ping_destroy (pingobj_t *obj)
 	if (obj->data != NULL)
 		free (obj->data);
 
+	if (obj->srcaddr != NULL)
+		free (obj->srcaddr);
+
 	free (obj);
 
 	return;
@@ -862,6 +868,11 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				obj->addrfamily = PING_DEF_AF;
 				ret = -1;
 			}
+			if (obj->srcaddr != NULL)
+			{
+				free (obj->srcaddr);
+				obj->srcaddr = NULL;
+			}
 			break;
 
 		case PING_OPT_DATA:
@@ -872,6 +883,57 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			}
 			obj->data = strdup ((const char *) value);
 			break;
+
+		case PING_OPT_SOURCE:
+		{
+			char            *hostname = (char *) value;
+			struct addrinfo  ai_hints;
+			struct addrinfo *ai_list;
+			int              status;
+
+			memset ((void *) &ai_hints, '\0', sizeof (ai_hints));
+			ai_hints.ai_family = obj->addrfamily;
+#if defined(AI_ADDRCONFIG)
+			ai_hints.ai_flags = AI_ADDRCONFIG;
+#endif
+			status = getaddrinfo (hostname, NULL, &ai_hints, &ai_list);
+			if (status != 0)
+			{
+				ping_set_error (obj, "getaddrinfo",
+						status == EAI_SYSTEM
+						? strerror (errno)
+						: gai_strerror (status));
+				ret = -1;
+				break;
+			}
+#if WITH_DEBUG
+			if (ai_list->ai_next != NULL)
+			{
+				dprintf ("hostname = `%s' is ambiguous.\n", hostname);
+			}
+#endif
+			if (obj->srcaddr == NULL)
+			{
+				obj->srcaddrlen = 0;
+				obj->srcaddr = (struct sockaddr_storage *) malloc (sizeof (struct sockaddr_storage));
+				if (obj->srcaddr == NULL)
+				{
+					ping_set_error (obj, "malloc",
+							strerror (errno));
+					ret = -1;
+					freeaddrinfo (ai_list);
+					break;
+				}
+			}
+			memset ((void *) obj->srcaddr, '\0', sizeof (struct sockaddr_storage));
+			assert (ai_list->ai_addrlen <= sizeof (struct sockaddr_storage));
+			memcpy ((void *) obj->srcaddr, (const void *) ai_list->ai_addr,
+					ai_list->ai_addrlen);
+			obj->srcaddrlen = ai_list->ai_addrlen;
+
+			freeaddrinfo (ai_list);
+		} /* case PING_OPT_SOURCE */
+		break;
 
 		default:
 			ret = -2;
