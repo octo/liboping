@@ -372,7 +372,8 @@ int main (int argc, char **argv)
 
 		if (ping_send (ping) < 0)
 		{
-			fprintf (stderr, "ping_send failed\n");
+			fprintf (stderr, "ping_send failed: %s\n",
+					ping_get_error (ping));
 			return (1);
 		}
 
