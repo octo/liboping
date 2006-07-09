@@ -1,3 +1,7 @@
+2006-07-09, Version 0.3.0
+	* The ability to set the source address from which the packets
+	  originate has been added to the library and the oping application.
+
 2006-06-05, Version 0.2.2
 	* The `oping' application didn't exit if no hosts could be resolved.
 	  This release fixes it's behavior.
