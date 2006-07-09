@@ -1,3 +1,8 @@
+2006-07-09, Version 0.3.1
+	* Removed `libltdl' from the distribution since it's not used.
+	* More nonsense has been removed from the build system. Thanks to
+	  Sebastian Harl for pointing it out :)
+
 2006-07-09, Version 0.3.0
 	* The ability to set the source address from which the packets
 	  originate has been added to the library and the oping application.

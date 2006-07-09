@@ -1,3 +1,9 @@
+liboping (0.3.1-1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Florian Forster <octo@leeloo.home.verplant.org>  Mon, 10 Jul 2006 00:18:08 +0200
+
 liboping (0.2.2) unstable; urgency=low
 
   * New upstream version. 
