@@ -1,5 +1,4 @@
-SUBDIRS = libltdl src
-INCLUDES = $(LTDLINCL)
+SUBDIRS = src
 
 dist-hook:
 	find $(distdir) -type d -name '.svn' | xargs rm -rf
