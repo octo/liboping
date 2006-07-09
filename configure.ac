@@ -22,7 +22,6 @@ AM_CONDITIONAL(COMPILER_IS_GCC, test "x$GCC" = "xyes")
 AC_LIBTOOL_DLOPEN
 AC_PROG_LIBTOOL
 #AC_PROG_RANLIB
-AC_CONFIG_SUBDIRS(src)
 
 #
 # Checks for header files.
