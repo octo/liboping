@@ -322,6 +322,9 @@ int main (int argc, char **argv)
 		}
 	}
 
+	/* Drop root privileges if we're setuid-root. */
+	setuid (getuid ());
+
 	i = 0;
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
