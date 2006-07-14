@@ -31,3 +31,6 @@ License:
 On Debian systems, the complete text of the GNU General Public License v2
 can be found in `/usr/share/common-licenses/GPL-2'.
 
+The Debian packaging is (C) 2006, Sebastian Harl <sh@tokkee.org> and
+is licensed under the GPL, see above.
+
