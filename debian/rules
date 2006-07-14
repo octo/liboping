@@ -1,0 +1,106 @@
+#!/usr/bin/make -f
+# debian/rules for liboping
+#
+# Written by Sebastian Harl <sh@tokkee.org>
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# These are used for cross-compiling and for saving the configure script
+# from having to guess our platform (since we know it already)
+DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
+DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
+
+CFLAGS = -Wall -g
+
+ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
+	CFLAGS += -O0
+else
+	CFLAGS += -O2
+endif
+
+libdir="$(CURDIR)/debian/liboping0/usr/lib/"
+
+libdeveldir="$(CURDIR)/debian/liboping0-dev/usr/lib"
+includedir="$(CURDIR)/debian/liboping0-dev/usr/include"
+man3dir="$(CURDIR)/debian/liboping0-dev/usr/share/man/man3"
+
+bindir="$(CURDIR)/debian/oping/usr/bin"
+man8dir="$(CURDIR)/debian/oping/usr/share/man/man8"
+overridesdir="$(CURDIR)/debian/oping/usr/share/lintian/overrides"
+
+config.status: configure
+	dh_testdir
+	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) \
+			--build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr \
+			--mandir=\$${prefix}/share/man
+
+build: build-stamp
+
+build-stamp:  config.status
+	dh_testdir
+	
+	$(MAKE)
+	
+	touch build-stamp
+
+clean:
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp 
+	
+	-$(MAKE) distclean
+	
+	dh_clean 
+
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k 
+	dh_installdirs
+	
+	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
+	
+	mkdir -p $(libdir)
+	mv $(CURDIR)/debian/tmp/usr/lib/liboping.so.* $(libdir)
+	
+	mkdir -p $(includedir)
+	mkdir -p $(libdeveldir)
+	mkdir -p $(man3dir)
+	mv $(CURDIR)/debian/tmp/usr/include/* $(includedir)
+	mv $(CURDIR)/debian/tmp/usr/lib/liboping.a $(libdeveldir)
+	mv $(CURDIR)/debian/tmp/usr/lib/liboping.so $(libdeveldir)
+	mv $(CURDIR)/debian/tmp/usr/lib/liboping.la $(libdeveldir)
+	mv $(CURDIR)/debian/tmp/usr/share/man/man3/* $(man3dir)
+	
+	mkdir -p $(bindir)
+	mkdir -p $(man8dir)
+	mkdir -p $(overridesdir)
+	mv $(CURDIR)/debian/tmp/usr/bin/oping $(bindir)
+	chmod u+s $(bindir)/oping
+	mv $(CURDIR)/debian/tmp/usr/share/man/man8/* $(man8dir)
+	cp $(CURDIR)/debian/oping.overrides $(overridesdir)/oping
+
+binary-indep:
+	# nothing to do here
+
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	dh_installchangelogs ChangeLog
+	dh_installdocs -A README
+	dh_installman
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms -Xusr/bin/oping
+	dh_makeshlibs
+	dh_installdeb
+	dh_shlibdeps -l$(libdir)
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install 
+

@@ -1,0 +1,6 @@
+liboping (0.3.2-1) unstable; urgency=low
+
+  * Initial release (Closes: #377527).
+
+ -- Sebastian Harl <sh@tokkee.org>  Mon, 10 Jul 2006 00:29:07 +0200
+

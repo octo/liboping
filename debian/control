@@ -1,0 +1,36 @@
+Source: liboping
+Section: libs
+Priority: optional
+Maintainer: Sebastian Harl <sh@tokkee.org>
+Build-Depends: debhelper (>= 4.0.0), autotools-dev
+Standards-Version: 3.7.2
+
+Package: liboping0-dev
+Section: libdevel
+Architecture: any
+Depends: liboping0 (= ${Source-Version})
+Description: C library to generate ICMP_ECHO requests (development files)
+ liboping features pinging multiple hosts in parallel using IPv4 or IPv6
+ transparently. The interface is object oriented.
+ .
+ This package contains the shared library.
+
+Package: liboping0
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: C library to generate ICMP_ECHO requests
+ liboping features pinging multiple hosts in parallel using IPv4 or IPv6
+ transparently. The interface is object oriented.
+ .
+ This package contains the header files, the static library and the manpages.
+
+Package: oping
+Section: net
+Architecture: any
+Depends: ${shlibs:Depends}
+Description: sends ICMP_ECHO requests to network hosts
+ oping uses ICMP packages (better known as "ping packets") to test the 
+ reachability of network hosts. It supports pinging multiple hosts in parallel 
+ using IPv4 or IPv6 transparently.
+
