@@ -1,3 +1,7 @@
+2006-07-16, Version 0.2.3
+	* `sendto(2)' now catches `EHOSTUNREACH' and `ENETUNREACH' if they're
+	  defined.
+
 2006-06-05, Version 0.2.2
 	* The `oping' application didn't exit if no hosts could be resolved.
 	  This release fixes it's behavior.
