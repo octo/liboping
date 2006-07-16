@@ -13,7 +13,7 @@ Description: C library to generate ICMP_ECHO requests (development files)
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
  .
- This package contains the shared library.
+ This package contains the header files, the static library and the manpages.
 
 Package: liboping0
 Section: libs
@@ -23,7 +23,7 @@ Description: C library to generate ICMP_ECHO requests
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
  .
- This package contains the header files, the static library and the manpages.
+ This package contains the shared library.
 
 Package: oping
 Section: net
