@@ -21,9 +21,9 @@ endif
 
 libdir="$(CURDIR)/debian/liboping0/usr/lib/"
 
-libdeveldir="$(CURDIR)/debian/liboping0-dev/usr/lib"
-includedir="$(CURDIR)/debian/liboping0-dev/usr/include"
-man3dir="$(CURDIR)/debian/liboping0-dev/usr/share/man/man3"
+libdeveldir="$(CURDIR)/debian/liboping-dev/usr/lib"
+includedir="$(CURDIR)/debian/liboping-dev/usr/include"
+man3dir="$(CURDIR)/debian/liboping-dev/usr/share/man/man3"
 
 bindir="$(CURDIR)/debian/oping/usr/bin"
 man8dir="$(CURDIR)/debian/oping/usr/share/man/man8"

@@ -5,7 +5,7 @@ Maintainer: Sebastian Harl <sh@tokkee.org>
 Build-Depends: debhelper (>= 4.0.0), autotools-dev
 Standards-Version: 3.7.2
 
-Package: liboping0-dev
+Package: liboping-dev
 Section: libdevel
 Architecture: any
 Depends: liboping0 (= ${Source-Version})
