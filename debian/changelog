@@ -1,3 +1,9 @@
+liboping (0.3.3-4) unstable; urgency=low
+
+  * Renamed liboping0-dev to liboping-dev.
+
+ -- Sebastian Harl <sh@tokkee.org>  Sun, 23 Jul 2006 20:12:33 +0000
+
 liboping (0.3.3-3) unstable; urgency=low
 
   * Added shlibs file.
