@@ -8,7 +8,9 @@ Standards-Version: 3.7.2
 Package: liboping-dev
 Section: libdevel
 Architecture: any
-Depends: liboping0 (= ${Source-Version})
+Depends: liboping0 (>= ${Source-Version})
+Conflicts: liboping0-dev
+Replaces: liboping0-dev
 Description: C library to generate ICMP_ECHO requests (development files)
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
