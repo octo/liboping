@@ -1,3 +1,9 @@
+liboping (0.3.4-0octo1) unstable; urgency=low
+
+  * New upstream version.
+
+ -- Florian octo Forster <octo@alice.lan.home.verplant.org>  Fri,  1 Dec 2006 09:23:19 +0100
+
 liboping (0.3.3-1) unstable; urgency=low
 
   * New upstream version.

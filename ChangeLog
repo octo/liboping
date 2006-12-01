@@ -1,3 +1,7 @@
+2006-12-01, Version 0.3.4
+	* Fixes a bug in `ping_host_remove': Due to an incorrect hostname
+	  checking the wrong host would be removed.
+
 2006-07-16, Version 0.3.3
 	* `sendto(2)' now catches `EHOSTUNREACH' and `ENETUNREACH' if they're
 	  defined.
