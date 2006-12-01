@@ -1192,7 +1192,7 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 
 	while (cur != NULL)
 	{
-		if (strcasecmp (host, cur->hostname))
+		if (strcasecmp (host, cur->hostname) == 0)
 			break;
 
 		pre = cur;
