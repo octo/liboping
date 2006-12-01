@@ -1,3 +1,9 @@
+liboping (0.3.4-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Sebastian Harl <sh@tokkee.org>  Fri,  1 Dec 2006 11:46:01 +0000
+
 liboping (0.3.3-4) unstable; urgency=low
 
   * Renamed liboping0-dev to liboping-dev.
