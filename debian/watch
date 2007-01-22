@@ -1,0 +1,3 @@
+version=3
+http://verplant.org/liboping/files/ liboping-(.*)\.tar\.gz
+
