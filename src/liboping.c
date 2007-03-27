@@ -778,6 +778,7 @@ static pinghost_t *ping_alloc (void)
 	ph->addr    = (struct sockaddr_storage *) (ph->timer + 1);
 
 	ph->addrlen = sizeof (struct sockaddr_storage);
+	ph->fd      = -1;
 	ph->latency = -1.0;
 	ph->ident   = ping_get_ident () & 0xFFFF;
 
@@ -786,6 +787,9 @@ static pinghost_t *ping_alloc (void)
 
 static void ping_free (pinghost_t *ph)
 {
+	if (ph->fd >= 0)
+		close (ph->fd);
+	
 	if (ph->hostname != NULL)
 		free (ph->hostname);
 
@@ -1152,8 +1156,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 	if (ph->fd < 0)
 	{
-		free (ph->hostname);
-		free (ph);
+		ping_free (ph);
 		return (-1);
 	}
 
@@ -1210,9 +1213,6 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 	else
 		pre->next = cur->next;
 	
-	if (cur->fd >= 0)
-		close (cur->fd);
-
 	ping_free (cur);
 
 	return (0);
