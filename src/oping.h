@@ -37,6 +37,10 @@
 # include <sys/socket.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Type definitions
  */
@@ -89,5 +93,9 @@ const char *ping_get_error (pingobj_t *obj);
 
 void *ping_iterator_get_context (pingobj_iter_t *iter);
 void  ping_iterator_set_context (pingobj_iter_t *iter, void *context);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* OCTO_PING_H */
