@@ -11,7 +11,7 @@ Architecture: any
 Depends: liboping0 (>= ${Source-Version})
 Conflicts: liboping0-dev
 Replaces: liboping0-dev
-Description: C library to generate ICMP_ECHO requests (development files)
+Description: C/C++ library to generate ICMP_ECHO requests (development files)
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
  .
@@ -21,7 +21,7 @@ Package: liboping0
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: C library to generate ICMP_ECHO requests
+Description: C/C++ library to generate ICMP_ECHO requests
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
  .
