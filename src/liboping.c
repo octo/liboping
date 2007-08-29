@@ -288,6 +288,22 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 	return (ptr);
 }
 
+#ifndef ICMP6_ECHO_REQUEST
+# ifdef ICMP6_ECHO /* AIX netinet/ip6_icmp.h */
+#  define ICMP6_ECHO_REQUEST ICMP6_ECHO
+# else
+#  define ICMP6_ECHO_REQUEST 128
+# endif
+#endif
+
+#ifndef ICMP6_ECHO_REPLY
+# ifdef ICMP6_ECHOREPLY /* AIX netinet/ip6_icmp.h */
+#  define ICMP6_ECHO_REPLY ICMP6_ECHOREPLY
+# else
+#  define ICMP6_ECHO_REPLY 129
+# endif
+#endif
+
 static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffer_len)
 {
 	struct icmp6_hdr *icmp_hdr;
