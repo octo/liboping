@@ -1,0 +1,9 @@
+Revision history for Perl extension Net::Oping.
+
+1.00  Sat Jan 26 13:52:11 2008
+	- The module has been renamed from `Oping' to `Net::Oping'.
+	- The XS code has been simplyfied and a high-level interface has been
+	  created in Perl.
+
+0.01  Wed Oct 24 01:32:19 2007
+	- original version; created by h2xs 1.23.
