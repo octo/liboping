@@ -30,8 +30,15 @@
 #if HAVE_UNISTD_H
 # include <unistd.h>
 #endif
+#if HAVE_SYS_TYPES_H
+# include <sys/types.h>
+#endif
 #if HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /*
@@ -86,5 +93,9 @@ const char *ping_get_error (pingobj_t *obj);
 
 void *ping_iterator_get_context (pingobj_iter_t *iter);
 void  ping_iterator_set_context (pingobj_iter_t *iter, void *context);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* OCTO_PING_H */
