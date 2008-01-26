@@ -247,6 +247,15 @@ sub get_error
 
 =back
 
+=head1 CAVEATS
+
+The C<oping> library opens a raw socket to be able to send ICMP packets. On
+most systems normal users are not allowed to do this. This is why on most
+systems the L<ping(1)> utility is installed as SetUID-root. Since, when using
+this module, no external process is spawned B<this> process needs the
+appropriate permissions. This means that either your script has to run as
+superuser or, under Linux, needs the C<CAP_NET_RAW> capability.
+
 =head1 SEE ALSO
 
 L<liboping(3)>
