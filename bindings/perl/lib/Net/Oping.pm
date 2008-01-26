@@ -29,8 +29,6 @@ configuring the time of live (TTL) are not yet supported by this interface.
 
 =cut
 
-use 5.008007;
-
 use strict;
 use warnings;
 
@@ -39,7 +37,7 @@ use Carp (qw(cluck confess));
 our $VERSION = '1.00';
 
 require XSLoader;
-XSLoader::load('Net::Oping', $VERSION);
+XSLoader::load ('Net::Oping', $VERSION);
 return (1);
 
 =head1 INTERFACE
