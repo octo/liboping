@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006  Florian octo Forster <octo at verplant.org>
+ * Copyright (C) 2006-2008  Florian octo Forster <octo at verplant.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -79,6 +79,7 @@ int ping_host_remove (pingobj_t *obj, const char *host);
 pingobj_iter_t *ping_iterator_get (pingobj_t *obj);
 pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter);
 
+#define PING_INFO_USERNAME 8
 #define PING_INFO_HOSTNAME 1
 #define PING_INFO_ADDRESS  2
 #define PING_INFO_FAMILY   3

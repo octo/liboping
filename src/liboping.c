@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006  Florian octo Forster <octo at verplant.org>
+ * Copyright (C) 2006-2008  Florian octo Forster <octo at verplant.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -97,6 +97,9 @@
 
 struct pinghost
 {
+	/* username: name passed in by the user */
+	char                    *username;
+	/* hostname: name returned by the reverse lookup */
 	char                    *hostname;
 	struct sockaddr_storage *addr;
 	socklen_t                addrlen;
@@ -790,6 +793,9 @@ static void ping_free (pinghost_t *ph)
 	if (ph->fd >= 0)
 		close (ph->fd);
 	
+	if (ph->username != NULL)
+		free (ph->username);
+
 	if (ph->hostname != NULL)
 		free (ph->hostname);
 
@@ -980,7 +986,7 @@ static pinghost_t *ping_host_search (pinghost_t *ph, const char *host)
 {
 	while (ph != NULL)
 	{
-		if (strcasecmp (ph->hostname, host) == 0)
+		if (strcasecmp (ph->username, host) == 0)
 			break;
 
 		ph = ph->next;
@@ -1019,6 +1025,14 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph = ping_alloc ()) == NULL)
 	{
 		dprintf ("Out of memory!\n");
+		return (-1);
+	}
+
+	if ((ph->username = strdup (host)) == NULL)
+	{
+		dprintf ("Out of memory!\n");
+		ping_set_error (obj, "strdup", strerror (errno));
+		ping_free (ph);
 		return (-1);
 	}
 
@@ -1195,7 +1209,7 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 
 	while (cur != NULL)
 	{
-		if (strcasecmp (host, cur->hostname) == 0)
+		if (strcasecmp (host, cur->username) == 0)
 			break;
 
 		pre = cur;
@@ -1237,6 +1251,18 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 
 	switch (info)
 	{
+		case PING_INFO_USERNAME:
+			ret = ENOMEM;
+			*buffer_len = strlen (iter->username);
+			if (orig_buffer_len <= *buffer_len)
+				break;
+			/* Since (orig_buffer_len > *buffer_len) `strncpy'
+			 * will copy `*buffer_len' and pad the rest of
+			 * `buffer' with null-bytes */
+			strncpy (buffer, iter->username, orig_buffer_len);
+			ret = 0;
+			break;
+
 		case PING_INFO_HOSTNAME:
 			ret = ENOMEM;
 			*buffer_len = strlen (iter->hostname);
@@ -1265,7 +1291,6 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 				   )
 					ret = ENOMEM;
 				else if (ret == EAI_SYSTEM)
-					/* XXX: Not thread-safe! */
 					ret = errno;
 				else
 					ret = EINVAL;

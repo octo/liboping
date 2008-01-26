@@ -24,6 +24,9 @@ L<ping_setopt(3)>, the hostname is resolved to an IPv4 or IPv6 address.
 The B<ping_host_remove> method looks for I<host> within I<obj> and remove it if
 found. It will close the socket and deallocate the memory, too.
 
+The names passed to B<ping_host_add> and B<ping_host_remove> must match. This
+name can be queried using L<ping_iterator_get_info(3)>.
+
 =head1 RETURN VALUE
 
 If B<ping_host_add> succeeds it returns zero. If an error occurs a value less
@@ -46,4 +49,4 @@ L<liboping(3)>
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
 It's homepage can be found at L<http://verplant.org/liboping/>.
 
-(c) 2005, 2006 by Florian octo Forster.
+(c) 2005-2008 by Florian octo Forster.

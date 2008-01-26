@@ -24,6 +24,12 @@ following defines:
 
 =over 4
 
+=item B<PING_INFO_USERNAME>
+
+Return the hostname of the host the iterator points to as supplied by the user.
+This is the name you passed to L<ping_host_add(3)> and which you need to pass
+to C<ping_host_remove>, too.
+
 =item B<PING_INFO_HOSTNAME>
 
 Return the hostname of the host the iterator points to. Since the name is
@@ -93,4 +99,4 @@ L<liboping(3)>
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
 It's homepage can be found at L<http://verplant.org/liboping/>.
 
-(c) 2005, 2006 by Florian octo Forster.
+(c) 2005-2008 by Florian octo Forster.
