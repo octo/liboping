@@ -1239,7 +1239,7 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 	{
 		case PING_INFO_HOSTNAME:
 			ret = ENOMEM;
-			*buffer_len = strlen (iter->hostname);
+			*buffer_len = strlen (iter->hostname) + 1;
 			if (orig_buffer_len <= *buffer_len)
 				break;
 			/* Since (orig_buffer_len > *buffer_len) `strncpy'
