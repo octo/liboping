@@ -1,4 +1,4 @@
-use 5.008007;
+use 5.006;
 use ExtUtils::MakeMaker;
 
 my @OPING_PREFIX = (qw(/opt/oping /usr /usr/local));
