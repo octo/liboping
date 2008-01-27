@@ -29,12 +29,14 @@ configuring the time of live (TTL) are not yet supported by this interface.
 
 =cut
 
+use 5.006;
+
 use strict;
 use warnings;
 
 use Carp (qw(cluck confess));
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
 require XSLoader;
 XSLoader::load ('Net::Oping', $VERSION);

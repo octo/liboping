@@ -1,6 +1,6 @@
 Revision history for Perl extension Net::Oping.
 
-1.01  ...
+1.01  Sun Jan 27 16:08:03 2008
 	- Have `Makefile.PL' exit if the header file <oping.h> cannot be found
 	  _before_ a Makefile is generated. This is done because
 	  `ExtUtils::MakeMaker' doesn't check whether libraries exist and this

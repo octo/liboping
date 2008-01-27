@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         Net-Oping
-version:      1.00
+version:      1.01
 version_from: lib/Net/Oping.pm
 installdirs:  site
 requires:
