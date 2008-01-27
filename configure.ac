@@ -16,6 +16,12 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AM_CONDITIONAL(COMPILER_IS_GCC, test "x$GCC" = "xyes")
 
+if test "x$PERL" = "x"
+then
+	PERL="perl"
+fi
+AC_ARG_VAR(PERL, [Perl interpreter command])
+
 #
 # configure libtool
 #
@@ -163,4 +169,31 @@ AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debuggi
 ], [])
 AM_CONDITIONAL(BUILD_WITH_DEBUG, test "x$enable_debug" = "xyes")
 
-AC_OUTPUT(Makefile src/Makefile src/mans/Makefile)
+AC_ARG_WITH(perl-bindings, [AS_HELP_STRING([--with-perl-bindings@<:@=OPTIONS@:>@], [Options passed to "perl Makefile.PL".])],
+[
+	if test "x$withval" != "xno" && test "x$withval" != "xyes"
+	then
+		PERL_BINDINGS_OPTIONS="$withval"
+		with_perl_bindings="yes"
+	else
+		PERL_BINDINGS_OPTIONS=""
+		with_perl_bindings="$withval"
+	fi
+],
+[
+	PERL_BINDINGS_OPTIONS=""
+	with_perl_bindings="yes"
+])
+
+if test "x$with_perl_bindings" = "xyes"
+then
+	BINDINGS="perl-bindings"
+else
+	BINDINGS=""
+fi
+
+AC_SUBST(PERL_BINDINGS_OPTIONS)
+
+AC_SUBST(BINDINGS)
+
+AC_OUTPUT(Makefile src/Makefile src/mans/Makefile bindings/Makefile)
