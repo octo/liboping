@@ -941,9 +941,11 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			if (status != 0)
 			{
 				ping_set_error (obj, "getaddrinfo",
-						status == EAI_SYSTEM
-						? strerror (errno)
-						: gai_strerror (status));
+#if defined(EAI_SYSTEM)
+						(status == EAI_SYSTEM)
+						? strerror (errno) :
+#endif
+						gai_strerror (status));
 				ret = -1;
 				break;
 			}
@@ -1073,9 +1075,11 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	{
 		dprintf ("getaddrinfo failed\n");
 		ping_set_error (obj, "getaddrinfo",
-			       	(ai_return == EAI_SYSTEM)
-				? strerror (errno)
-				: gai_strerror (ai_return));
+#if defined(EAI_SYSTEM)
+						(ai_return == EAI_SYSTEM)
+						? strerror (errno) :
+#endif
+				gai_strerror (ai_return));
 		ping_free (ph);
 		return (-1);
 	}
@@ -1306,8 +1310,10 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 #endif
 				   )
 					ret = ENOMEM;
+#if defined(EAI_SYSTEM)
 				else if (ret == EAI_SYSTEM)
 					ret = errno;
+#endif
 				else
 					ret = EINVAL;
 			}
