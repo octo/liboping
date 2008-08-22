@@ -20,6 +20,17 @@ Features
 
   * Object oriented interface.
 
+Perl bindings
+-------------
+
+  Included in the source package of liboping are bindings for Perl. The code
+  resides in the bindings/ subdirectory but is not compiled and installed by
+  default. The problem is that before linking with the library, the library
+  must be installed.
+
+  If you want to build the Perl bindings compile and install liboping first.
+  Then go into the bindings/ directory and type
+    $ make perl install
 
 Author
 ------

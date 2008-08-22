@@ -2,7 +2,8 @@ EXTRA_DIST = perl/Changes perl/MANIFEST perl/META.yml perl/Makefile.PL \
 		perl/Oping.xs perl/README perl/lib/Net/Oping.pm perl/t/Oping.t \
 		perl/typemap
 
-all-local: @BINDINGS@
+all-local:
+	[ ! -f perl/Makefile ] || ( cd perl && $(MAKE) all )
 
 install-exec-local:
 	[ ! -f perl/Makefile ] || ( cd perl && $(MAKE) install )
@@ -12,6 +13,8 @@ clean-local:
 
 test:
 	[ ! -f perl/Makefile ] || ( cd perl && $(MAKE) test )
+
+perl: perl-bindings
 
 perl-bindings: perl/Makefile
 	cd perl && $(MAKE)
@@ -27,5 +30,5 @@ perl/Makefile: perl/Makefile.PL $(top_builddir)/config.status
 	cd perl && @PERL@ Makefile.PL PREFIX=$(prefix) @PERL_BINDINGS_OPTIONS@
 
 
-.PHONY: perl-bindings
+.PHONY: perl perl-bindings
 
