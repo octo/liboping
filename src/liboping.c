@@ -25,6 +25,8 @@
 # include <stdlib.h>
 # include <stdio.h>
 # include <string.h>
+# include <stdint.h>
+# include <inttypes.h>
 # include <errno.h>
 # include <assert.h>
 #else
@@ -109,6 +111,7 @@ struct pinghost
 	int                      sequence;
 	struct timeval          *timer;
 	double                   latency;
+	uint32_t                 dropped;
 	char                    *data;
 
 	void                    *context;
@@ -523,6 +526,9 @@ static int ping_receive_all (pingobj_t *obj)
 		else if (status == 0)
 		{
 			dprintf ("select timed out\n");
+			for (ptr = ph; ptr != NULL; ptr = ptr->next)
+				if (ptr->latency < 0.0)
+					ptr->dropped++;
 			break;
 		}
 
@@ -799,6 +805,7 @@ static pinghost_t *ping_alloc (void)
 	ph->addrlen = sizeof (struct sockaddr_storage);
 	ph->fd      = -1;
 	ph->latency = -1.0;
+	ph->dropped = 0;
 	ph->ident   = ping_get_ident () & 0xFFFF;
 
 	return (ph);
@@ -1337,6 +1344,15 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			ret = 0;
 			break;
 
+		case PING_INFO_DROPPED:
+			ret = ENOMEM;
+			*buffer_len = sizeof (uint32_t);
+			if (orig_buffer_len < sizeof (uint32_t))
+				break;
+			*((uint32_t *) buffer) = iter->dropped;
+			ret = 0;
+			break;
+
 		case PING_INFO_SEQUENCE:
 			ret = ENOMEM;
 			*buffer_len = sizeof (unsigned int);
@@ -1366,7 +1382,7 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 	}
 
 	return (ret);
-}
+} /* ping_iterator_get_info */
 
 void *ping_iterator_get_context (pingobj_iter_t *iter)
 {

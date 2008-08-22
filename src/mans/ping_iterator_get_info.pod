@@ -58,6 +58,13 @@ Return the last measured latency or less than zero if the timeout occured
 before a echo response was received. The buffer should be big enough to hold a
 double value.
 
+=item B<PING_INFO_DROPPED>
+
+Return the number of times that no response was received within the timeout.
+This value is only increased but may wrap around at the 32E<nbsp>bit boundary.
+The buffer should be big enough to hold a 32E<nbsp>bit integer, e.E<nbsp>g. an
+C<uint32_t>.
+
 =item B<PING_INFO_SEQUENCE>
 
 Return the last sequence number sent. This number is increased regardless of
