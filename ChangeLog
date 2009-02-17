@@ -1,3 +1,22 @@
+2009-02-17, Version 1.0.0
+	* oping.h: Provide the OPING_VERSION to easily determine the library's
+	  version at compile time.
+	* liboping.c: Fixed an off-by-one error in `ping_iterator_get_info':
+	  When determining the buffer size to hold the hostname, the function
+	  would return one byte too little.
+	* liboping.c: Fix an incorrect assertion in `ping_timeval_add'. Thanks
+	  to Alex Brooks for reporting the issue.
+	* liboping.c: Make sure `EAI_SYSTEM' is defined at compile time.
+	  Although specified by POSIX, Cygwin apparently doesn't have it.
+	* liboping.c: Add compatibility code for AIX. Thanks to Doug
+	  MacEachern for the patch.
+	* liboping.c: Store and possibly return the host name as provided by
+	  the user.
+	* liboping.c: The number of timed out packets is now counted and can
+	  be retrieved with `ping_iterator_get_info'.
+	* Perl bindings: The Net::Oping Perl package has been added to
+	  bindings/ and is built along with liboping.
+
 2007-03-27, Version 0.3.5
 	* liboping.c: Close the filedescriptor in `ping_free', not
 	  `ping_host_remove'. Thanks to Esteban Sanchez for submitting this
