@@ -120,9 +120,10 @@ _ping_iterator_get_hostname (iter)
 				(void *) buffer, &buffer_size);
 		if (status != ENOMEM)
 			break;
-
-		/* FIXME: This is a workaround for a bug in 0.3.5. */
+#if !defined(OPING_VERSION) || (OPING_VERSION <= 3005)
+		/* This is a workaround for a bug in 0.3.5. */
 		buffer_size++;
+#endif
 
 		buffer = (char *) malloc (buffer_size);
 		if (buffer == NULL)
