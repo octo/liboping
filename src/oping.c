@@ -77,6 +77,8 @@ static int     opt_count      = -1;
 
 void sigint_handler (int signal)
 {
+	/* Make compiler happy */
+	signal = 0;
 	/* Exit the loop */
 	opt_count = 0;
 }

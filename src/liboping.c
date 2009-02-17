@@ -375,7 +375,7 @@ static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffe
 static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 {
 	char   buffer[4096];
-	size_t buffer_len;
+	ssize_t buffer_len;
 
 	struct timeval diff;
 
@@ -388,13 +388,13 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 
 	buffer_len = recvfrom (fd, buffer, sizeof (buffer), 0,
 			(struct sockaddr *) &sa, &sa_len);
-	if (buffer_len == -1)
+	if (buffer_len < 0)
 	{
 		dprintf ("recvfrom: %s\n", strerror (errno));
 		return (-1);
 	}
 
-	dprintf ("Read %zu bytes from fd = %i\n", buffer_len, fd);
+	dprintf ("Read %zi bytes from fd = %i\n", buffer_len, fd);
 
 	if (sa.ss_family == AF_INET)
 	{
