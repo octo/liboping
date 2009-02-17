@@ -196,16 +196,16 @@ void print_host (pingobj_iter_t *iter)
 		if ((context->latency_min < 0.0) || (context->latency_min > latency))
 			context->latency_min = latency;
 
-		printf ("%u bytes from %s (%s): icmp_seq=%u time=%.2f ms\n",
-				(unsigned int) data_len,
+		printf ("%zu bytes from %s (%s): icmp_seq=%u time=%.2f ms\n",
+				data_len,
 				context->host, context->addr,
-				(unsigned int) sequence, latency);
+				sequence, latency);
 	}
 	else
 	{
 		printf ("echo reply from %s (%s): icmp_seq=%u timeout\n",
 				context->host, context->addr,
-				(unsigned int) sequence);
+				sequence);
 	}
 }
 
@@ -344,8 +344,8 @@ int main (int argc, char **argv)
 		buffer_size = 0;
 		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
 
-		printf ("PING %s (%s) %u bytes of data.\n",
-				context->host, context->addr, (unsigned int) buffer_size);
+		printf ("PING %s (%s) %zu bytes of data.\n",
+				context->host, context->addr, buffer_size);
 
 		ping_iterator_set_context (iter, (void *) context);
 

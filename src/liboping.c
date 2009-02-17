@@ -394,7 +394,7 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 		return (-1);
 	}
 
-	dprintf ("Read %u bytes from fd = %i\n", (unsigned int) buffer_len, fd);
+	dprintf ("Read %zu bytes from fd = %i\n", buffer_len, fd);
 
 	if (sa.ss_family == AF_INET)
 	{
