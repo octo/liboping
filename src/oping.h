@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2008  Florian octo Forster <octo at verplant.org>
+ * Copyright (C) 2006-2009  Florian octo Forster <octo at verplant.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@
 extern "C" {
 #endif
 
-#define OPING_VERSION 3005
+#define OPING_VERSION 1000000
 
 /*
  * Type definitions
