@@ -1,4 +1,4 @@
-Net::Oping version 1.01
+Net::Oping version 1.02
 =======================
 
   ICMP latency measurement module using the oping library.

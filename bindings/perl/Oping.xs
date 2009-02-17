@@ -105,15 +105,13 @@ _ping_iterator_get_latency (iter)
 	OUTPUT:
 		RETVAL
 
-char *
+void
 _ping_iterator_get_hostname (iter)
 	pingobj_iter_t *iter
-	CODE:
+	PPCODE:
 		char *buffer;
 		size_t buffer_size;
 		int status;
-
-		RETVAL = NULL;
 
 	do {
 		buffer = NULL;
@@ -135,10 +133,9 @@ _ping_iterator_get_hostname (iter)
 		if (status != 0)
 			break;
 
-		RETVAL = buffer;
+		XPUSHs (sv_2mortal (newSVpvn(buffer,buffer_size)));
+		free(buffer);
 	} while (0);
-	OUTPUT:
-		RETVAL
 
 const char *
 _ping_get_error (obj)
