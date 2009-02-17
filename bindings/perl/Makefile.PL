@@ -8,6 +8,7 @@ my $OPING_PREFIX;
 my $OPING_CPPFLAGS;
 my $OPING_LDDLFLAGS;
 my $OPING_LIBS;
+my $OPING_DEPEND;
 
 # TOP_BUILDDIR is set by liboping's build system, so Net::Oping can link with
 # the yet uninstalled library.
@@ -80,6 +81,8 @@ if ($TOP_BUILDDIR)
 	{
 		$OPING_LDDLFLAGS .= qq( -Wl,-rpath -Wl,"$TARGET_LIBDIR");
 	}
+
+	$OPING_DEPEND = { 'Oping.o' => "$TOP_BUILDDIR/src/liboping.la" };
 }
 elsif ($OPING_PREFIX)
 {
@@ -122,6 +125,7 @@ WriteMakefile(
      ? (ABSTRACT_FROM => 'lib/Net/Oping.pm',
         AUTHOR        => 'Florian Forster <octo@verplant.org>')
      : ()),
+    ($OPING_DEPEND ? (depend => $OPING_DEPEND) : ()),
     LIBS              => [$OPING_LIBS],
     ($OPING_LDDLFLAGS ? (LDDLFLAGS => "$OPING_LDDLFLAGS") : ()),
     DEFINE            => '',
@@ -138,4 +142,5 @@ sub is_system_libdir
 			return (1);
 		}
 	}
+	return;
 }
