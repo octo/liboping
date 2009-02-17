@@ -132,7 +132,10 @@ _ping_iterator_get_hostname (iter)
 		status = ping_iterator_get_info (iter, PING_INFO_HOSTNAME,
 				(void *) buffer, &buffer_size);
 		if (status != 0)
+		{
+			free (buffer);
 			break;
+		}
 
 		XPUSHs (sv_2mortal (newSVpvn(buffer,buffer_size)));
 		free(buffer);

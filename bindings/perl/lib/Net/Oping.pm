@@ -231,12 +231,17 @@ sub ping
   $status = _ping_send ($obj->{'c_obj'});
   if ($status < 0)
   {
-    print "\$status = $status;\n";
     $obj->{'err_msg'} = "" . _ping_get_error ($obj->{'c_obj'});
     return;
   }
 
   $iter = _ping_iterator_get ($obj->{'c_obj'});
+  if (!$iter)
+  {
+    $obj->{'err_msg'} = "" . _ping_get_error ($obj->{'c_obj'});
+    return;
+  }
+
   while ($iter)
   {
     my $host = _ping_iterator_get_hostname ($iter);
