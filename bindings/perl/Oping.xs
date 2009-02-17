@@ -28,6 +28,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <stdint.h>
+#include <inttypes.h>
 #include <errno.h>
 #include <assert.h>
 #include <netdb.h> /* NI_MAXHOST */
@@ -163,6 +165,28 @@ _ping_iterator_get_hostname (iter)
 		XPUSHs (sv_2mortal (newSVpvn(buffer,buffer_size)));
 		free(buffer);
 	} while (0);
+
+int
+_ping_iterator_get_dropped (iter)
+	pingobj_iter_t *iter
+	CODE:
+#if defined(PING_INFO_DROPPED)
+		uint32_t tmp;
+		size_t tmp_size;
+		int status;
+
+		RETVAL = -1;
+
+		tmp_size = sizeof (tmp);
+		status = ping_iterator_get_info (iter, PING_INFO_DROPPED,
+			(void *) &tmp, &tmp_size);
+		if (status == 0)
+			RETVAL = (int) tmp;
+#else
+		RETVAL = -1;
+#endif
+	OUTPUT:
+		RETVAL
 
 const char *
 _ping_get_error (obj)

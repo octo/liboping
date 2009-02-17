@@ -263,7 +263,56 @@ sub ping
   }
 
   return ($data);
-}
+} # ping
+
+=item my I<$dropped> = I<$obj>-E<gt>B<get_dropped> ()
+
+Returns a hash reference holding the number of "drops" (echo requests which
+were not answered in time) for each host. An example return
+values would be:
+
+  $droprate = { host1 => 0, host2 => 3, host3 => undef, ... };
+
+Hosts to which no data has been sent yet will return C<undef> ("host3" in thie
+example).
+
+=cut
+
+sub get_dropped
+{
+  my $obj = shift;
+  my $iter;
+  my $data = {};
+
+  $iter = _ping_iterator_get ($obj->{'c_obj'});
+  if (!$iter)
+  {
+    $obj->{'err_msg'} = "" . _ping_get_error ($obj->{'c_obj'});
+    return;
+  }
+
+  while ($iter)
+  {
+    my $host = _ping_iterator_get_hostname ($iter);
+    if (!$host)
+    {
+      $iter = _ping_iterator_next ($iter);
+      next;
+    }
+
+    my $dropped = _ping_iterator_get_dropped ($iter);
+    if ($dropped < 0)
+    {
+      $dropped = undef;
+    }
+
+    $data->{$host} = $dropped;
+
+    $iter = _ping_iterator_next ($iter);
+  }
+
+  return ($data);
+} # get_dropped
 
 =item my I<$errmsg> = I<$obj>-E<gt>B<get_error> ();
 
