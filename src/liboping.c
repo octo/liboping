@@ -764,7 +764,7 @@ static int ping_get_ident (void)
 			if (read (fd, &seed, sizeof (seed)) != -1)
 			{
 				did_seed = 1;
-				dprintf ("Random seed: %i\n", seed);
+				dprintf ("Random seed:   %#x\n", seed);
 				srandom (seed);
 			}
 
@@ -778,7 +778,7 @@ static int ping_get_ident (void)
 
 	retval = (int) random ();
 
-	dprintf ("Random number: %i\n", retval);
+	dprintf ("Random number: %#x\n", retval);
 	
 	return (retval);
 }
