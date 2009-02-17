@@ -1,3 +1,27 @@
+#
+# Net-Oping - lib/Net/Oping.pm
+# Copyright (C) 2007       Olivier Fredj
+# Copyright (C) 2008,2009  Florian octo Forster
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; only version 2 of the License is
+# applicable.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301 USA
+#
+# Authors:
+#   Olivier Fredj <ofredj at proxad.net>
+#   Florian octo Forster <octo at verplant.org>
+#
+
 package Net::Oping;
 
 =head1 NAME
@@ -17,12 +41,13 @@ Net::Oping - ICMP latency measurement module using the oping library.
 =head1 DESCRIPTION
 
 This Perl module is a high-level interface to the
-L<oping library|http://verplant.org/liboping/>. Its purpose it to send C<ICMP
-ECHO_REQUEST> packets (also known as "ping") to a host and measure the time
-that elapses until the reception of an C<ICMP ECHO_REPLY> packet (also known as
-"pong"). If no such packet is received after a certain timeout the host is considered to be unreachable.
+L<oping library|http://verplant.org/liboping/>. Its purpose it to send
+C<ICMP ECHO_REQUEST> packets (also known as "ping") to a host and measure the
+time that elapses until the reception of an C<ICMP ECHO_REPLY> packet (also
+known as "pong"). If no such packet is received after a certain timeout the
+host is considered to be unreachable.
 
-The used C<oping> library supports "ping"ing multiple hosts in parallel and
+The used I<oping> library supports "ping"ing multiple hosts in parallel and
 works with IPv4 and IPv6 transparently. Other advanced features that are
 provided by the underlying library, such as setting the data sent or
 configuring the time of live (TTL) are not yet supported by this interface.
@@ -46,7 +71,7 @@ return (1);
 
 The interface is kept simple and clean. First you need to create an object to
 which you then add hosts. Using the C<ping> method you can request a latency
-measurement and get the current values returned. If neccessary you can remove
+measurement and get the current values returned. If necessary you can remove
 hosts from the object, too.
 
 The constructor and methods are defined as follows:
@@ -237,7 +262,7 @@ sub ping
 
 =item my I<$errmsg> = I<$obj>-E<gt>B<get_error> ();
 
-Returns the last error that occured.
+Returns the last error that occurred.
 
 =cut
 
@@ -251,7 +276,7 @@ sub get_error
 
 =head1 CAVEATS
 
-The C<oping> library opens a raw socket to be able to send ICMP packets. On
+The I<oping> library opens a raw socket to be able to send ICMP packets. On
 most systems normal users are not allowed to do this. This is why on most
 systems the L<ping(1)> utility is installed as SetUID-root. Since, when using
 this module, no external process is spawned B<this> process needs the
@@ -262,7 +287,7 @@ superuser or, under Linux, needs the C<CAP_NET_RAW> capability.
 
 L<liboping(3)>
 
-The C<liboping> homepage may be found at L<http://verplant.org/liboping/>.
+The I<liboping> homepage may be found at L<http://verplant.org/liboping/>.
 Information about its mailing list may be found at
 L<http://mailman.verplant.org/listinfo/liboping>.
 
@@ -275,12 +300,17 @@ Perl interface by Florian Forster.
 
 Copyright (C) 2007 by Olivier Fredj E<lt>ofredjE<nbsp>atE<nbsp>proxad.netE<gt>
 
-Copyright (C) 2008 by Florian Forster
+Copyright (C) 2008,2009 by Florian Forster
 E<lt>octoE<nbsp>atE<nbsp>verplant.orgE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.7 or,
 at your option, any later version of Perl 5 you may have available.
+
+Please note that I<liboping> is licensed under the GPLv2. Derived works of
+both, I<Net::Oping> and I<liboping>, (i.E<nbsp>e. binary packages) may
+therefore be subject to stricter licensing terms than the source code of this
+package.
 
 =cut
 
