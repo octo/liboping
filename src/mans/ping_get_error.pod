@@ -27,4 +27,4 @@ L<liboping(3)>
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
 It's homepage can be found at L<http://verplant.org/liboping/>.
 
-(c) 2005, 2006 by Florian octo Forster.
+(c) 2005-2009 by Florian octo Forster.
