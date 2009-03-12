@@ -455,7 +455,7 @@ int main (int argc, char **argv)
 		}
 
 		ping_iterator_set_context (iter, NULL);
-		free (context);
+		context_destroy (context);
 	}
 
 	ping_destroy (ping);
