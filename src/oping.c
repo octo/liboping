@@ -75,7 +75,7 @@ static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
 static int     opt_count      = -1;
 
-void sigint_handler (int signal)
+static void sigint_handler (int signal)
 {
 	/* Make compiler happy */
 	signal = 0;
@@ -83,7 +83,7 @@ void sigint_handler (int signal)
 	opt_count = 0;
 }
 
-ping_context_t *context_create (void)
+static ping_context_t *context_create (void)
 {
 	ping_context_t *ret;
 
@@ -100,19 +100,19 @@ ping_context_t *context_create (void)
 	return (ret);
 }
 
-void context_destroy (ping_context_t *context)
+static void context_destroy (ping_context_t *context)
 {
 	free (context);
 }
 
-void usage_exit (const char *name)
+static void usage_exit (const char *name)
 {
 	fprintf (stderr, "Usage: %s [-46] [-c count] [-i interval] host [host [host ...]]\n",
 			name);
 	exit (1);
 }
 
-int read_options (int argc, char **argv)
+static int read_options (int argc, char **argv)
 {
 	int optchar;
 
@@ -164,7 +164,7 @@ int read_options (int argc, char **argv)
 	return (optind);
 }
 
-void print_host (pingobj_iter_t *iter)
+static void print_host (pingobj_iter_t *iter)
 {
 	double          latency;
 	unsigned int    sequence;
@@ -211,7 +211,7 @@ void print_host (pingobj_iter_t *iter)
 	}
 }
 
-void time_normalize (struct timespec *ts)
+static void time_normalize (struct timespec *ts)
 {
 	while (ts->tv_nsec < 0)
 	{
@@ -232,7 +232,7 @@ void time_normalize (struct timespec *ts)
 	}
 }
 
-void time_calc (struct timespec *ts_dest,
+static void time_calc (struct timespec *ts_dest,
 		const struct timespec *ts_int,
 		const struct timeval  *tv_begin,
 		const struct timeval  *tv_end)
