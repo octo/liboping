@@ -137,11 +137,60 @@ struct pingobj
 /*
  * private (static) functions
  */
+/* Even though Posix requires "strerror_r" to return an "int",
+ * some systems (e.g. the GNU libc) return a "char *" _and_
+ * ignore the second argument ... -tokkee */
+char *sstrerror (int errnum, char *buf, size_t buflen)
+{
+	buf[0] = 0;
+
+#if !HAVE_STRERROR_R
+	{
+		snprintf (buf, buflen, "Error %i (%#x)", errnum, errnum);
+	}
+/* #endif !HAVE_STRERROR_R */
+
+#elif STRERROR_R_CHAR_P
+	{
+		char *temp;
+		temp = strerror_r (errnum, buf, buflen);
+		if (buf[0] == 0)
+		{
+			if ((temp != NULL) && (temp != buf) && (temp[0] != 0))
+				strncpy (buf, temp, buflen);
+			else
+				strncpy (buf, "strerror_r did not return "
+						"an error message", buflen);
+		}
+	}
+/* #endif STRERROR_R_CHAR_P */
+
+#else
+	if (strerror_r (errnum, buf, buflen) != 0)
+	{
+		snprintf (buf, buflen, "Error %i (%#x); "
+				"Additionally, strerror_r failed.",
+				errnum, errnum);
+	}
+#endif /* STRERROR_R_CHAR_P */
+
+	buf[buflen - 1] = 0;
+
+	return (buf);
+} /* char *sstrerror */
+
 static void ping_set_error (pingobj_t *obj, const char *function,
 	       	const char *message)
 {
-	snprintf (obj->errmsg, PING_ERRMSG_LEN, "%s: %s", function, message);
-	obj->errmsg[PING_ERRMSG_LEN - 1] = '\0';
+	snprintf (obj->errmsg, sizeof (obj->errmsg),
+			"%s: %s", function, message);
+	obj->errmsg[sizeof (obj->errmsg) - 1] = 0;
+}
+
+static void ping_set_errno (pingobj_t *obj, const char *function,
+	       	int error_number)
+{
+	sstrerror (error_number, obj->errmsg, sizeof (obj->errmsg));
 }
 
 static int ping_timeval_add (struct timeval *tv1, struct timeval *tv2,
@@ -390,7 +439,11 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 			(struct sockaddr *) &sa, &sa_len);
 	if (buffer_len < 0)
 	{
-		dprintf ("recvfrom: %s\n", strerror (errno));
+#if WITH_DEBUG
+		char errbuf[PING_ERRMSG_LEN];
+		dprintf ("recvfrom: %s\n",
+				sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
 		return (-1);
 	}
 
@@ -456,7 +509,7 @@ static int ping_receive_all (pingobj_t *obj)
 
 	if (gettimeofday (&nowtime, NULL) == -1)
 	{
-		ping_set_error (obj, "gettimeofday", strerror (errno));
+		ping_set_errno (obj, "gettimeofday", errno);
 		return (-1);
 	}
 
@@ -493,7 +546,7 @@ static int ping_receive_all (pingobj_t *obj)
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
-			ping_set_error (obj, "gettimeofday", strerror (errno));
+			ping_set_errno (obj, "gettimeofday", errno);
 			return (-1);
 		}
 
@@ -508,7 +561,7 @@ static int ping_receive_all (pingobj_t *obj)
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
-			ping_set_error (obj, "gettimeofday", strerror (errno));
+			ping_set_errno (obj, "gettimeofday", errno);
 			return (-1);
 		}
 		
@@ -519,7 +572,11 @@ static int ping_receive_all (pingobj_t *obj)
 		}
 		else if (status < 0)
 		{
-			dprintf ("select: %s\n", strerror (errno));
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("select: %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
 			break;
 		}
 		else if (status == 0)
@@ -573,7 +630,7 @@ static ssize_t ping_sendto (pingobj_t *obj, pinghost_t *ph,
 		if (errno == ENETUNREACH)
 			return (0);
 #endif
-		ping_set_error (obj, "sendto", strerror (errno));
+		ping_set_errno (obj, "sendto", errno);
 	}
 
 	return (ret);
@@ -685,7 +742,11 @@ static int ping_send_all (pingobj_t *obj)
 		 * sending the packet, so I will do that too */
 		if (gettimeofday (ptr->timer, NULL) == -1)
 		{
-			dprintf ("gettimeofday: %s\n", strerror (errno));
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("gettimeofday: %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
 			timerclear (ptr->timer);
 			ret--;
 			continue;
@@ -770,10 +831,14 @@ static int ping_get_ident (void)
 
 			close (fd);
 		}
+#if WITH_DEBUG
 		else
 		{
-			dprintf ("open (/dev/urandom): %s\n", strerror (errno));
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("open (/dev/urandom): %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
 		}
+#endif
 	}
 
 	retval = (int) random ();
@@ -946,10 +1011,13 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			status = getaddrinfo (hostname, NULL, &ai_hints, &ai_list);
 			if (status != 0)
 			{
+#if defined(EAI_SYSTEM)
+				char errbuf[PING_ERRMSG_LEN];
+#endif
 				ping_set_error (obj, "getaddrinfo",
 #if defined(EAI_SYSTEM)
 						(status == EAI_SYSTEM)
-						? strerror (errno) :
+						? sstrerror (errno, errbuf, sizeof (errbuf)) :
 #endif
 						gai_strerror (status));
 				ret = -1;
@@ -967,8 +1035,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				obj->srcaddr = (struct sockaddr_storage *) malloc (sizeof (struct sockaddr_storage));
 				if (obj->srcaddr == NULL)
 				{
-					ping_set_error (obj, "malloc",
-							strerror (errno));
+					ping_set_errno (obj, "malloc", errno);
 					ret = -1;
 					freeaddrinfo (ai_list);
 					break;
@@ -1055,7 +1122,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph->username = strdup (host)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
-		ping_set_error (obj, "strdup", strerror (errno));
+		ping_set_errno (obj, "strdup", errno);
 		ping_free (ph);
 		return (-1);
 	}
@@ -1063,7 +1130,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph->hostname = strdup (host)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
-		ping_set_error (obj, "strdup", strerror (errno));
+		ping_set_errno (obj, "strdup", errno);
 		ping_free (ph);
 		return (-1);
 	}
@@ -1072,18 +1139,21 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph->data = strdup (obj->data == NULL ? PING_DEF_DATA : obj->data)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
-		ping_set_error (obj, "strdup", strerror (errno));
+		ping_set_errno (obj, "strdup", errno);
 		ping_free (ph);
 		return (-1);
 	}
 
 	if ((ai_return = getaddrinfo (host, NULL, &ai_hints, &ai_list)) != 0)
 	{
+#if defined(EAI_SYSTEM)
+		char errbuf[PING_ERRMSG_LEN];
+#endif
 		dprintf ("getaddrinfo failed\n");
 		ping_set_error (obj, "getaddrinfo",
 #if defined(EAI_SYSTEM)
 						(ai_return == EAI_SYSTEM)
-						? strerror (errno) :
+						? sstrerror (errno, errbuf, sizeof (errbuf)) :
 #endif
 				gai_strerror (ai_return));
 		ping_free (ph);
@@ -1141,8 +1211,12 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		ph->fd = socket (ai_ptr->ai_family, ai_ptr->ai_socktype, ai_ptr->ai_protocol);
 		if (ph->fd == -1)
 		{
-			dprintf ("socket: %s\n", strerror (errno));
-			ping_set_error (obj, "socket", strerror (errno));
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("socket: %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+			ping_set_errno (obj, "socket", errno);
 			continue;
 		}
 
@@ -1153,8 +1227,12 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 			if (bind (ph->fd, (struct sockaddr *) obj->srcaddr, obj->srcaddrlen) == -1)
 			{
-				dprintf ("bind: %s\n", strerror (errno));
-				ping_set_error (obj, "bind", strerror (errno));
+#if WITH_DEBUG
+				char errbuf[PING_ERRMSG_LEN];
+				dprintf ("bind: %s\n",
+						sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+				ping_set_errno (obj, "bind", errno);
 				close (ph->fd);
 				ph->fd = -1;
 				continue;
