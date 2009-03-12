@@ -143,7 +143,10 @@ static int read_options (int argc, char **argv)
 				{
 					double new_interval;
 					new_interval = atof (optarg);
-					if (new_interval >= 0.2)
+					if (new_interval < 0.001)
+						fprintf (stderr, "Ignoring invalid interval %g.\n",
+								new_interval);
+					else
 						opt_interval = new_interval;
 				}
 				break;
