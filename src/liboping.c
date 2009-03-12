@@ -126,7 +126,7 @@ struct pingobj
 	int                      addrfamily;
 	char                    *data;
 
-	struct sockaddr_storage *srcaddr;
+	struct sockaddr         *srcaddr;
 	socklen_t                srcaddrlen;
 
 	char                     errmsg[PING_ERRMSG_LEN];
@@ -1032,7 +1032,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			if (obj->srcaddr == NULL)
 			{
 				obj->srcaddrlen = 0;
-				obj->srcaddr = (struct sockaddr_storage *) malloc (sizeof (struct sockaddr_storage));
+				obj->srcaddr = malloc (sizeof (struct sockaddr_storage));
 				if (obj->srcaddr == NULL)
 				{
 					ping_set_errno (obj, "malloc", errno);
@@ -1041,7 +1041,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 					break;
 				}
 			}
-			memset ((void *) obj->srcaddr, '\0', sizeof (struct sockaddr_storage));
+			memset ((void *) obj->srcaddr, 0, sizeof (struct sockaddr_storage));
 			assert (ai_list->ai_addrlen <= sizeof (struct sockaddr_storage));
 			memcpy ((void *) obj->srcaddr, (const void *) ai_list->ai_addr,
 					ai_list->ai_addrlen);
@@ -1089,9 +1089,6 @@ static pinghost_t *ping_host_search (pinghost_t *ph, const char *host)
 int ping_host_add (pingobj_t *obj, const char *host)
 {
 	pinghost_t *ph;
-
-	struct sockaddr_storage sockaddr;
-	socklen_t               sockaddr_len;
 
 	struct addrinfo  ai_hints;
 	struct addrinfo *ai_list, *ai_ptr;
@@ -1167,30 +1164,13 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	{
 		ph->fd = -1;
 
-		sockaddr_len = sizeof (sockaddr);
-		memset (&sockaddr, '\0', sockaddr_len);
-
 		if (ai_ptr->ai_family == AF_INET)
 		{
-			struct sockaddr_in *si;
-
-			si = (struct sockaddr_in *) &sockaddr;
-			si->sin_family = AF_INET;
-			si->sin_port   = htons (ph->ident);
-			si->sin_addr.s_addr = htonl (INADDR_ANY);
-
 			ai_ptr->ai_socktype = SOCK_RAW;
 			ai_ptr->ai_protocol = IPPROTO_ICMP;
 		}
 		else if (ai_ptr->ai_family == AF_INET6)
 		{
-			struct sockaddr_in6 *si;
-
-			si = (struct sockaddr_in6 *) &sockaddr;
-			si->sin6_family = AF_INET6;
-			si->sin6_port   = htons (ph->ident);
-			si->sin6_addr   = in6addr_any;
-
 			ai_ptr->ai_socktype = SOCK_RAW;
 			ai_ptr->ai_protocol = IPPROTO_ICMPV6;
 		}
@@ -1225,7 +1205,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			assert (obj->srcaddrlen > 0);
 			assert (obj->srcaddrlen <= sizeof (struct sockaddr_storage));
 
-			if (bind (ph->fd, (struct sockaddr *) obj->srcaddr, obj->srcaddrlen) == -1)
+			if (bind (ph->fd, obj->srcaddr, obj->srcaddrlen) == -1)
 			{
 #if WITH_DEBUG
 				char errbuf[PING_ERRMSG_LEN];
