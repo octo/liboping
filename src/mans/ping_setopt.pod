@@ -17,7 +17,9 @@ The I<obj> argument is a pointer to an liboping object, as returned by
 L<ping_construct(3)>.
 
 The I<opt> argument specifies the option to set. Use one of the following
-constants:
+constants. You can check if the required constant is supported by the library
+at compile time using C<#ifdef>. It is recommended to check for desired
+features using the C<OPING_VERSION> define.
 
 =over 4
 
@@ -58,7 +60,7 @@ the source address assigned.
 =back
 
 The I<val> argument is a pointer to the new value. It must not be NULL. It is
-dereferences depending on the value of the I<opt> argument, see above. The
+dereferenced depending on the value of the I<opt> argument, see above. The
 memory pointed to by I<val> is not changed.
 
 =head1 RETURN VALUE
