@@ -187,8 +187,7 @@ static void ping_set_error (pingobj_t *obj, const char *function,
 	obj->errmsg[sizeof (obj->errmsg) - 1] = 0;
 }
 
-static void ping_set_errno (pingobj_t *obj, const char *function,
-	       	int error_number)
+static void ping_set_errno (pingobj_t *obj, int error_number)
 {
 	sstrerror (error_number, obj->errmsg, sizeof (obj->errmsg));
 }
@@ -509,7 +508,7 @@ static int ping_receive_all (pingobj_t *obj)
 
 	if (gettimeofday (&nowtime, NULL) == -1)
 	{
-		ping_set_errno (obj, "gettimeofday", errno);
+		ping_set_errno (obj, errno);
 		return (-1);
 	}
 
@@ -546,7 +545,7 @@ static int ping_receive_all (pingobj_t *obj)
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
-			ping_set_errno (obj, "gettimeofday", errno);
+			ping_set_errno (obj, errno);
 			return (-1);
 		}
 
@@ -561,7 +560,7 @@ static int ping_receive_all (pingobj_t *obj)
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
-			ping_set_errno (obj, "gettimeofday", errno);
+			ping_set_errno (obj, errno);
 			return (-1);
 		}
 		
@@ -630,7 +629,7 @@ static ssize_t ping_sendto (pingobj_t *obj, pinghost_t *ph,
 		if (errno == ENETUNREACH)
 			return (0);
 #endif
-		ping_set_errno (obj, "sendto", errno);
+		ping_set_errno (obj, errno);
 	}
 
 	return (ret);
@@ -1035,7 +1034,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				obj->srcaddr = malloc (sizeof (struct sockaddr_storage));
 				if (obj->srcaddr == NULL)
 				{
-					ping_set_errno (obj, "malloc", errno);
+					ping_set_errno (obj, errno);
 					ret = -1;
 					freeaddrinfo (ai_list);
 					break;
@@ -1119,7 +1118,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph->username = strdup (host)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
-		ping_set_errno (obj, "strdup", errno);
+		ping_set_errno (obj, errno);
 		ping_free (ph);
 		return (-1);
 	}
@@ -1127,7 +1126,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph->hostname = strdup (host)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
-		ping_set_errno (obj, "strdup", errno);
+		ping_set_errno (obj, errno);
 		ping_free (ph);
 		return (-1);
 	}
@@ -1136,7 +1135,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	if ((ph->data = strdup (obj->data == NULL ? PING_DEF_DATA : obj->data)) == NULL)
 	{
 		dprintf ("Out of memory!\n");
-		ping_set_errno (obj, "strdup", errno);
+		ping_set_errno (obj, errno);
 		ping_free (ph);
 		return (-1);
 	}
@@ -1196,7 +1195,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			dprintf ("socket: %s\n",
 					sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-			ping_set_errno (obj, "socket", errno);
+			ping_set_errno (obj, errno);
 			continue;
 		}
 
@@ -1212,7 +1211,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 				dprintf ("bind: %s\n",
 						sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-				ping_set_errno (obj, "bind", errno);
+				ping_set_errno (obj, errno);
 				close (ph->fd);
 				ph->fd = -1;
 				continue;
