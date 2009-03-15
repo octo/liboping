@@ -73,8 +73,15 @@ echo responses being received or not. The buffer should hold an integer.
 =item B<PING_INFO_IDENT>
 
 Return the ident that is put into every ICMP packet sent to this host. Per
-convention this usually is the PID of the sending process, but since liboping
-can handle several hosts in parallel it uses a (pseudo-)random number here. The
+convention this usually is the PID of the sending process, but since
+I<liboping> can handle several hosts in parallel it uses a (pseudo-)random
+number here. The buffer should be big enough to hold an integer value.
+
+=item B<PING_INFO_RECV_TTL>
+
+Returns the I<time to live> (TTL) of the received network packets. This number
+depends on the value that was used by the remote host when it sent the echo
+reply and has nothing to do with the B<PING_OPT_TTL> of L<ping_setopt(3)>. The
 buffer should be big enough to hold an integer value.
 
 =back

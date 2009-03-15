@@ -112,6 +112,7 @@ struct pinghost
 	struct timeval          *timer;
 	double                   latency;
 	uint32_t                 dropped;
+	int                      recv_ttl;
 	char                    *data;
 
 	void                    *context;
@@ -422,21 +423,40 @@ static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffe
 
 static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 {
-	char   buffer[4096];
-	ssize_t buffer_len;
-
 	struct timeval diff;
-
 	pinghost_t *host = NULL;
+	int family;
+	int recv_ttl;
+	
+	/*
+	 * Set up the receive buffer..
+	 */
+	struct msghdr msghdr;
+	struct cmsghdr *cmsg;
+	char payload_buffer[4096];
+	ssize_t payload_buffer_len;
+	char control_buffer[4096];
+	struct iovec payload_iovec;
 
-	struct sockaddr_storage sa;
-	socklen_t               sa_len;
+	memset (&payload_iovec, 0, sizeof (payload_iovec));
+	payload_iovec.iov_base = payload_buffer;
+	payload_iovec.iov_len = sizeof (payload_buffer);
 
-	sa_len = sizeof (sa);
+	memset (&msghdr, 0, sizeof (msghdr));
+	/* unspecified source address */
+	msghdr.msg_name = NULL;
+	msghdr.msg_namelen = 0;
+	/* output buffer vector, see readv(2) */
+	msghdr.msg_iov = &payload_iovec;
+	msghdr.msg_iovlen = 1;
+	/* output buffer for control messages */
+	msghdr.msg_control = control_buffer;
+	msghdr.msg_controllen = sizeof (control_buffer);
+	/* flags; this is an output only field.. */
+	msghdr.msg_flags = 0;
 
-	buffer_len = recvfrom (fd, buffer, sizeof (buffer), 0,
-			(struct sockaddr *) &sa, &sa_len);
-	if (buffer_len < 0)
+	payload_buffer_len = recvmsg (fd, &msghdr, /* flags = */ 0);
+	if (payload_buffer_len < 0)
 	{
 #if WITH_DEBUG
 		char errbuf[PING_ERRMSG_LEN];
@@ -445,18 +465,70 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 #endif
 		return (-1);
 	}
+	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, fd);
 
-	dprintf ("Read %zi bytes from fd = %i\n", buffer_len, fd);
-
-	if (sa.ss_family == AF_INET)
+	/* Iterate over all auxiliary data in msghdr */
+	family = -1;
+	recv_ttl = -1;
+	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
+			cmsg != NULL;
+			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
 	{
-		if ((host = ping_receive_ipv4 (ph, buffer, buffer_len)) == NULL)
+		if (cmsg->cmsg_level == IPPROTO_IP) /* {{{ */
+		{
+			family = AF_INET;
+			if (cmsg->cmsg_type == IP_TTL)
+			{
+				memcpy (&recv_ttl, CMSG_DATA (cmsg),
+						sizeof (recv_ttl));
+				dprintf ("TTLv4 = %i;\n", recv_ttl);
+			}
+			else
+			{
+				dprintf ("Not handling option %i.\n",
+						cmsg->cmsg_type);
+			}
+		} /* }}} */
+		else if (cmsg->cmsg_level == IPPROTO_IPV6) /* {{{ */
+		{
+			family = AF_INET6;
+			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
+			{
+				memcpy (&recv_ttl, CMSG_DATA (cmsg),
+						sizeof (recv_ttl));
+				dprintf ("TTLv6 = %i;\n", recv_ttl);
+			}
+			else
+			{
+				dprintf ("Not handling option %i.\n",
+						cmsg->cmsg_type);
+			}
+		} /* }}} */
+		else
+		{
+			dprintf ("Don't know how to handle "
+					"unknown protocol %i.\n",
+					cmsg->cmsg_level);
+		}
+	} /* }}} for (cmsg) */
+
+	if (family == AF_INET)
+	{
+		host = ping_receive_ipv4 (ph, payload_buffer, payload_buffer_len);
+		if (host == NULL)
 			return (-1);
 	}
-	else if (sa.ss_family == AF_INET6)
+	else if (family == AF_INET6)
 	{
-		if ((host = ping_receive_ipv6 (ph, buffer, buffer_len)) == NULL)
+		host = ping_receive_ipv6 (ph, payload_buffer, payload_buffer_len);
+		if (host == NULL)
 			return (-1);
+	}
+	else
+	{
+		dprintf ("ping_receive_one: Unknown address family %i.\n",
+				family);
+		return (-1);
 	}
 
 	dprintf ("rcvd: %12i.%06i\n",
@@ -478,6 +550,8 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 
 	host->latency  = ((double) diff.tv_usec) / 1000.0;
 	host->latency += ((double) diff.tv_sec)  * 1000.0;
+
+	host->recv_ttl = recv_ttl;
 
 	timerclear (host->timer);
 
@@ -1246,6 +1320,21 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		}
 #endif /* AI_CANONNAME */
 
+		if (ph->addrfamily == AF_INET)
+		{
+			int opt = 1;
+
+			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTTL,
+					&opt, sizeof (opt));
+		}
+		else if (ph->addrfamily == AF_INET6)
+		{
+			int opt = 1;
+
+			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
+					&opt, sizeof (opt));
+		}
+
 		break;
 	}
 
@@ -1281,7 +1370,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	ping_set_ttl (ph, obj->ttl);
 
 	return (0);
-}
+} /* int ping_host_add */
 
 int ping_host_remove (pingobj_t *obj, const char *host)
 {
@@ -1433,6 +1522,15 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			if (orig_buffer_len < *buffer_len)
 				break;
 			strncpy ((char *) buffer, iter->data, orig_buffer_len);
+			ret = 0;
+			break;
+
+		case PING_INFO_RECV_TTL:
+			ret = ENOMEM;
+			*buffer_len = sizeof (int);
+			if (orig_buffer_len < sizeof (int))
+				break;
+			*((int *) buffer) = iter->recv_ttl;
 			ret = 0;
 			break;
 	}
