@@ -171,17 +171,25 @@ static void print_host (pingobj_iter_t *iter)
 {
 	double          latency;
 	unsigned int    sequence;
+	int             recv_ttl;
 	size_t          buffer_len;
 	size_t          data_len;
 	ping_context_t *context;
 	
+	latency = -1.0;
 	buffer_len = sizeof (latency);
 	ping_iterator_get_info (iter, PING_INFO_LATENCY,
 			&latency, &buffer_len);
 
+	sequence = 0;
 	buffer_len = sizeof (sequence);
 	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
 			&sequence, &buffer_len);
+
+	recv_ttl = -1;
+	buffer_len = sizeof (recv_ttl);
+	ping_iterator_get_info (iter, PING_INFO_RECV_TTL,
+			&recv_ttl, &buffer_len);
 
 	data_len = 0;
 	ping_iterator_get_info (iter, PING_INFO_DATA,
@@ -201,10 +209,10 @@ static void print_host (pingobj_iter_t *iter)
 		if ((context->latency_min < 0.0) || (context->latency_min > latency))
 			context->latency_min = latency;
 
-		printf ("%zu bytes from %s (%s): icmp_seq=%u time=%.2f ms\n",
+		printf ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i time=%.2f ms\n",
 				data_len,
 				context->host, context->addr,
-				sequence, latency);
+				sequence, recv_ttl, latency);
 	}
 	else
 	{
