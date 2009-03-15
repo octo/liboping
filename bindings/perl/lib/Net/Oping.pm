@@ -49,8 +49,8 @@ host is considered to be unreachable.
 
 The used I<oping> library supports "ping"ing multiple hosts in parallel and
 works with IPv4 and IPv6 transparently. Other advanced features that are
-provided by the underlying library, such as setting the data sent or
-configuring the time of live (TTL) are not yet supported by this interface.
+provided by the underlying library, such as setting the data sent, are not yet
+supported by this interface.
 
 =cut
 
@@ -78,7 +78,7 @@ The constructor and methods are defined as follows:
 
 =over 4
 
-=item my I<$obj> = Net::Oping-E<gt>B<new> ();
+=item I<$obj> = Net::Oping-E<gt>B<new> ();
 
 Creates and returns a new object.
 
@@ -99,7 +99,7 @@ sub DESTROY
   _ping_destroy ($obj->{'c_obj'});
 }
 
-=item my I<$status> = I<$obj>-E<gt>B<timeout> (I<$timeout>);
+=item I<$status> = I<$obj>-E<gt>B<timeout> (I<$timeout>);
 
 Sets the timeout before a host is considered unreachable to I<$timeout>
 seconds, which may be a floating point number to specify fractional seconds.
@@ -122,11 +122,35 @@ sub timeout
   return (1);
 }
 
-=item my I<$status> = I<$obj>-E<gt>B<bind> (I<$ip_addr>);
+=item I<$status> = I<$obj>-E<gt>B<ttl> (I<$ttl>);
+
+Sets the I<Time to Live> (TTL) of outgoing packets. I<$ttl> must be in the
+range B<1>E<nbsp>...E<nbsp>B<255>. Returns true when successful and false
+when an error occurred.
+
+=cut
+
+sub ttl
+{
+  my $obj = shift;
+  my $ttl = shift;
+  my $status;
+
+  $status = _ping_setopt_ttl ($obj->{'c_obj'}, $ttl);
+  if ($status != 0)
+  {
+    $obj->{'err_msg'} = "" . _ping_get_error ($obj->{'c_obj'});
+    return;
+  }
+
+  return (1);
+}
+
+=item I<$status> = I<$obj>-E<gt>B<bind> (I<$ip_addr>);
 
 Sets the source IP-address to use. I<$ip_addr> must be a string containing an
 IP-address, such as "192.168.0.1" or "2001:f00::1". As a side-effect this will
-set the address-family (IPv4 or IPv6) to a fixed, value, too, for obvious
+set the address-family (IPv4 or IPv6) to a fixed value, too, for obvious
 reasons.
 
 =cut
@@ -147,7 +171,7 @@ sub bind
   return (1);
 }
 
-=item my I<$status> = I<$obj>-E<gt>B<host_add> (I<$host>, [I<$host>, ...]);
+=item I<$status> = I<$obj>-E<gt>B<host_add> (I<$host>, [I<$host>, ...]);
 
 Adds one or more hosts to the Net::Oping-object I<$obj>. The number of
 successfully added hosts is returned. If this number differs from the number of
@@ -178,7 +202,7 @@ sub host_add
   return ($i);
 }
 
-=item my I<$status> = I<$obj>-E<gt>B<host_remove> (I<$host>, [I<$host>, ...]);
+=item I<$status> = I<$obj>-E<gt>B<host_remove> (I<$host>, [I<$host>, ...]);
 
 Same semantic as B<host_add> but removes hosts.
 
@@ -205,7 +229,7 @@ sub host_remove
   return ($i);
 }
 
-=item my I<$latency> = I<$obj>-E<gt>B<ping> ()
+=item I<$latency> = I<$obj>-E<gt>B<ping> ()
 
 The central method of this module sends ICMP packets to the hosts and waits for
 replies. The time it takes for replies to arrive is measured and returned.
@@ -265,7 +289,7 @@ sub ping
   return ($data);
 } # ping
 
-=item my I<$dropped> = I<$obj>-E<gt>B<get_dropped> ()
+=item I<$dropped> = I<$obj>-E<gt>B<get_dropped> ()
 
 Returns a hash reference holding the number of "drops" (echo requests which
 were not answered in time) for each host. An example return
@@ -314,7 +338,7 @@ sub get_dropped
   return ($data);
 } # get_dropped
 
-=item my I<$dropped> = I<$obj>-E<gt>B<get_recv_ttl> ()
+=item I<$ttl> = I<$obj>-E<gt>B<get_recv_ttl> ()
 
 Returns a hash reference holding the I<Time to Live> (TTL) of the last received
 packet for each host. An example return value would be:
@@ -352,7 +376,7 @@ sub get_recv_ttl
   return ($data);
 } # get_recv_ttl
 
-=item my I<$errmsg> = I<$obj>-E<gt>B<get_error> ();
+=item I<$errmsg> = I<$obj>-E<gt>B<get_error> ();
 
 Returns the last error that occurred.
 

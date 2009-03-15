@@ -62,6 +62,15 @@ _ping_setopt_timeout (obj, timeout)
 		RETVAL
 
 int
+_ping_setopt_ttl (obj, ttl)
+	pingobj_t *obj
+	int ttl
+	CODE:
+		RETVAL = ping_setopt (obj, PING_OPT_TTL, &ttl);
+	OUTPUT:
+		RETVAL
+
+int
 _ping_setopt_source (obj, addr)
 	pingobj_t *obj
 	char *addr
