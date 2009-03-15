@@ -5,11 +5,17 @@
 
 # change 'tests => 2' to 'tests => last_test_to_print';
 
-use Test::More tests => 2;
+use Test::More tests => 5;
 BEGIN { use_ok('Net::Oping') };
 
 my $obj = Net::Oping->new ();
 ok (defined ($obj), 'Constructor');
+
+ok ($obj->timeout (2.0), 'Set timeout');
+ok ($obj->ttl (64), 'Set TTL');
+
+is ($obj->get_error (), 'Success', 'Get error')
+
 #########################
 
 # Insert your test code below, the Test::More module is use()ed here so read
