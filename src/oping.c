@@ -74,6 +74,7 @@ static double  opt_interval   = 1.0;
 static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
 static int     opt_count      = -1;
+static int     opt_send_ttl   = 64;
 
 static void sigint_handler (int signal)
 {
@@ -107,8 +108,16 @@ static void context_destroy (ping_context_t *context)
 
 static void usage_exit (const char *name)
 {
-	fprintf (stderr, "Usage: %s [-46] [-c count] [-i interval] host [host [host ...]]\n",
-			name);
+	int name_length;
+
+	name_length = (int) strlen (name);
+
+	fprintf (stderr, "Usage: %s [-46] [-c count] [-i interval]\n"
+			"%*s[-t ttl] [-I srcaddr]\n"
+			"%*shost [host [host ...]]\n",
+			name,
+			8 + name_length, "",
+			8 + name_length, "");
 	exit (1);
 }
 
@@ -118,7 +127,7 @@ static int read_options (int argc, char **argv)
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:");
 
 		if (optchar == -1)
 			break;
@@ -157,6 +166,18 @@ static int read_options (int argc, char **argv)
 					opt_srcaddr = strdup (optarg);
 				}
 				break;
+
+			case 't':
+			{
+				int new_send_ttl;
+				new_send_ttl = atoi (optarg);
+				if ((new_send_ttl > 0) && (new_send_ttl < 256))
+					opt_send_ttl = new_send_ttl;
+				else
+					fprintf (stderr, "Invalid TTL argument: %s\n",
+							optarg);
+				break;
+			}
 
 			case 'h':
 			default:
@@ -299,6 +320,12 @@ int main (int argc, char **argv)
 	{
 		fprintf (stderr, "ping_construct failed\n");
 		return (1);
+	}
+
+	if (ping_setopt (ping, PING_OPT_TTL, &opt_send_ttl) != 0)
+	{
+		fprintf (stderr, "Setting TTL to %i failed: %s\n",
+				opt_send_ttl, ping_get_error (ping));
 	}
 
 	{
