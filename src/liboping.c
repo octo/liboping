@@ -1041,6 +1041,13 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				obj->ttl = PING_DEF_TTL;
 				ret = -1;
 			}
+			else
+			{
+				pinghost_t *ph;
+
+				for (ph = obj->head; ph != NULL; ph = ph->next)
+					ping_set_ttl (ph, obj->ttl);
+			}
 			break;
 
 		case PING_OPT_AF:
