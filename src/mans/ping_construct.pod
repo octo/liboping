@@ -11,7 +11,7 @@ ping_construct - Constructor for the liboping class
 
 =head1 DESCRIPTION
 
-The B<ping_construct> constructor allocates the memory neccessary for a
+The B<ping_construct> constructor allocates the memory necessary for a
 liboping object, initializes that memory and returns a pointer to it.
 
 The B<ping_destroy> iterates over all hosts associated with the liboping object

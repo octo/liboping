@@ -17,13 +17,13 @@ writing latency information for each host. The method returns after all echo
 replies have been read or the timeout (set with L<ping_setopt(3)>) is reached.
 
 After this function returns you will most likely iterate over all hosts using
-L<ping_iterator_get(3)> and ping_iterator_next (described in the same manpage)
-and call L<ping_iterator_get_info(3)> on each host.
+L<ping_iterator_get(3)> and ping_iterator_next (described in the same manual
+page) and call L<ping_iterator_get_info(3)> on each host.
 
 =head1 RETURN VALUE
 
 B<ping_send> returns the value of echo replies received or a value less than
-zero if an error occured. Use L<ping_get_error(3)> to receive an error message.
+zero if an error occurred. Use L<ping_get_error(3)> to receive an error message.
 
 =head1 SEE ALSO
 
