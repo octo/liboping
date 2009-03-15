@@ -1,6 +1,6 @@
 =head1 NAME
 
-ping_iterator_get_info - Constructor for the liboping class
+ping_iterator_get_info - Receive information about a host
 
 =head1 SYNOPSIS
 
@@ -35,7 +35,7 @@ to C<ping_host_remove>, too.
 Return the hostname of the host the iterator points to. Since the name is
 looked up using the socket address this may differ from the hostname passed to
 L<ping_host_add(3)>. The hostname is actually looked up every time you call
-this method, no cache is involved within liboping.
+this method, no cache is involved within I<liboping>.
 
 It is recommended to include C<netdb.h> and allocate B<NI_MAXHOST> bytes of
 buffer.
@@ -49,12 +49,12 @@ won't hurt.
 
 =item B<PING_INFO_FAMILY>
 
-Returns the address family of the host. The buffer should be ig enough to hold
+Returns the address family of the host. The buffer should be big enough to hold
 an integer. The value is either B<AF_INET> or B<AF_INET6>.
 
 =item B<PING_INFO_LATENCY>
 
-Return the last measured latency or less than zero if the timeout occured
+Return the last measured latency or less than zero if the timeout occurred
 before a echo response was received. The buffer should be big enough to hold a
 double value.
 

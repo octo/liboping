@@ -13,7 +13,7 @@ ping_setopt - Set options for a liboping object
 The B<ping_setopt> method sets options that effect all hosts associated with
 the object I<obj> and hosts that are yet to be added to the object.
 
-The I<obj> argument is a pointer to an liboping object, as returned by
+The I<obj> argument is a pointer to an I<liboping> object, as returned by
 L<ping_construct(3)>.
 
 The I<opt> argument specifies the option to set. Use one of the following
