@@ -314,6 +314,44 @@ sub get_dropped
   return ($data);
 } # get_dropped
 
+=item my I<$dropped> = I<$obj>-E<gt>B<get_recv_ttl> ()
+
+Returns a hash reference holding the I<Time to Live> (TTL) of the last received
+packet for each host. An example return value would be:
+
+  $ttl = { host1 => 60, host2 => 41, host3 => 243, ... };
+
+To signal an invalid or unavailable TTL, a negative number is returned.
+
+=cut
+
+sub get_recv_ttl
+{
+  my $obj = shift;
+  my $iter;
+  my $data = {};
+
+  $iter = _ping_iterator_get ($obj->{'c_obj'});
+  if (!$iter)
+  {
+    $obj->{'err_msg'} = "" . _ping_get_error ($obj->{'c_obj'});
+    return;
+  }
+
+  while ($iter)
+  {
+    my $host = _ping_iterator_get_hostname ($iter);
+    if ($host)
+    {
+      $data->{$host} = _ping_iterator_get_recv_ttl ($iter);
+    }
+
+    $iter = _ping_iterator_next ($iter);
+  }
+
+  return ($data);
+} # get_recv_ttl
+
 =item my I<$errmsg> = I<$obj>-E<gt>B<get_error> ();
 
 Returns the last error that occurred.

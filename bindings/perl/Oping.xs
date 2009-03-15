@@ -188,6 +188,28 @@ _ping_iterator_get_dropped (iter)
 	OUTPUT:
 		RETVAL
 
+int
+_ping_iterator_get_recv_ttl (iter)
+	pingobj_iter_t *iter
+	CODE:
+#if defined(PING_INFO_RECV_TTL)
+		int tmp;
+		size_t tmp_size;
+		int status;
+
+		RETVAL = -1;
+
+		tmp_size = sizeof (tmp);
+		status = ping_iterator_get_info (iter, PING_INFO_RECV_TTL,
+			(void *) &tmp, &tmp_size);
+		if (status == 0)
+			RETVAL = tmp;
+#else
+		RETVAL = -1;
+#endif
+	OUTPUT:
+		RETVAL
+
 const char *
 _ping_get_error (obj)
 	pingobj_t *obj
