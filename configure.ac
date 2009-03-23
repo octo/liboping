@@ -169,11 +169,13 @@ AC_CHECK_FUNCS(socket, [],
 		AC_MSG_ERROR(cannot find socket)))
 AM_CONDITIONAL(BUILD_WITH_LIBSOCKET, test "x$socket_needs_socket" = "xyes")
 
+# Under Solaris, the `xnet' library provides `recvmsg' which complies with the
+# X/Open CAE Specification.
 with_libxnet="no"
 AC_CHECK_LIB(xnet, __xnet_recvmsg, [with_libxnet="yes"],[])
 if test "x$with_libxnet" = "xyes"
 then
-	CFLAGS="$CFLAGS -D_XPG4_2 -D__EXTENSIONS__"
+	CPPFLAGS="$CPPFLAGS -D_XPG4_2 -D__EXTENSIONS__"
 fi
 AM_CONDITIONAL(BUILD_WITH_LIBXNET, test "x$with_libxnet" = "xyes")
 

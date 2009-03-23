@@ -25,6 +25,10 @@ liboping_la_LDFLAGS = -version-info @LIBOPING_CURRENT@:@LIBOPING_REVISION@:@LIBO
 if BUILD_WITH_LIBSOCKET
 liboping_la_LDFLAGS += -lsocket
 endif
+if BUILD_WITH_LIBXNET
+liboping_la_LDFLAGS += -lxnet
+endif
+
 liboping_la_SOURCES = oping.h liboping.c
 
 bin_PROGRAMS = oping
