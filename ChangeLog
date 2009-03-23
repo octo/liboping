@@ -1,3 +1,8 @@
+2009-03-23, Version 1.1.1
+	* liboping.c: Use libxnet when available. The `normal' version of
+	  `recvmsg' does not provide the `auxiliary data' on some or all
+	  versions of Solaris.
+
 2009-03-15, Version 1.1.0
 	* liboping.c: Eliminate the use of `strerror' and use `strerror_r'
 	  instead, removing the (hopefully) last thread-unsafe function.
