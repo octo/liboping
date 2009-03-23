@@ -431,7 +431,6 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 {
 	struct timeval diff;
 	pinghost_t *host = NULL;
-	int family;
 	int recv_ttl;
 	
 	/*
@@ -477,15 +476,17 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, fd);
 
 	/* Iterate over all auxiliary data in msghdr */
-	family = ph->addrfamily;
 	recv_ttl = -1;
+	ph->recv_ttl = -1;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
 	{
-		if (cmsg->cmsg_level == IPPROTO_IP) /* {{{ */
+		if (ph->addrfamily == AF_INET) /* {{{ */
 		{
-			family = AF_INET;
+			if (cmsg->cmsg_level != IPPROTO_IP)
+				continue;
+
 			if (cmsg->cmsg_type == IP_TTL)
 			{
 				memcpy (&recv_ttl, CMSG_DATA (cmsg),
@@ -498,9 +499,11 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 						cmsg->cmsg_type);
 			}
 		} /* }}} */
-		else if (cmsg->cmsg_level == IPPROTO_IPV6) /* {{{ */
+		else if (ph->addrfamily == AF_INET6) /* {{{ */
 		{
-			family = AF_INET6;
+			if (cmsg->cmsg_level != IPPROTO_IPV6)
+				continue;
+
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
 				memcpy (&recv_ttl, CMSG_DATA (cmsg),
@@ -521,13 +524,13 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 		}
 	} /* }}} for (cmsg) */
 
-	if (family == AF_INET)
+	if (ph->addrfamily == AF_INET)
 	{
 		host = ping_receive_ipv4 (ph, payload_buffer, payload_buffer_len);
 		if (host == NULL)
 			return (-1);
 	}
-	else if (family == AF_INET6)
+	else if (ph->addrfamily == AF_INET6)
 	{
 		host = ping_receive_ipv6 (ph, payload_buffer, payload_buffer_len);
 		if (host == NULL)
@@ -536,7 +539,7 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 	else
 	{
 		dprintf ("ping_receive_one: Unknown address family %i.\n",
-				family);
+				ph->addrfamily);
 		return (-1);
 	}
 
