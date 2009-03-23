@@ -25,13 +25,16 @@
 # include <stdlib.h>
 # include <stdio.h>
 # include <string.h>
-# include <stdint.h>
 # include <inttypes.h>
 # include <errno.h>
 # include <assert.h>
 #else
 # error "You don't have the standard C99 header files installed"
 #endif /* STDC_HEADERS */
+
+#ifdef HAVE_STDINT_H
+# include <stdint.h>
+#endif
 
 #if HAVE_UNISTD_H
 # include <unistd.h>
@@ -61,6 +64,7 @@
 #if HAVE_SYS_SOCKET_H
 # include <sys/socket.h>
 #endif
+
 #if HAVE_NETDB_H
 # include <netdb.h>
 #endif
