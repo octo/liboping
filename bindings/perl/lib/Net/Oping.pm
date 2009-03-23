@@ -30,7 +30,7 @@ Net::Oping - ICMP latency measurement module using the oping library.
 
 =head1 SYNOPSIS
 
-  use Net::Oping;
+  use Net::Oping ();
 
   my $obj = Net::Oping->new ();
   $obj->host_add (qw(one.example.org two.example.org));
@@ -407,7 +407,7 @@ The I<liboping> homepage may be found at L<http://verplant.org/liboping/>.
 Information about its mailing list may be found at
 L<http://mailman.verplant.org/listinfo/liboping>.
 
-=head1 AUTHOR
+=head1 AUTHORS
 
 First XSE<nbsp>port by Olivier Fredj, extended XS functionality and high-level
 Perl interface by Florian Forster.
