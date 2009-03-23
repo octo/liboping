@@ -342,6 +342,8 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 		dprintf ("No match found for ident = 0x%04x, seq = %i\n",
 				ident, seq);
 	}
+	
+	ptr->recv_ttl = ip_hdr->ip_ttl;
 
 	return (ptr);
 }
@@ -475,7 +477,7 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, fd);
 
 	/* Iterate over all auxiliary data in msghdr */
-	family = -1;
+	family = ph->addrfamily;
 	recv_ttl = -1;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
@@ -555,10 +557,11 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 			(int) diff.tv_sec,
 			(int) diff.tv_usec);
 
+	if (recv_ttl >= 0)
+		host->recv_ttl = recv_ttl;
+
 	host->latency  = ((double) diff.tv_usec) / 1000.0;
 	host->latency += ((double) diff.tv_sec)  * 1000.0;
-
-	host->recv_ttl = recv_ttl;
 
 	timerclear (host->timer);
 
