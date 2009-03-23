@@ -21,7 +21,7 @@ lib_LTLIBRARIES = liboping.la
 #   set age to 0. 
 #
 # <http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html>
-liboping_la_LDFLAGS = -version-info 1:0:1
+liboping_la_LDFLAGS = -version-info @LIBOPING_CURRENT@:@LIBOPING_REVISION@:@LIBOPING_AGE@
 if BUILD_WITH_LIBSOCKET
 liboping_la_LDFLAGS += -lsocket
 endif
