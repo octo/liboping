@@ -169,6 +169,14 @@ AC_CHECK_FUNCS(socket, [],
 		AC_MSG_ERROR(cannot find socket)))
 AM_CONDITIONAL(BUILD_WITH_LIBSOCKET, test "x$socket_needs_socket" = "xyes")
 
+with_libxnet="no"
+AC_CHECK_LIB(xnet, __xnet_recvmsg, [with_libxnet="yes"],[])
+if test "x$with_libxnet" = "xyes"
+then
+	CFLAGS="$CFLAGS -D_XPG4_2 -D__EXTENSIONS__"
+fi
+AM_CONDITIONAL(BUILD_WITH_LIBXNET, test "x$with_libxnet" = "xyes")
+
 nanosleep_needs_rt="no"
 AC_CHECK_FUNCS(nanosleep, [],
 	AC_CHECK_LIB(rt, nanosleep,

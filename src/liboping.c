@@ -454,6 +454,9 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 	msghdr.msg_controllen = sizeof (control_buffer);
 	/* flags; this is an output only field.. */
 	msghdr.msg_flags = 0;
+#ifdef MSG_XPG4_2
+	msghdr.msg_flags |= MSG_XPG4_2;
+#endif
 
 	payload_buffer_len = recvmsg (fd, &msghdr, /* flags = */ 0);
 	if (payload_buffer_len < 0)
