@@ -342,8 +342,9 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 		dprintf ("No match found for ident = 0x%04x, seq = %i\n",
 				ident, seq);
 	}
-	
-	ptr->recv_ttl = ip_hdr->ip_ttl;
+
+	if (ptr != NULL)
+		ptr->recv_ttl = ip_hdr->ip_ttl;
 
 	return (ptr);
 }
