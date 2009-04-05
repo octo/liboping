@@ -1,3 +1,10 @@
+2009-04-05, Version 1.1.2
+	* liboping.c: A NULL-pointer dereference has been fixed in the IPv4
+	  code. This led to a segmentation fault when an ICMPv4 paket could
+	  not be associated with any host. This usually happened when one or
+	  more hosts were unreachable for some time. Thanks to Tomasz Pala for
+	  discovering the problem and finding a way to reproduce it.
+
 2009-03-23, Version 1.1.1
 	* liboping.c: Use libxnet when available. The `normal' version of
 	  `recvmsg' does not provide the `auxiliary data' on some or all
