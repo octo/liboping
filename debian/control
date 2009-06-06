@@ -8,7 +8,7 @@ Standards-Version: 3.7.2
 Package: liboping-dev
 Section: libdevel
 Architecture: any
-Depends: liboping0 (>= ${Source-Version})
+Depends: liboping0 (>= ${binary:Version})
 Conflicts: liboping0-dev
 Replaces: liboping0-dev
 Description: C/C++ library to generate ICMP_ECHO requests (development files)
