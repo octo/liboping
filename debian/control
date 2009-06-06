@@ -1,7 +1,7 @@
 Source: liboping
 Section: libs
 Priority: optional
-Maintainer: Sebastian Harl <sh@tokkee.org>
+Maintainer: Sebastian Harl <tokkee@debian.org>
 Build-Depends: debhelper (>= 4.0.0), autotools-dev
 Standards-Version: 3.7.2
 
