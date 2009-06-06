@@ -8,6 +8,8 @@ liboping (1.1.2-1) unstable; urgency=low
       avr32, thanks to Bradley Smith for reporting this (Closes: #529460).
     - Use dpatch.
     - Use dh_install's --fail-missing instead of --list-missing.
+    - Pass CFLAGS as arguments to configure instead of setting them in the
+      environment - this is the recommended way.
   * debian/control:
     - Use ${binary:Version} instead of ${Source-Version}.
     - Updated Standards-Version to 3.8.1.
@@ -30,7 +32,7 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/liboping0.shlibs:
     - Updated version to >= 1.1.2.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 20:14:02 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 20:17:35 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 

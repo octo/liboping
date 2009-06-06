@@ -35,12 +35,13 @@ config.status: configure $(DPATCH_STAMPFN)
 		ln -s /usr/share/misc/$$file .; \
 	done
 	
-	CFLAGS="$(CFLAGS)" ./configure \
+	./configure \
 			--host=$(DEB_HOST_GNU_TYPE) \
 			--build=$(DEB_BUILD_GNU_TYPE) \
 			--prefix=/usr \
 			--mandir=\$${prefix}/share/man \
-			--with-perl-bindings="INSTALLDIRS=vendor"
+			--with-perl-bindings="INSTALLDIRS=vendor" \
+			CFLAGS="$(CFLAGS)"
 
 build: build-stamp
 
