@@ -11,7 +11,7 @@ Vcs-Browser: http://git.tokkee.org/?p=pkg-liboping.git
 Package: liboping-dev
 Section: libdevel
 Architecture: any
-Depends: liboping0 (>= ${binary:Version})
+Depends: liboping0 (= ${binary:Version})
 Conflicts: liboping0-dev
 Replaces: liboping0-dev
 Description: C/C++ library to generate ICMP ECHO_REQUESTs (development files)

@@ -18,6 +18,9 @@ liboping (1.1.2-1) unstable; urgency=low
     - Removed duplicate field "Section" for package "liboping0".
     - Added versioned build dependency on dpkg-dev (>= 1.14.6) to support the
       Homepage and Vcs-* fields.
+    - Let the -dev package depend on a strict version of the lib package - the
+      -dev package includes a symlink to the full soname, not only the major
+      version.
   * debian/patches/:
     - Added static_sstrerror.dpatch - upstream patch to make a private
       function in liboping static.
@@ -32,7 +35,7 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/liboping0.shlibs:
     - Updated version to >= 1.1.2.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 20:17:35 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 21:40:00 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
