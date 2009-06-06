@@ -2,7 +2,7 @@ Source: liboping
 Section: libs
 Priority: optional
 Maintainer: Sebastian Harl <tokkee@debian.org>
-Build-Depends: debhelper (>= 5.0.0), autotools-dev, dpatch
+Build-Depends: debhelper (>= 5.0.0), autotools-dev, dpatch, perl-modules
 Standards-Version: 3.8.1
 Homepage: http://verplant.org/liboping/
 Vcs-Git: git://git.tokkee.org/pkg-liboping.git
@@ -14,7 +14,7 @@ Architecture: any
 Depends: liboping0 (>= ${binary:Version})
 Conflicts: liboping0-dev
 Replaces: liboping0-dev
-Description: C/C++ library to generate ICMP_ECHO requests (development files)
+Description: C/C++ library to generate ICMP ECHO_REQUESTs (development files)
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
  .
@@ -24,7 +24,7 @@ Package: liboping0
 Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
-Description: C/C++ library to generate ICMP_ECHO requests
+Description: C/C++ library to generate ICMP ECHO_REQUESTs
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
  .
@@ -35,7 +35,17 @@ Section: net
 Architecture: any
 Depends: ${shlibs:Depends}
 Description: sends ICMP_ECHO requests to network hosts
- oping uses ICMP packages (better known as "ping packets") to test the 
- reachability of network hosts. It supports pinging multiple hosts in parallel 
+ oping uses ICMP packages (better known as "ping packets") to test the
+ reachability of network hosts. It supports pinging multiple hosts in parallel
  using IPv4 or IPv6 transparently.
+
+Package: libnet-oping-perl
+Section: perl
+Architecture: any
+Depends: ${perl:Depends}, ${shlibs:Depends}
+Description: module for ICMP latency measurement
+ Net::Oping is a Perl module for sending ICMP ECHO_REQUESTs (better known as
+ "ping packets") and measuring the time that elapses until the reception of an
+ ICMP ECHO_REPLY packet (also known as "pong"). It supports pinging multiple
+ hosts in parallel using IPv4 or IPv6 transparently.
 

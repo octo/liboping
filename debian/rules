@@ -21,6 +21,12 @@ endif
 
 include /usr/share/dpatch/dpatch.make
 
+# $srcver-$perlver-$debrev
+LIBPERL_VERSION := $(shell pm_ver=`perl -MExtUtils::MM -e \
+		'print MM->parse_version("bindings/perl/lib/Net/Oping.pm");'`; \
+	pkg_ver=`dpkg-parsechangelog | egrep '^Version:' | cut -d' ' -f2`; \
+	echo -n "$${pkg_ver%-*}-$$pm_ver-$${pkg_ver\#\#*-}")
+
 config.status: configure $(DPATCH_STAMPFN)
 	dh_testdir
 	
@@ -29,16 +35,19 @@ config.status: configure $(DPATCH_STAMPFN)
 		ln -s /usr/share/misc/$$file .; \
 	done
 	
-	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) \
-			--build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr \
-			--mandir=\$${prefix}/share/man
+	CFLAGS="$(CFLAGS)" ./configure \
+			--host=$(DEB_HOST_GNU_TYPE) \
+			--build=$(DEB_BUILD_GNU_TYPE) \
+			--prefix=/usr \
+			--mandir=\$${prefix}/share/man \
+			--with-perl-bindings="INSTALLDIRS=vendor"
 
 build: build-stamp
 
 build-stamp:  config.status
 	dh_testdir
 	
-	$(MAKE)
+	$(MAKE) LD_RUN_PATH=""
 	
 	touch build-stamp
 
@@ -76,10 +85,13 @@ binary-indep:
 binary-arch: build install
 	dh_testdir
 	dh_testroot
-	dh_installchangelogs ChangeLog
-	dh_installdocs -A README
+	dh_installchangelogs -Nlibnet-oping-perl ChangeLog
+	dh_installchangelogs -plibnet-oping-perl bindings/perl/Changes
+	dh_installdocs -A -Nlibnet-oping-perl README
+	dh_installdocs -plibnet-oping-perl bindings/perl/README
 	dh_installman
 	dh_install --sourcedir=debian/tmp --list-missing
+	dh_perl -plibnet-oping-perl
 	dh_link
 	dh_strip
 	dh_compress
@@ -87,7 +99,8 @@ binary-arch: build install
 	dh_makeshlibs
 	dh_installdeb
 	dh_shlibdeps -ldebian/liboping0/usr/lib/
-	dh_gencontrol
+	dh_gencontrol -Nlibnet-oping-perl
+	dh_gencontrol -plibnet-oping-perl -u-v$(LIBPERL_VERSION)
 	dh_md5sums
 	dh_builddeb
 
