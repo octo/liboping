@@ -107,7 +107,7 @@ static void context_destroy (ping_context_t *context)
 	free (context);
 }
 
-static void usage_exit (const char *name)
+static void usage_exit (const char *name, int status)
 {
 	int name_length;
 
@@ -128,7 +128,7 @@ static void usage_exit (const char *name)
 			"by Florian octo Forster <octo@verplant.org>\n"
 			"for contributions see `AUTHORS'\n",
 			name);
-	exit (1);
+	exit (status);
 }
 
 static int read_options (int argc, char **argv)
@@ -201,8 +201,10 @@ static int read_options (int argc, char **argv)
 			}
 
 			case 'h':
+				usage_exit (argv[0], 0);
+				break;
 			default:
-				usage_exit (argv[0]);
+				usage_exit (argv[0], 1);
 		}
 	}
 
@@ -329,7 +331,7 @@ int main (int argc, char **argv)
 	optind = read_options (argc, argv);
 
 	if ((optind >= argc) && (opt_filename == NULL)) {
-		usage_exit (argv[0]);
+		usage_exit (argv[0], 1);
 	}
 
 	if (geteuid () != 0)
