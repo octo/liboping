@@ -27,7 +27,7 @@ Force the use of IPv4.
 
 =item B<-6>
 
-Force the use of IPv6
+Force the use of IPv6.
 
 =item B<-c> I<count>
 
