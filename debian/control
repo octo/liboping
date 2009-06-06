@@ -21,7 +21,6 @@ Description: C/C++ library to generate ICMP ECHO_REQUESTs (development files)
  This package contains the header files, the static library and the manpages.
 
 Package: liboping0
-Section: libs
 Architecture: any
 Depends: ${shlibs:Depends}
 Description: C/C++ library to generate ICMP ECHO_REQUESTs

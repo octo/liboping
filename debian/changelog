@@ -13,6 +13,7 @@ liboping (1.1.2-1) unstable; urgency=low
     - Updated Standards-Version to 3.8.1.
     - Added Homepage and Vcs-{Git,Browser} fields.
     - Build-depend on dpatch.
+    - Removed duplicate field "Section" for package "liboping0".
   * debian/patches/:
     - Added static_sstrerror.dpatch - upstream patch to make a private
       function in liboping static.
@@ -27,7 +28,7 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/liboping0.shlibs:
     - Updated version to >= 1.1.2.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 19:38:38 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 19:40:08 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
