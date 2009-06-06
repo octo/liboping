@@ -6,12 +6,17 @@ liboping (1.1.2-1) unstable; urgency=low
     - Do not ignore 'make clean' errors.
     - Use config.{guess,sub} provided by autotools-dev to fix a FTBFS on
       avr32, thanks to Bradley Smith for reporting this (Closes: #529460).
+    - Use dpatch.
   * debian/control:
     - Use ${binary:Version} instead of ${Source-Version}.
     - Updated Standards-Version to 3.8.1.
     - Added Homepage and Vcs-{Git,Browser} fields.
+    - Build-depend on dpatch.
+  * debian/patches/:
+    - Added static_sstrerror.dpatch - upstream patch to make a private
+      function in liboping static.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 15:43:49 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 15:56:40 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 

@@ -2,7 +2,7 @@ Source: liboping
 Section: libs
 Priority: optional
 Maintainer: Sebastian Harl <tokkee@debian.org>
-Build-Depends: debhelper (>= 4.0.0), autotools-dev
+Build-Depends: debhelper (>= 4.0.0), autotools-dev, dpatch
 Standards-Version: 3.8.1
 Homepage: http://verplant.org/liboping/
 Vcs-Git: git://git.tokkee.org/pkg-liboping.git
