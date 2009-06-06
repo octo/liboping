@@ -113,12 +113,21 @@ static void usage_exit (const char *name)
 
 	name_length = (int) strlen (name);
 
-	fprintf (stderr, "Usage: %s [-46] [-c count] [-i interval]\n"
-			"%*s[-t ttl] [-I srcaddr]\n"
-			"%*s-f filename | host [host [host ...]]\n",
-			name,
-			8 + name_length, "",
-			8 + name_length, "");
+	fprintf (stderr, "Usage: %s [OPTIONS] "
+				"-f filename | host [host [host ...]]\n"
+
+			"\nAvailable options:\n"
+			"  -4|-6        force the use of IPv4 or IPv6\n"
+			"  -c count     number of ICMP packets to send\n"
+			"  -i interval  interval with which to send ICMP packets\n"
+			"  -t ttl       time to live for each ICMP packet\n"
+			"  -I srcaddr   source address\n"
+			"  -f filename  filename to read hosts from\n"
+
+			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
+			"by Florian octo Forster <octo@verplant.org>\n"
+			"for contributions see `AUTHORS'\n",
+			name);
 	exit (1);
 }
 
