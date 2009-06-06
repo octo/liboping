@@ -7,6 +7,7 @@ liboping (1.1.2-1) unstable; urgency=low
     - Use config.{guess,sub} provided by autotools-dev to fix a FTBFS on
       avr32, thanks to Bradley Smith for reporting this (Closes: #529460).
     - Use dpatch.
+    - Use dh_install's --fail-missing instead of --list-missing.
   * debian/control:
     - Use ${binary:Version} instead of ${Source-Version}.
     - Updated Standards-Version to 3.8.1.
@@ -26,7 +27,7 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/liboping0.shlibs:
     - Updated version to >= 1.1.2.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 19:26:55 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 19:38:38 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 

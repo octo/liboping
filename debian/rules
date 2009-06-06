@@ -90,7 +90,7 @@ binary-arch: build install
 	dh_installdocs -A -Nlibnet-oping-perl README
 	dh_installdocs -plibnet-oping-perl bindings/perl/README
 	dh_installman
-	dh_install --sourcedir=debian/tmp --list-missing
+	dh_install --sourcedir=debian/tmp --fail-missing
 	dh_perl -plibnet-oping-perl
 	dh_link
 	dh_strip
