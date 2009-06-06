@@ -1,7 +1,7 @@
 #!/usr/bin/make -f
 # debian/rules for liboping
 #
-# Written by Sebastian Harl <sh@tokkee.org>
+# Written by Sebastian Harl <tokkee@debian.org>
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
