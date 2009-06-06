@@ -20,8 +20,8 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/compat:
     - Updated to compat version 5.
   * Added new binary package "libnet-oping-perl":
-    - Since Net::Oping uses its own version, $srcver-$perlver-$debrev is used
-      for the package version.
+    - Since Net::Oping uses its own version number, $srcver-$perlver-$debrev
+      is used for the package version.
     - Added libnet-oping-perl.install.
     - Build-depend on perl-modules - debian/rules now requires the ExtUtils:MM
       module.
