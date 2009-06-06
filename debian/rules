@@ -87,6 +87,7 @@ binary-arch: build install
 	dh_testroot
 	dh_installchangelogs -Nlibnet-oping-perl ChangeLog
 	dh_installchangelogs -plibnet-oping-perl bindings/perl/Changes
+	dh_installdocs -A AUTHORS
 	dh_installdocs -A -Nlibnet-oping-perl README
 	dh_installdocs -plibnet-oping-perl bindings/perl/README
 	dh_installman
