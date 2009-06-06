@@ -7,8 +7,9 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/control:
     - Use ${binary:Version} instead of ${Source-Version}.
     - Updated Standards-Version to 3.8.1.
+    - Added Homepage and Vcs-{Git,Browser} fields.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 15:35:45 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 15:39:25 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
