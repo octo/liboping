@@ -39,7 +39,7 @@ clean:
 	dh_testroot
 	rm -f build-stamp 
 	
-	-$(MAKE) distclean
+	[ ! -f Makefile ] || $(MAKE) distclean
 	
 	dh_clean 
 
