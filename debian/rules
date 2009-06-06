@@ -21,6 +21,12 @@ endif
 
 config.status: configure
 	dh_testdir
+	
+	for file in config.guess config.sub; do \
+		mv $$file $$file.upstream; \
+		ln -s /usr/share/misc/$$file .; \
+	done
+	
 	CFLAGS="$(CFLAGS)" ./configure --host=$(DEB_HOST_GNU_TYPE) \
 			--build=$(DEB_BUILD_GNU_TYPE) --prefix=/usr \
 			--mandir=\$${prefix}/share/man
@@ -40,6 +46,13 @@ clean:
 	rm -f build-stamp 
 	
 	[ ! -f Makefile ] || $(MAKE) distclean
+	
+	for file in config.guess config.sub; do \
+		if [ -e $$file.upstream ]; then \
+			rm -f $$file; \
+			mv $$file.upstream $$file; \
+		fi \
+	done
 	
 	dh_clean 
 

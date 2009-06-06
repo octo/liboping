@@ -4,12 +4,14 @@ liboping (1.1.2-1) unstable; urgency=low
   * Added liboping0.symbols.
   * debian/rules:
     - Do not ignore 'make clean' errors.
+    - Use config.{guess,sub} provided by autotools-dev to fix a FTBFS on
+      avr32, thanks to Bradley Smith for reporting this (Closes: #529460).
   * debian/control:
     - Use ${binary:Version} instead of ${Source-Version}.
     - Updated Standards-Version to 3.8.1.
     - Added Homepage and Vcs-{Git,Browser} fields.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 15:39:25 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 15:43:49 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
