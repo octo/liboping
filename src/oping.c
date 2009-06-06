@@ -146,6 +146,9 @@ static int read_options (int argc, char **argv)
 					new_count = atoi (optarg);
 					if (new_count > 0)
 						opt_count = new_count;
+					else
+						fprintf(stderr, "Ignoring invalid count: %s\n",
+								optarg);
 				}
 				break;
 
@@ -162,8 +165,8 @@ static int read_options (int argc, char **argv)
 					double new_interval;
 					new_interval = atof (optarg);
 					if (new_interval < 0.001)
-						fprintf (stderr, "Ignoring invalid interval %g.\n",
-								new_interval);
+						fprintf (stderr, "Ignoring invalid interval: %s\n",
+								optarg);
 					else
 						opt_interval = new_interval;
 				}
@@ -183,7 +186,7 @@ static int read_options (int argc, char **argv)
 				if ((new_send_ttl > 0) && (new_send_ttl < 256))
 					opt_send_ttl = new_send_ttl;
 				else
-					fprintf (stderr, "Invalid TTL argument: %s\n",
+					fprintf (stderr, "Ignoring invalid TTL argument: %s\n",
 							optarg);
 				break;
 			}
