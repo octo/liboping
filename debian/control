@@ -3,7 +3,7 @@ Section: libs
 Priority: optional
 Maintainer: Sebastian Harl <tokkee@debian.org>
 Build-Depends: debhelper (>= 4.0.0), autotools-dev
-Standards-Version: 3.7.2
+Standards-Version: 3.8.1
 
 Package: liboping-dev
 Section: libdevel
