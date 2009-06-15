@@ -63,7 +63,7 @@ typedef struct ping_context
 
 	int req_sent;
 	int req_rcvd;
-	
+
 	double latency_min;
 	double latency_max;
 	double latency_total;
@@ -73,6 +73,7 @@ typedef struct ping_context
 static double  opt_interval   = 1.0;
 static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
+static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 
@@ -114,7 +115,7 @@ static void usage_exit (const char *name)
 
 	fprintf (stderr, "Usage: %s [-46] [-c count] [-i interval]\n"
 			"%*s[-t ttl] [-I srcaddr]\n"
-			"%*shost [host [host ...]]\n",
+			"%*s-f filename | host [host [host ...]]\n",
 			name,
 			8 + name_length, "",
 			8 + name_length, "");
@@ -127,7 +128,7 @@ static int read_options (int argc, char **argv)
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:f:");
 
 		if (optchar == -1)
 			break;
@@ -145,6 +146,14 @@ static int read_options (int argc, char **argv)
 					new_count = atoi (optarg);
 					if (new_count > 0)
 						opt_count = new_count;
+				}
+				break;
+
+			case 'f':
+				{
+					if (opt_filename != NULL)
+						free (opt_filename);
+					opt_filename = strdup (optarg);
 				}
 				break;
 
@@ -196,7 +205,7 @@ static void print_host (pingobj_iter_t *iter)
 	size_t          buffer_len;
 	size_t          data_len;
 	ping_context_t *context;
-	
+
 	latency = -1.0;
 	buffer_len = sizeof (latency);
 	ping_iterator_get_info (iter, PING_INFO_LATENCY,
@@ -307,8 +316,9 @@ int main (int argc, char **argv)
 
 	optind = read_options (argc, argv);
 
-	if (optind >= argc)
+	if (optind >= argc && !opt_filename) {
 		usage_exit (argv[0]);
+	}
 
 	if (geteuid () != 0)
 	{
@@ -349,6 +359,43 @@ int main (int argc, char **argv)
 			fprintf (stderr, "Setting source address failed: %s\n",
 					ping_get_error (ping));
 		}
+	}
+
+	if (opt_filename != NULL)
+	{
+		FILE *infile;
+		char line[256];
+		char host[256];
+
+		if (strncmp(opt_filename, "-", 1) == 0)
+			infile = fdopen(0, "r");
+		else
+			infile = fopen(opt_filename, "r");
+
+		if (!infile)
+		{
+			fprintf (stderr, "Couldn't open file for hostnames: %s\n", strerror(errno));
+			return (1);
+		}
+
+		while (fgets(line, sizeof(line), infile))
+		{
+			if (sscanf(line, "%s", host) != 1)
+				continue;
+
+			if ((!*host) || (host[0] == '#'))
+				continue;
+
+			if (ping_host_add(ping, host) < 0)
+			{
+				const char *errmsg = ping_get_error (ping);
+
+				fprintf (stderr, "Adding host `%s' failed: %s\n", host, errmsg);
+				continue;
+			}
+		}
+
+		fclose(infile);
 	}
 
 	for (i = optind; i < argc; i++)
