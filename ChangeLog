@@ -1,3 +1,8 @@
+2009-07-15, Version 1.2.0
+	* `oping': Implement the `-f' command line option to read hostnames
+	  from a file (or STDIN).
+	* src/liboping.c: No longer export `sstrerror'.
+
 2009-04-05, Version 1.1.2
 	* liboping.c: A NULL-pointer dereference has been fixed in the IPv4
 	  code. This led to a segmentation fault when an ICMPv4 paket could
