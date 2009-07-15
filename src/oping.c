@@ -367,7 +367,8 @@ int main (int argc, char **argv)
 		char line[256];
 		char host[256];
 
-		if (strncmp(opt_filename, "-", 1) == 0)
+		if (strcmp (opt_filename, "-") == 0)
+			/* Open STDIN */
 			infile = fdopen(0, "r");
 		else
 			infile = fopen(opt_filename, "r");
