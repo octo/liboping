@@ -316,7 +316,7 @@ int main (int argc, char **argv)
 
 	optind = read_options (argc, argv);
 
-	if (optind >= argc && !opt_filename) {
+	if ((optind >= argc) && (opt_filename == NULL)) {
 		usage_exit (argv[0]);
 	}
 
@@ -373,18 +373,22 @@ int main (int argc, char **argv)
 		else
 			infile = fopen(opt_filename, "r");
 
-		if (!infile)
+		if (infile == NULL)
 		{
-			fprintf (stderr, "Couldn't open file for hostnames: %s\n", strerror(errno));
+			fprintf (stderr, "Opening %s failed: %s\n",
+					(strcmp (opt_filename, "-") == 0)
+					? "STDIN" : opt_filename,
+					strerror(errno));
 			return (1);
 		}
 
 		while (fgets(line, sizeof(line), infile))
 		{
+			/* Strip whitespace */
 			if (sscanf(line, "%s", host) != 1)
 				continue;
 
-			if ((!*host) || (host[0] == '#'))
+			if ((host[0] == 0) || (host[0] == '#'))
 				continue;
 
 			if (ping_host_add(ping, host) < 0)
