@@ -6,6 +6,8 @@ oping - send ICMP ECHO_REQUEST to network hosts
 
 B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] I<host> [I<host> [I<host> ...]]
 
+B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] B<-f> I<filename>
+
 =head1 DESCRIPTION
 
 oping uses ICMPv4 or ICMPv6 ECHO_REQUEST packets to measure a hosts
@@ -45,6 +47,11 @@ including) 1E<nbsp>andE<nbsp>255. If omitted, the value B<64> is used.
 
 Set the source address to use. You B<cannot> pass the interface name, as you
 can with GNU's L<ping(8)>.
+
+=item B<-f> I<filename>
+
+Instead of specifying hostnames on the command line, read them from
+I<filename>. If I<filename> is B<->, read from C<STDIN>.
 
 =back
 
