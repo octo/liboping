@@ -1352,6 +1352,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTTL,
 					&opt, sizeof (opt));
 		}
+#if defined(IPPROTO_IPV6) && defined(IPV6_RECVHOPLIMIT)
 		else if (ph->addrfamily == AF_INET6)
 		{
 			int opt = 1;
@@ -1359,6 +1360,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
 					&opt, sizeof (opt));
 		}
+#endif
 
 		break;
 	}
