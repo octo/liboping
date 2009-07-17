@@ -73,6 +73,7 @@ typedef struct ping_context
 static double  opt_interval   = 1.0;
 static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
+static char   *opt_device     = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
@@ -122,6 +123,7 @@ static void usage_exit (const char *name, int status)
 			"  -i interval  interval with which to send ICMP packets\n"
 			"  -t ttl       time to live for each ICMP packet\n"
 			"  -I srcaddr   source address\n"
+			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
 
 			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
@@ -137,7 +139,7 @@ static int read_options (int argc, char **argv)
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:f:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:f:D:");
 
 		if (optchar == -1)
 			break;
@@ -186,6 +188,10 @@ static int read_options (int argc, char **argv)
 						free (opt_srcaddr);
 					opt_srcaddr = strdup (optarg);
 				}
+				break;
+
+			case 'D':
+				opt_device = optarg;
 				break;
 
 			case 't':
@@ -371,6 +377,15 @@ int main (int argc, char **argv)
 		if (ping_setopt (ping, PING_OPT_SOURCE, (void *) opt_srcaddr) != 0)
 		{
 			fprintf (stderr, "Setting source address failed: %s\n",
+					ping_get_error (ping));
+		}
+	}
+
+	if (opt_device != NULL)
+	{
+		if (ping_setopt (ping, PING_OPT_DEVICE, (void *) opt_device) != 0)
+		{
+			fprintf (stderr, "Setting device failed: %s\n",
 					ping_get_error (ping));
 		}
 	}

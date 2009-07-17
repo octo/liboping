@@ -45,8 +45,13 @@ including) 1E<nbsp>andE<nbsp>255. If omitted, the value B<64> is used.
 
 =item B<-I> I<address>
 
-Set the source address to use. You B<cannot> pass the interface name, as you
-can with GNU's L<ping(8)>.
+Set the source address to use. You may either specify an IP number or a
+hostname. You B<cannot> pass the interface name, as you can with GNU's
+L<ping(8)> - use the B<-D> option for that purpose.
+
+=item B<-D> I<interface name>
+
+Set the outgoing network device to use.
 
 =item B<-f> I<filename>
 
