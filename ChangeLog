@@ -1,3 +1,17 @@
+2009-07-17, Version 1.3.0
+	* oping: Documentation and messages have been improved.
+	* oping: Support for the `-D' command line option has been added.
+	  Using this new option, the outgoing network device can be set.
+	  Thanks to Sebastian Harl for the patch.
+	* src/liboping.c: The value of the `received TTL' information after
+	  missing packets has been corrected.
+	* src/liboping.c: A bug when matching received packets to configured
+	  hosts has been fixed. This regression was introduced after 1.0, we
+	  believe. Thanks to Sebastian Harl for noticing and fixing this bug.
+	* src/liboping.c: Support for the `PING_OPT_DEVICE' option has been
+	  added. This option can be used to set the outgoing network device.
+	  Thanks to Sebastian for his patch.
+
 2009-07-15, Version 1.2.0
 	* `oping': Implement the `-f' command line option to read hostnames
 	  from a file (or STDIN).
