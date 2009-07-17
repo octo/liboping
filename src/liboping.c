@@ -478,7 +478,6 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
-	ph->recv_ttl = -1;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
@@ -592,7 +591,10 @@ static int ping_receive_all (pingobj_t *obj)
 	ret = 0;
 
 	for (ptr = ph; ptr != NULL; ptr = ptr->next)
-		ptr->latency = -1.0;
+	{
+		ptr->latency  = -1.0;
+		ptr->recv_ttl = -1;
+	}
 
 	if (gettimeofday (&nowtime, NULL) == -1)
 	{
