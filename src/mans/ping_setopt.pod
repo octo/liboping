@@ -53,9 +53,18 @@ L<ping(1)> command.
 =item B<PING_OPT_SOURCE>
 
 Set the source address to use. The value passed must be a char-pointer to a
-null-terminated string. This option will ignore the address family setting (as
+null-terminated string specifying either a numerical network address or
+network hostname. This option will ignore the address family setting (as
 set with B<PING_OPT_AF>) and will set the object's address family according to
 the source address assigned.
+
+=item B<PING_OPT_DEVICE>
+
+Set the outgoing network device to be used. The value passed must be a
+char-pointer to a null-terminated string specifying an interface name
+(e.E<nbsp>g. C<eth0>). Please note that this might not be supported by all
+operating systems. In that case, B<ping_setopt> sets the error to C<operation
+not supported>.
 
 =back
 

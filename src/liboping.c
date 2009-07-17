@@ -134,6 +134,8 @@ struct pingobj
 	struct sockaddr         *srcaddr;
 	socklen_t                srcaddrlen;
 
+	char                    *device;
+
 	char                     errmsg[PING_ERRMSG_LEN];
 
 	pinghost_t              *head;
@@ -1045,6 +1047,9 @@ void ping_destroy (pingobj_t *obj)
 	if (obj->srcaddr != NULL)
 		free (obj->srcaddr);
 
+	if (obj->device != NULL)
+		free (obj->device);
+
 	free (obj);
 
 	return;
@@ -1165,6 +1170,28 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 			freeaddrinfo (ai_list);
 		} /* case PING_OPT_SOURCE */
+		break;
+
+		case PING_OPT_DEVICE:
+		{
+#ifdef SO_BINDTODEVICE
+			char *device = strdup ((char *) value);
+
+			if (device == NULL)
+			{
+				ping_set_errno (obj, errno);
+				ret = -1;
+				break;
+			}
+
+			if (obj->device != NULL)
+				free (obj->device);
+			obj->device = device;
+#else /* ! SO_BINDTODEVICE */
+			ping_set_errno (obj, ENOTSUP);
+			ret = -1;
+#endif /* ! SO_BINDTODEVICE */
+		} /* case PING_OPT_DEVICE */
 		break;
 
 		default:
@@ -1333,6 +1360,25 @@ int ping_host_add (pingobj_t *obj, const char *host)
 				continue;
 			}
 		}
+
+#ifdef SO_BINDTODEVICE
+		if (obj->device != NULL)
+		{
+			if (setsockopt (ph->fd, SOL_SOCKET, SO_BINDTODEVICE,
+					obj->device, strlen (obj->device) + 1) != 0)
+			{
+#if WITH_DEBUG
+				char errbuf[PING_ERRMSG_LEN];
+				dprintf ("setsockopt: %s\n",
+						sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+				ping_set_errno (obj, errno);
+				close (ph->fd);
+				ph->fd = -1;
+				continue;
+			}
+		}
+#endif /* SO_BINDTODEVICE */
 
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));

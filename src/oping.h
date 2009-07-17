@@ -59,6 +59,7 @@ typedef struct pingobj pingobj_t;
 #define PING_OPT_AF      0x04
 #define PING_OPT_DATA    0x08
 #define PING_OPT_SOURCE  0x10
+#define PING_OPT_DEVICE  0x20
 
 #define PING_DEF_TIMEOUT 1.0
 #define PING_DEF_TTL     255
