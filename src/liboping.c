@@ -307,7 +307,8 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 
 	if (recv_checksum != calc_checksum)
 	{
-		dprintf ("Checksum missmatch: Got 0x%04x, calculated 0x%04x\n",
+		dprintf ("Checksum missmatch: Got 0x%04"PRIx16", "
+				"calculated 0x%04"PRIx16"\n",
 				recv_checksum, calc_checksum);
 		return (NULL);
 	}
@@ -334,7 +335,8 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 		if (((ptr->sequence - 1) & 0xFFFF) != seq)
 			continue;
 
-		dprintf ("Match found: hostname = %s, ident = 0x%04x, seq = %i\n",
+		dprintf ("Match found: hostname = %s, ident = 0x%04"PRIx16", "
+				"seq = %"PRIu16"\n",
 				ptr->hostname, ident, seq);
 
 		break;
@@ -342,7 +344,7 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 
 	if (ptr == NULL)
 	{
-		dprintf ("No match found for ident = 0x%04x, seq = %i\n",
+		dprintf ("No match found for ident = 0x%04"PRIx16", seq = %"PRIu16"\n",
 				ident, seq);
 	}
 
@@ -419,7 +421,8 @@ static pinghost_t *ping_receive_ipv6 (pingobj_t *obj, char *buffer,
 		if (((ptr->sequence - 1) & 0xFFFF) != seq)
 			continue;
 
-		dprintf ("Match found: hostname = %s, ident = 0x%04x, seq = %i\n",
+		dprintf ("Match found: hostname = %s, ident = 0x%04"PRIx16", "
+				"seq = %"PRIu16"\n",
 				ptr->hostname, ident, seq);
 
 		break;
@@ -427,7 +430,8 @@ static pinghost_t *ping_receive_ipv6 (pingobj_t *obj, char *buffer,
 
 	if (ptr == NULL)
 	{
-		dprintf ("No match found for ident = 0x%04x, seq = %i\n",
+		dprintf ("No match found for ident = 0x%04"PRIx16", "
+				"seq = %"PRIu16"\n",
 				ident, seq);
 	}
 
