@@ -1054,6 +1054,9 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 {
 	int ret = 0;
 
+	if (value == NULL)
+		return (-1);
+
 	switch (option)
 	{
 		case PING_OPT_TIMEOUT:
