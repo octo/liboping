@@ -259,7 +259,8 @@ static uint16_t ping_icmp4_checksum (char *buf, size_t len)
 	return (ret);
 }
 
-static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffer_len)
+static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
+		size_t buffer_len)
 {
 	struct ip *ip_hdr;
 	struct icmp *icmp_hdr;
@@ -314,7 +315,9 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 	ident = ntohs (icmp_hdr->icmp_id);
 	seq   = ntohs (icmp_hdr->icmp_seq);
 
-	for (ptr = ph; ptr != NULL; ptr = ptr->next)
+	/* We have to iterate over all hosts, since ICMPv4 packets may
+	 * be received on any raw v4 socket. */
+	for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
 	{
 		dprintf ("hostname = %s, ident = 0x%04x, seq = %i\n",
 				ptr->hostname, ptr->ident, ((ptr->sequence - 1) & 0xFFFF));
@@ -365,7 +368,8 @@ static pinghost_t *ping_receive_ipv4 (pinghost_t *ph, char *buffer, size_t buffe
 # endif
 #endif
 
-static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffer_len)
+static pinghost_t *ping_receive_ipv6 (pingobj_t *obj, char *buffer,
+		size_t buffer_len)
 {
 	struct icmp6_hdr *icmp_hdr;
 
@@ -396,7 +400,9 @@ static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffe
 	ident = ntohs (icmp_hdr->icmp6_id);
 	seq   = ntohs (icmp_hdr->icmp6_seq);
 
-	for (ptr = ph; ptr != NULL; ptr = ptr->next)
+	/* We have to iterate over all hosts, since ICMPv6 packets may
+	 * be received on any raw v6 socket. */
+	for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
 	{
 		dprintf ("hostname = %s, ident = 0x%04x, seq = %i\n",
 				ptr->hostname, ptr->ident, ((ptr->sequence - 1) & 0xFFFF));
@@ -428,8 +434,13 @@ static pinghost_t *ping_receive_ipv6 (pinghost_t *ph, char *buffer, size_t buffe
 	return (ptr);
 }
 
-static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
+static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
+		struct timeval *now)
 {
+	/* Note: 'ph' is not necessarily the host object for which we receive a
+	 * reply. The right object will be returned by ping_receive_ipv*(). For
+	 * now, we can only rely on ph->fd and ph->addrfamily. */
+
 	struct timeval diff;
 	pinghost_t *host = NULL;
 	int recv_ttl;
@@ -464,7 +475,7 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 	msghdr.msg_flags |= MSG_XPG4_2;
 #endif
 
-	payload_buffer_len = recvmsg (fd, &msghdr, /* flags = */ 0);
+	payload_buffer_len = recvmsg (ph->fd, &msghdr, /* flags = */ 0);
 	if (payload_buffer_len < 0)
 	{
 #if WITH_DEBUG
@@ -474,7 +485,7 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 #endif
 		return (-1);
 	}
-	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, fd);
+	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, ph->fd);
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
@@ -526,13 +537,13 @@ static int ping_receive_one (int fd, pinghost_t *ph, struct timeval *now)
 
 	if (ph->addrfamily == AF_INET)
 	{
-		host = ping_receive_ipv4 (ph, payload_buffer, payload_buffer_len);
+		host = ping_receive_ipv4 (obj, payload_buffer, payload_buffer_len);
 		if (host == NULL)
 			return (-1);
 	}
 	else if (ph->addrfamily == AF_INET6)
 	{
-		host = ping_receive_ipv6 (ph, payload_buffer, payload_buffer_len);
+		host = ping_receive_ipv6 (obj, payload_buffer, payload_buffer_len);
 		if (host == NULL)
 			return (-1);
 	}
@@ -680,7 +691,7 @@ static int ping_receive_all (pingobj_t *obj)
 		for (ptr = ph; ptr != NULL; ptr = ptr->next)
 		{
 			if (FD_ISSET (ptr->fd, &readfds))
-				if (ping_receive_one (ptr->fd, ph, &nowtime) == 0)
+				if (ping_receive_one (obj, ptr, &nowtime) == 0)
 					ret++;
 		}
 	} /* while (1) */
