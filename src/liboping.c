@@ -1005,6 +1005,8 @@ static void ping_free (pinghost_t *ph)
  */
 const char *ping_get_error (pingobj_t *obj)
 {
+	if (obj == NULL)
+		return (NULL);
 	return (obj->errmsg);
 }
 
@@ -1028,6 +1030,9 @@ void ping_destroy (pingobj_t *obj)
 {
 	pinghost_t *current;
 	pinghost_t *next;
+
+	if (obj == NULL)
+		return;
 
 	current = obj->head;
 	next = NULL;
@@ -1054,7 +1059,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 {
 	int ret = 0;
 
-	if (value == NULL)
+	if ((obj == NULL) || (value == NULL))
 		return (-1);
 
 	switch (option)
@@ -1182,6 +1187,9 @@ int ping_send (pingobj_t *obj)
 {
 	int ret;
 
+	if (obj == NULL)
+		return (-1);
+
 	if (ping_send_all (obj) < 0)
 		return (-1);
 
@@ -1211,6 +1219,9 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	struct addrinfo  ai_hints;
 	struct addrinfo *ai_list, *ai_ptr;
 	int              ai_return;
+
+	if ((obj == NULL) || (host == NULL))
+		return (-1);
 
 	dprintf ("host = %s\n", host);
 
@@ -1423,6 +1434,9 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 {
 	pinghost_t *pre, *cur;
 
+	if ((obj == NULL) || (host == NULL))
+		return (-1);
+
 	pre = NULL;
 	cur = obj->head;
 
@@ -1453,11 +1467,15 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 
 pingobj_iter_t *ping_iterator_get (pingobj_t *obj)
 {
+	if (obj == NULL)
+		return (NULL);
 	return ((pingobj_iter_t *) obj->head);
 }
 
 pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter)
 {
+	if (iter == NULL)
+		return (NULL);
 	return ((pingobj_iter_t *) iter->next);
 }
 
@@ -1467,6 +1485,9 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 	int ret = EINVAL;
 
 	size_t orig_buffer_len = *buffer_len;
+
+	if ((iter == NULL) || (buffer == NULL) || (buffer_len == NULL))
+		return (-1);
 
 	switch (info)
 	{
@@ -1587,10 +1608,14 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 
 void *ping_iterator_get_context (pingobj_iter_t *iter)
 {
+	if (iter == NULL)
+		return (NULL);
 	return (iter->context);
 }
 
 void ping_iterator_set_context (pingobj_iter_t *iter, void *context)
 {
+	if (iter == NULL)
+		return;
 	iter->context = context;
 }
