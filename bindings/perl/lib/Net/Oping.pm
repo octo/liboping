@@ -61,7 +61,7 @@ use warnings;
 
 use Carp (qw(cluck confess));
 
-our $VERSION = '1.10';
+our $VERSION = '1.20';
 
 require XSLoader;
 XSLoader::load ('Net::Oping', $VERSION);
