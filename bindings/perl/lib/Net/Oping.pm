@@ -171,6 +171,35 @@ sub bind
   return (1);
 }
 
+=item I<$status> = I<$obj>-E<gt>B<device> (I<$device>);
+
+Sets the network device used for communication. This may not be supported on
+all platforms.
+
+I<Requires liboping 1.3 or later.>
+
+=cut
+
+sub device
+{
+  my $obj = shift;
+  my $device = shift;
+  my $status;
+
+  $status = _ping_setopt_device ($obj->{'c_obj'}, $device);
+  if ($status == -95) # Feature not supported.
+  {
+    $obj->{'err_msg'} = "Feature not supported by your version of liboping.";
+  }
+  elsif ($status != 0)
+  {
+    $obj->{'err_msg'} = "" . _ping_get_error ($obj->{'c_obj'});
+    return;
+  }
+
+  return (1);
+}
+
 =item I<$status> = I<$obj>-E<gt>B<host_add> (I<$host>, [I<$host>, ...]);
 
 Adds one or more hosts to the Net::Oping-object I<$obj>. The number of

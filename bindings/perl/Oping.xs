@@ -79,6 +79,19 @@ _ping_setopt_source (obj, addr)
 	OUTPUT:
 		RETVAL
 
+int
+_ping_setopt_device (obj, dev)
+	pingobj_t *obj
+	char *dev
+	CODE:
+#if OPING_VERSION >= 1003000
+		RETVAL = ping_setopt (obj, PING_OPT_DEVICE, dev);
+#else
+		RETVAL = -95;
+#endif
+	OUTPUT:
+		RETVAL
+
 int 
 _ping_host_add (obj, host);
 	pingobj_t *obj
