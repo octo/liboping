@@ -1,5 +1,8 @@
 Revision history for Perl extension Net::Oping.
 
+1.20  Sat Jul 18 14:57:32 2009
+	- The `device' method has been added.
+
 1.10  Sun Mar 15 13:49:56 2009
 	- The build system has been improved.
 	- The `ttl', `get_recv_ttl', and `get_dropped' methods have been added
