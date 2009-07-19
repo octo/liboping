@@ -19,15 +19,13 @@ else
 	CFLAGS += -O2
 endif
 
-include /usr/share/dpatch/dpatch.make
-
 # $srcver-$perlver-$debrev
 LIBPERL_VERSION := $(shell pm_ver=`perl -MExtUtils::MM -e \
 		'print MM->parse_version("bindings/perl/lib/Net/Oping.pm");'`; \
 	pkg_ver=`dpkg-parsechangelog | egrep '^Version:' | cut -d' ' -f2`; \
 	echo -n "$${pkg_ver%-*}-$$pm_ver-$${pkg_ver\#\#*-}")
 
-config.status: configure $(DPATCH_STAMPFN)
+config.status: configure
 	dh_testdir
 	
 	for file in config.guess config.sub; do \
@@ -52,7 +50,7 @@ build-stamp:  config.status
 	
 	touch build-stamp
 
-clean: unpatch
+clean:
 	dh_testdir
 	dh_testroot
 	rm -f build-stamp
