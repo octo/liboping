@@ -1,4 +1,4 @@
-liboping (1.1.2-1) unstable; urgency=low
+liboping (1.3.0-1) unstable; urgency=low
 
   * New upstream release.
   * Added liboping0.symbols.
@@ -35,7 +35,7 @@ liboping (1.1.2-1) unstable; urgency=low
   * debian/liboping0.shlibs:
     - Updated version to >= 1.1.2.
 
- -- Sebastian Harl <tokkee@debian.org>  Sat, 06 Jun 2009 21:40:00 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 19 Jul 2009 13:12:28 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
