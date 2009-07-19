@@ -33,9 +33,9 @@ liboping (1.3.0-1) unstable; urgency=low
     - Build-depend on perl-modules - debian/rules now requires the ExtUtils:MM
       module.
   * debian/liboping0.shlibs:
-    - Updated version to >= 1.1.2.
+    - Updated version to >= 1.3.0.
 
- -- Sebastian Harl <tokkee@debian.org>  Sun, 19 Jul 2009 13:12:28 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 19 Jul 2009 13:13:20 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
