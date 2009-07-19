@@ -1,7 +1,11 @@
 liboping (1.3.0-1) unstable; urgency=low
 
   * New upstream release.
-  * Added liboping0.symbols.
+  * Added liboping0.symbols:
+    - Use 0.3.2 as MINVER for all symbols - all symbols exist since 0.1.0 but
+      0.3.2 is the first version that introduced a SONAME version.
+    - Use 'Build-Depends-Package: liboping-dev' to let a user specify the
+      minimal version required for optional features.
   * debian/rules:
     - Do not ignore 'make clean' errors.
     - Use config.{guess,sub} provided by autotools-dev to fix a FTBFS on
@@ -30,7 +34,7 @@ liboping (1.3.0-1) unstable; urgency=low
   * debian/liboping0.shlibs:
     - Updated version to >= 1.3.0.
 
- -- Sebastian Harl <tokkee@debian.org>  Sun, 19 Jul 2009 14:34:18 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 19 Jul 2009 18:03:39 +0200
 
 liboping (0.3.5-1) unstable; urgency=low
 
