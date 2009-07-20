@@ -1,3 +1,8 @@
+2009-07-20, Version 1.3.1
+	* src/liboping.c: Fix too eager argument validation that prevented the
+	  library to work as documented. Thanks to Sebastian for catching this
+	  bug.
+
 2009-07-18, Version 1.3.0
 	* oping: Documentation and messages have been improved.
 	* oping: Support for the `-D' command line option has been added.
