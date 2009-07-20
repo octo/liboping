@@ -1,6 +1,5 @@
 # build system stuff
 .deps
-COPYING
 INSTALL
 Makefile
 Makefile.in
