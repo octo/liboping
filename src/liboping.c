@@ -1532,7 +1532,10 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 
 	size_t orig_buffer_len = *buffer_len;
 
-	if ((iter == NULL) || (buffer == NULL) || (buffer_len == NULL))
+	if ((iter == NULL) || (buffer_len == NULL))
+		return (-1);
+
+	if ((buffer == NULL) && (*buffer_len != 0 ))
 		return (-1);
 
 	switch (info)
