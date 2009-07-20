@@ -32,7 +32,7 @@ Description: C/C++ library to generate ICMP ECHO_REQUESTs
 Package: oping
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version})
 Description: sends ICMP_ECHO requests to network hosts
  oping uses ICMP packages (better known as "ping packets") to test the
  reachability of network hosts. It supports pinging multiple hosts in parallel
