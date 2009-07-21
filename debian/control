@@ -41,7 +41,7 @@ Description: sends ICMP_ECHO requests to network hosts
 Package: libnet-oping-perl
 Section: perl
 Architecture: any
-Depends: ${perl:Depends}, ${shlibs:Depends}
+Depends: ${perl:Depends}, ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version})
 Description: module for ICMP latency measurement
  Net::Oping is a Perl module for sending ICMP ECHO_REQUESTs (better known as
  "ping packets") and measuring the time that elapses until the reception of an
