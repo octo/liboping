@@ -2,7 +2,7 @@ Source: liboping
 Section: libs
 Priority: optional
 Maintainer: Sebastian Harl <tokkee@debian.org>
-Build-Depends: debhelper (>= 5.0.0), dpkg-dev (>= 1.14.13), autotools-dev, perl-modules
+Build-Depends: debhelper (>= 5.0.0), dpkg-dev (>= 1.14.13), autotools-dev, perl, perl-modules
 Standards-Version: 3.8.2
 Homepage: http://verplant.org/liboping/
 Vcs-Git: git://git.tokkee.org/pkg-liboping.git

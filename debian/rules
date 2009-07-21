@@ -65,6 +65,9 @@ clean:
 	done
 	
 	dh_clean
+	
+	# force a rebuild of the manpages
+	rm -f src/mans/*.3 src/mans/*.8
 
 install: build
 	dh_testdir
