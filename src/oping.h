@@ -24,18 +24,10 @@
 # include <config.h>
 #endif
 
-#if HAVE_STDLIB_H
-# include <stdlib.h>
-#endif
-#if HAVE_UNISTD_H
-# include <unistd.h>
-#endif
-#if HAVE_SYS_TYPES_H
-# include <sys/types.h>
-#endif
-#if HAVE_SYS_SOCKET_H
-# include <sys/socket.h>
-#endif
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #ifdef __cplusplus
 extern "C" {
