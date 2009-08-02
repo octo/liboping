@@ -1,3 +1,9 @@
+liboping (1.3.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 02 Aug 2009 22:44:30 +0200
+
 liboping (1.3.1-1) unstable; urgency=low
 
   * New upstream release.
