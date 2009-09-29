@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define OPING_VERSION 1003002
+#define OPING_VERSION 1003003
 
 /*
  * Type definitions
