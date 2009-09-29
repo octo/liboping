@@ -1,3 +1,13 @@
+liboping (1.3.3-1) unstable; urgency=low
+
+  * New upstream release:
+    - Disable the "-f" command line option (read hosts from a file) if the
+      real and affective user IDs don't match (e.g. when running setuid),
+      unless "-" (STDIN) has been specified; thanks a lot to Steve Kemp for
+      reporting this (Closes: #548684).
+
+ -- Sebastian Harl <tokkee@debian.org>  Wed, 30 Sep 2009 01:04:29 +0200
+
 liboping (1.3.2-1) unstable; urgency=low
 
   * New upstream release.
