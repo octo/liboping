@@ -170,7 +170,7 @@ static int read_options (int argc, char **argv)
 				break;
 
 			case 'f':
-				if (is_setuid ())
+				if (is_setuid () && (strcmp ("-", optarg) != 0))
 				{
 					fprintf (stderr, "For security reasons the `-f' option "
 							"is disabled if real and effective "
