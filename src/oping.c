@@ -27,6 +27,7 @@
 # include <string.h>
 # include <errno.h>
 # include <assert.h>
+# include <unistd.h>
 #else
 # error "You don't have the standard C99 header files installed"
 #endif /* STDC_HEADERS */
@@ -133,6 +134,11 @@ static void usage_exit (const char *name, int status)
 	exit (status);
 }
 
+static _Bool is_setuid (void)
+{
+	return (getuid () != geteuid ());
+}
+
 static int read_options (int argc, char **argv)
 {
 	int optchar;
@@ -164,6 +170,13 @@ static int read_options (int argc, char **argv)
 				break;
 
 			case 'f':
+				if (is_setuid ())
+				{
+					fprintf (stderr, "For security reasons the `-f' option "
+							"is disabled if real and effective "
+							"user IDs don't match. Sorry.\n");
+				}
+				else
 				{
 					if (opt_filename != NULL)
 						free (opt_filename);

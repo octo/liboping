@@ -58,6 +58,10 @@ Set the outgoing network device to use.
 Instead of specifying hostnames on the command line, read them from
 I<filename>. If I<filename> is B<->, read from C<STDIN>.
 
+This option is only available if the real user ID (as returned by L<getuid(2)>)
+and the effective user ID (as returned by L<geteuid(2)>) match. This is meant
+to avoid security issues when I<oping> is installed with the SUID-bit.
+
 =back
 
 =head1 SEE ALSO
