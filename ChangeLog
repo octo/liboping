@@ -5,6 +5,8 @@
 	  privileges before reading the file is not possible, because they are
 	  required for opening raw sockets.
 
+	  Reading from STDIN using “-f -” is still possible.
+
 	  Thanks to Steve Kemp for reporting this issue as Debian bug #548684.
 
 2009-07-27, Version 1.3.2:
