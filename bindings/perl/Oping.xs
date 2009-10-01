@@ -183,8 +183,9 @@ _ping_iterator_get_hostname (iter)
 			free (buffer);
 			break;
 		}
+		buffer[buffer_size - 1] = 0;
 
-		XPUSHs (sv_2mortal (newSVpvn(buffer,buffer_size)));
+		XPUSHs (sv_2mortal (newSVpvn(buffer, strlen (buffer))));
 		free(buffer);
 	} while (0);
 
