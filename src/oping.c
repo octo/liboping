@@ -27,10 +27,13 @@
 # include <string.h>
 # include <errno.h>
 # include <assert.h>
-# include <unistd.h>
 #else
 # error "You don't have the standard C99 header files installed"
 #endif /* STDC_HEADERS */
+
+#if HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #if HAVE_MATH_H
 # include <math.h>
@@ -55,7 +58,15 @@
 # include <signal.h>
 #endif
 
+#if HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
 #include "oping.h"
+
+#ifndef _POSIX_SAVED_IDS
+# define _POSIX_SAVED_IDS 0
+#endif
 
 typedef struct ping_context
 {
@@ -134,11 +145,6 @@ static void usage_exit (const char *name, int status)
 	exit (status);
 }
 
-static _Bool is_setuid (void)
-{
-	return (getuid () != geteuid ());
-}
-
 static int read_options (int argc, char **argv)
 {
 	int optchar;
@@ -170,13 +176,6 @@ static int read_options (int argc, char **argv)
 				break;
 
 			case 'f':
-				if (is_setuid () && (strcmp ("-", optarg) != 0))
-				{
-					fprintf (stderr, "For security reasons the `-f' option "
-							"is disabled if real and effective "
-							"user IDs don't match. Sorry.\n");
-				}
-				else
 				{
 					if (opt_filename != NULL)
 						free (opt_filename);
@@ -346,17 +345,42 @@ int main (int argc, char **argv)
 
 	int optind;
 	int i;
+	int status;
+#if _POSIX_SAVED_IDS
+	uid_t saved_set_uid;
+
+	/* Save the old effective user id */
+	saved_set_uid = geteuid ();
+	/* Set the effective user ID to the real user ID without changing the
+	 * saved set-user ID */
+	status = seteuid (getuid ());
+	if (status != 0)
+	{
+		fprintf (stderr, "Temporarily dropping privileges "
+				"failed: %s\n", strerror (errno));
+		exit (EXIT_FAILURE);
+	}
+#endif
 
 	optind = read_options (argc, argv);
 
+#if !_POSIX_SAVED_IDS
+	/* Cannot temporarily drop privileges -> reject every file but "-". */
+	if ((opt_filename != NULL)
+			&& (strcmp ("-", opt_filename) != 0)
+			&& (getuid () != geteuid ()))
+	{
+		fprintf (stderr, "Your real and effective user IDs don't "
+				"match. Reading from a file (option '-f')\n"
+				"is therefore too risky. You can still read "
+				"from STDIN using '-f -' if you like.\n"
+				"Sorry.\n");
+		exit (EXIT_FAILURE);
+	}
+#endif
+
 	if ((optind >= argc) && (opt_filename == NULL)) {
 		usage_exit (argv[0], 1);
-	}
-
-	if (geteuid () != 0)
-	{
-		fprintf (stderr, "Need superuser privileges to open a RAW socket. Sorry.\n");
-		return (1);
 	}
 
 	if ((ping = ping_construct ()) == NULL)
@@ -424,6 +448,17 @@ int main (int argc, char **argv)
 			return (1);
 		}
 
+#if _POSIX_SAVED_IDS
+		/* Regain privileges */
+		status = seteuid (saved_set_uid);
+		if (status != 0)
+		{
+			fprintf (stderr, "Temporarily re-gaining privileges "
+					"failed: %s\n", strerror (errno));
+			exit (EXIT_FAILURE);
+		}
+#endif
+
 		while (fgets(line, sizeof(line), infile))
 		{
 			/* Strip whitespace */
@@ -442,8 +477,30 @@ int main (int argc, char **argv)
 			}
 		}
 
+#if _POSIX_SAVED_IDS
+		/* Drop privileges */
+		status = seteuid (getuid ());
+		if (status != 0)
+		{
+			fprintf (stderr, "Temporarily dropping privileges "
+					"failed: %s\n", strerror (errno));
+			exit (EXIT_FAILURE);
+		}
+#endif
+
 		fclose(infile);
 	}
+
+#if _POSIX_SAVED_IDS
+	/* Regain privileges */
+	status = seteuid (saved_set_uid);
+	if (status != 0)
+	{
+		fprintf (stderr, "Temporarily re-gaining privileges "
+				"failed: %s\n", strerror (errno));
+		exit (EXIT_FAILURE);
+	}
+#endif
 
 	for (i = optind; i < argc; i++)
 	{
@@ -456,8 +513,18 @@ int main (int argc, char **argv)
 		}
 	}
 
-	/* Drop root privileges if we're setuid-root. */
-	setuid (getuid ());
+	/* Permanently drop root privileges if we're setuid-root. */
+	status = setuid (getuid ());
+	if (status != 0)
+	{
+		fprintf (stderr, "Dropping privileges failed: %s\n",
+				strerror (errno));
+		exit (EXIT_FAILURE);
+	}
+
+#if _POSIX_SAVED_IDS
+	saved_set_uid = (uid_t) -1;
+#endif
 
 	i = 0;
 	for (iter = ping_iterator_get (ping);
