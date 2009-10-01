@@ -1,5 +1,11 @@
 Revision history for Perl extension Net::Oping.
 
+1.21  Thu Oct  1 14:28:25 2009
+	- Fix an off-by-one error in `_ping_iterator_get_hostname' which caused
+	  the trailing null-byte to be included in the strings that are the
+	  keys of the hash returned by Net::Oping::ping. Thanks to Fredrik
+	  Soderblom for reporting this issue and providing the patch.
+
 1.20  Sat Jul 18 14:57:32 2009
 	- The `device' method has been added.
 
