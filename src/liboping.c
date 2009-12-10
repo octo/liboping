@@ -590,9 +590,10 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 static int ping_receive_all (pingobj_t *obj)
 {
-	fd_set readfds;
-	int num_readfds;
-	int max_readfds;
+	fd_set read_fds;
+	fd_set err_fds;
+	int num_fds;
+	int max_fd;
 
 	pinghost_t *ph;
 	pinghost_t *ptr;
@@ -631,23 +632,25 @@ static int ping_receive_all (pingobj_t *obj)
 
 	while (1)
 	{
-		FD_ZERO (&readfds);
-		num_readfds =  0;
-		max_readfds = -1;
+		FD_ZERO (&read_fds);
+		FD_ZERO (&err_fds);
+		num_fds =  0;
+		max_fd = -1;
 
 		for (ptr = ph; ptr != NULL; ptr = ptr->next)
 		{
 			if (!timerisset (ptr->timer))
 				continue;
 
-			FD_SET (ptr->fd, &readfds);
-			num_readfds++;
+			FD_SET (ptr->fd, &read_fds);
+			FD_SET (ptr->fd, &err_fds);
+			num_fds++;
 
-			if (max_readfds < ptr->fd)
-				max_readfds = ptr->fd;
+			if (max_fd < ptr->fd)
+				max_fd = ptr->fd;
 		}
 
-		if (num_readfds == 0)
+		if (num_fds == 0)
 			break;
 
 		if (gettimeofday (&nowtime, NULL) == -1)
@@ -659,11 +662,11 @@ static int ping_receive_all (pingobj_t *obj)
 		if (ping_timeval_sub (&endtime, &nowtime, &timeout) == -1)
 			break;
 
-		dprintf ("Waiting on %i sockets for %i.%06i seconds\n", num_readfds,
+		dprintf ("Waiting on %i sockets for %i.%06i seconds\n", num_fds,
 				(int) timeout.tv_sec,
 				(int) timeout.tv_usec);
 
-		status = select (max_readfds + 1, &readfds, NULL, NULL, &timeout);
+		status = select (max_fd + 1, &read_fds, NULL, &err_fds, &timeout);
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
@@ -696,9 +699,18 @@ static int ping_receive_all (pingobj_t *obj)
 
 		for (ptr = ph; ptr != NULL; ptr = ptr->next)
 		{
-			if (FD_ISSET (ptr->fd, &readfds))
+			if (FD_ISSET (ptr->fd, &read_fds))
+			{
 				if (ping_receive_one (obj, ptr, &nowtime) == 0)
 					ret++;
+			}
+			else if (FD_ISSET (ptr->fd, &err_fds))
+			{
+				/* clear the timer in this case so that we
+				 * don't run into an endless loop. */
+				/* TODO: Set an error flag in this case. */
+				timerclear (ptr->timer);
+			}
 		}
 	} /* while (1) */
 	
