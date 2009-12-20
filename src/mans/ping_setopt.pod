@@ -10,7 +10,7 @@ ping_setopt - Set options for a liboping object
 
 =head1 DESCRIPTION
 
-The B<ping_setopt> method sets options that effect all hosts associated with
+The B<ping_setopt> method sets options that apply to all hosts associated with
 the object I<obj> and hosts that are yet to be added to the object.
 
 The I<obj> argument is a pointer to an I<liboping> object, as returned by
@@ -39,7 +39,7 @@ values are 1 through 255. Default is B<PING_DEF_TTL>.
 
 The address family to use. The memory pointed to by I<val> is interpreted as an
 integer and must be either B<AF_UNSPEC>, B<AF_INET>, or B<AF_INET6>. This
-option only effects hosts that are being added B<after> this option has been
+option only affects hosts that are being added B<after> this option has been
 set. Default is B<PING_DEF_AF>. If you change this option, and a source address
 is set (see B<PING_OPT_SOURCE>) that setting will be reset.
 
@@ -84,6 +84,6 @@ L<liboping(3)>
 =head1 AUTHOR
 
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
-It's homepage can be found at L<http://verplant.org/liboping/>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
 
 (c) 2005-2009 by Florian octo Forster.

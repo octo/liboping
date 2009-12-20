@@ -22,7 +22,7 @@ page) and call L<ping_iterator_get_info(3)> on each host.
 
 =head1 RETURN VALUE
 
-B<ping_send> returns the value of echo replies received or a value less than
+B<ping_send> returns the number of echo replies received or a value less than
 zero if an error occurred. Use L<ping_get_error(3)> to receive an error message.
 
 =head1 SEE ALSO
@@ -37,6 +37,6 @@ L<liboping(3)>
 =head1 AUTHOR
 
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
-It's homepage can be found at L<http://verplant.org/liboping/>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
 
 (c) 2005-2009 by Florian octo Forster.

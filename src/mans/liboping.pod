@@ -18,7 +18,7 @@ and protocol independent manner. The interface is simple, object oriented and
 There are two main types that are used by applications. Both are "opaque
 types", meaning they are structures that are B<not> completely defined in the
 header file, so you cannot access the structures' members. You don't need to,
-don't do it. These structures are object to change without notice.
+don't do it. These structures are subject to change without notice.
 
 =over 4
 
@@ -81,6 +81,6 @@ applicable.
 =head1 AUTHOR
 
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
-It's homepage can be found at L<http://verplant.org/liboping/>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
 
 (c) 2005-2009 by Florian octo Forster.
