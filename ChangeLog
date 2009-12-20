@@ -2,6 +2,11 @@
 	* src/liboping.c: When one file descriptor was in an error state, the
 	  select(2) loop would run indefinitely. Error handling has been
 	  improved so the loop ends gracefully now in this case.
+	* src/liboping.c: Drop privileges before reading files if supported by
+	  the system. This way files are opened using the user's original
+	  privileges when using the “-f” option.
+	* Net::Oping: An off-by-one error has been fixed in the Perl bindings.
+	  Thanks to Fredrik Soderblom for his patch.
 
 2009-09-29, Version 1.3.3:
 	* oping: Disable the “-f” option if the real and effective user IDs
