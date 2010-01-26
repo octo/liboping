@@ -1,3 +1,16 @@
+#
+# SPEC file for liboping
+#
+# This SPEC file is provided as a starting point for your own package of
+# liboping. It may use distribution specific commands or tags and may not be
+# suited for your distribution in its verbatim form. If at all possible, please
+# use a source-RPM (SRPM) provided by your distributor.
+#
+# That being said, bug reports concerning this SPEC file are welcome, of
+# course. Please report any bugs you find to liboping's mailing list at
+# <liboping at verplant.org>. Thanks to Benjamin Petrin for providing this
+# file.  --octo
+#
 Name:           liboping
 Version:        1.3.4 
 Release:        1%{?dist}
