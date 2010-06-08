@@ -64,6 +64,10 @@
 
 #if USE_NCURSES
 # include <ncurses.h>
+
+# define OPING_GREEN 1
+# define OPING_YELLOW 2
+# define OPING_RED 3
 #endif
 
 #include "oping.h"
@@ -501,17 +505,63 @@ static void print_host (pingobj_iter_t *iter, /* {{{ */
 		if ((context->latency_min < 0.0) || (context->latency_min > latency))
 			context->latency_min = latency;
 
+#if USE_NCURSES
+		if (has_colors () == TRUE)
+		{
+			int color = OPING_GREEN;
+			double average = context_get_average (context);
+			double stddev = context_get_stddev (context);
+
+			if ((latency < (average - (2 * stddev)))
+					|| (latency > (average + (2 * stddev))))
+				color = OPING_RED;
+			else if ((latency < (average - stddev))
+					|| (latency > (average + stddev)))
+				color = OPING_YELLOW;
+
+			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
+					"time=",
+					data_len, context->host, context->addr,
+					sequence, recv_ttl);
+			wattron (main_win, COLOR_PAIR(color));
+			HOST_PRINTF ("%.2f", latency);
+			wattroff (main_win, COLOR_PAIR(color));
+			HOST_PRINTF (" ms\n");
+		}
+		else
+		{
+#endif
 		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
 				"time=%.2f ms\n",
 				data_len,
 				context->host, context->addr,
 				sequence, recv_ttl, latency);
+#if USE_NCURSES
+		}
+#endif
 	}
 	else
 	{
+#if USE_NCURSES
+		if (has_colors () == TRUE)
+		{
+			HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u ",
+					context->host, context->addr,
+					sequence);
+			wattron (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
+			HOST_PRINTF ("timeout");
+			wattroff (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
+			HOST_PRINTF ("\n");
+		}
+		else
+		{
+#endif
 		HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u timeout\n",
 				context->host, context->addr,
 				sequence);
+#if USE_NCURSES
+		}
+#endif
 	}
 
 #if USE_NCURSES
@@ -530,6 +580,14 @@ static int print_header (pingobj_t *ping) /* {{{ */
 	cbreak ();
 	noecho ();
 	nodelay (stdscr, TRUE);
+
+	if (has_colors () == TRUE)
+	{
+		start_color ();
+		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
+		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
+		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
+	}
 #endif
 
 	index = 0;
