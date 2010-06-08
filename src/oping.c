@@ -62,6 +62,10 @@
 #include <sys/types.h>
 #endif
 
+#if USE_NCURSES
+# include <ncurses.h>
+#endif
+
 #include "oping.h"
 
 #ifndef _POSIX_SAVED_IDS
@@ -80,6 +84,10 @@ typedef struct ping_context
 	double latency_max;
 	double latency_total;
 	double latency_total_square;
+
+#if USE_NCURSES
+	WINDOW *window;
+#endif
 } ping_context_t;
 
 static double  opt_interval   = 1.0;
@@ -89,6 +97,10 @@ static char   *opt_device     = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
+
+#if USE_NCURSES
+static WINDOW *main_win = NULL;
+#endif
 
 static void sigint_handler (int signal)
 {
@@ -112,6 +124,10 @@ static ping_context_t *context_create (void)
 	ret->latency_total = 0.0;
 	ret->latency_total_square = 0.0;
 
+#if USE_NCURSES
+	ret->window = NULL;
+#endif
+
 	return (ret);
 }
 
@@ -119,6 +135,14 @@ static void context_destroy (ping_context_t *context)
 {
 	if (context == NULL)
 		return;
+
+#if USE_NCURSES
+	if (context->window != NULL)
+	{
+		delwin (context->window);
+		context->window = NULL;
+	}
+#endif
 
 	free (context);
 }
@@ -262,6 +286,12 @@ static void print_host (pingobj_iter_t *iter)
 
 	context = (ping_context_t *) ping_iterator_get_context (iter);
 
+#if USE_NCURSES
+# define HOST_PRINTF(...) wprintw(main_win, __VA_ARGS__)
+#else
+# define HOST_PRINTF(...) printf(__VA_ARGS__)
+#endif
+
 	context->req_sent++;
 	if (latency > 0.0)
 	{
@@ -274,17 +304,53 @@ static void print_host (pingobj_iter_t *iter)
 		if ((context->latency_min < 0.0) || (context->latency_min > latency))
 			context->latency_min = latency;
 
-		printf ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i time=%.2f ms\n",
+		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
+				"time=%.2f ms\n",
 				data_len,
 				context->host, context->addr,
 				sequence, recv_ttl, latency);
 	}
 	else
 	{
-		printf ("echo reply from %s (%s): icmp_seq=%u timeout\n",
+		HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u timeout\n",
 				context->host, context->addr,
 				sequence);
 	}
+
+#if USE_NCURSES
+	wrefresh (main_win);
+	werase (context->window);
+	box (context->window, 0, 0);
+	mvwprintw (context->window, /* y = */ 0, /* x = */ 5,
+			" %s ping statistics ",
+			context->host);
+	mvwprintw (context->window, /* y = */ 1, /* x = */ 2,
+			"%i packets transmitted, %i received, %.2f%% packet "
+			"loss, time %.1fms",
+			context->req_sent, context->req_rcvd,
+			100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
+			context->latency_total);
+	if (context->req_rcvd != 0)
+	{
+		double num_total;
+		double average;
+		double deviation;
+
+		num_total = (double) context->req_rcvd;
+
+		average = context->latency_total / num_total;
+		deviation = sqrt (((num_total * context->latency_total_square) - (context->latency_total * context->latency_total))
+				/ (num_total * (num_total - 1.0)));
+
+		mvwprintw (context->window, /* y = */ 2, /* x = */ 2,
+				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
+				context->latency_min,
+				average,
+				context->latency_max,
+				deviation);
+	}
+	wrefresh (context->window);
+#endif
 }
 
 static void time_normalize (struct timespec *ts)
@@ -339,6 +405,12 @@ static int print_header (pingobj_t *ping) /* {{{ */
 	pingobj_iter_t *iter;
 	int i;
 
+#if USE_NCURSES
+	initscr ();
+	cbreak ();
+	noecho ();
+#endif
+
 	i = 0;
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
@@ -358,13 +430,29 @@ static int print_header (pingobj_t *ping) /* {{{ */
 		buffer_size = 0;
 		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
 
+#if USE_NCURSES
+		context->window = newwin (/* height = */ 4, COLS,
+				/* start y = */ 4*i, /* start x = */ 0);
+		box (context->window, 0, 0);
+		mvwprintw (context->window, /* y = */ 0, /* x = */ 5,
+				" %s ping statistics ",
+				context->host);
+		wrefresh (context->window);
+#else /* !USE_NCURSES */
 		printf ("PING %s (%s) %zu bytes of data.\n",
 				context->host, context->addr, buffer_size);
+#endif
 
 		ping_iterator_set_context (iter, (void *) context);
 
 		i++;
 	}
+
+#if USE_NCURSES
+	delwin (main_win);
+	main_win = newwin (LINES - 4*i, COLS, 4*i, 0);
+	scrollok (main_win, TRUE);
+#endif
 
 	return (0);
 } /* }}} int print_header */
@@ -372,6 +460,10 @@ static int print_header (pingobj_t *ping) /* {{{ */
 static int print_footer (pingobj_t *ping)
 {
 	pingobj_iter_t *iter;
+
+#if USE_NCURSES
+	endwin ();
+#endif
 
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;

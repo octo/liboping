@@ -186,6 +186,14 @@ AC_CHECK_FUNCS(nanosleep, [],
 		AC_MSG_ERROR(cannot find nanosleep)))
 AM_CONDITIONAL(BUILD_WITH_LIBRT, test "x$nanosleep_needs_rt" = "xyes")
 
+with_ncurses="yes"
+AC_CHECK_HEADERS(ncurses.h, [with_ncurses="yes"], [with_ncurses="no"])
+if test "x$with_ncurses" = "xyes"
+then
+	AC_CHECK_LIB(ncurses, mvwprintw, [with_ncurses="yes"], [with_ncurses="no"])
+fi
+AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" = "xyes")
+
 AC_FUNC_STRERROR_R
 
 AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debugging output.])],

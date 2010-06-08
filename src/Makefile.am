@@ -39,3 +39,15 @@ oping_LDFLAGS = -lm
 if BUILD_WITH_LIBRT
 oping_LDFLAGS += -lrt
 endif
+
+if BUILD_WITH_LIBNCURSES
+bin_PROGRAMS += noping
+
+noping_SOURCES = oping.c
+noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1
+noping_LDADD = liboping.la
+noping_LDFLAGS = -lm -lncurses
+if BUILD_WITH_LIBRT
+noping_LDFLAGS += -lrt
+endif
+endif # BUILD_WITH_LIBNCURSES
