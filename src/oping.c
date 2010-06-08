@@ -147,6 +147,38 @@ static void context_destroy (ping_context_t *context)
 	free (context);
 }
 
+static double context_get_average (ping_context_t *ctx) /* {{{ */
+{
+	double num_total;
+
+	if (ctx == NULL)
+		return (-1.0);
+
+	if (ctx->req_rcvd < 1)
+		return (-0.0);
+
+	num_total = (double) ctx->req_rcvd;
+	return (ctx->latency_total / num_total);
+} /* }}} double context_get_average */
+
+static double context_get_stddev (ping_context_t *ctx) /* {{{ */
+{
+	double num_total;
+
+	if (ctx == NULL)
+		return (-1.0);
+
+	if (ctx->req_rcvd < 1)
+		return (-0.0);
+	else if (ctx->req_rcvd < 2)
+		return (0.0);
+
+	num_total = (double) ctx->req_rcvd;
+	return (sqrt (((num_total * ctx->latency_total_square)
+					- (ctx->latency_total * ctx->latency_total))
+				/ (num_total * (num_total - 1.0))));
+} /* }}} double context_get_stddev */
+
 static void usage_exit (const char *name, int status)
 {
 	int name_length;
@@ -332,16 +364,12 @@ static void print_host (pingobj_iter_t *iter)
 			context->latency_total);
 	if (context->req_rcvd != 0)
 	{
-		double num_total;
 		double average;
 		double deviation;
 
-		num_total = (double) context->req_rcvd;
-
-		average = context->latency_total / num_total;
-		deviation = sqrt (((num_total * context->latency_total_square) - (context->latency_total * context->latency_total))
-				/ (num_total * (num_total - 1.0)));
-
+		average = context_get_average (context);
+		deviation = context_get_stddev (context);
+			
 		mvwprintw (context->window, /* y = */ 2, /* x = */ 2,
 				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
 				context->latency_min,
@@ -481,15 +509,11 @@ static int print_footer (pingobj_t *ping)
 
 		if (context->req_rcvd != 0)
 		{
-			double num_total;
 			double average;
 			double deviation;
 
-			num_total = (double) context->req_rcvd;
-
-			average = context->latency_total / num_total;
-			deviation = sqrt (((num_total * context->latency_total_square) - (context->latency_total * context->latency_total))
-					/ (num_total * (num_total - 1.0)));
+			average = context_get_average (context);
+			deviation = context_get_stddev (context);
 
 			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
 					context->latency_min,
