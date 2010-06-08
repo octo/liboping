@@ -300,7 +300,158 @@ static int read_options (int argc, char **argv) /* {{{ */
 	return (optind);
 } /* }}} read_options */
 
-static void print_host (pingobj_iter_t *iter)
+static void time_normalize (struct timespec *ts) /* {{{ */
+{
+	while (ts->tv_nsec < 0)
+	{
+		if (ts->tv_sec == 0)
+		{
+			ts->tv_nsec = 0;
+			return;
+		}
+
+		ts->tv_sec  -= 1;
+		ts->tv_nsec += 1000000000;
+	}
+
+	while (ts->tv_nsec >= 1000000000)
+	{
+		ts->tv_sec  += 1;
+		ts->tv_nsec -= 1000000000;
+	}
+} /* }}} void time_normalize */
+
+static void time_calc (struct timespec *ts_dest, /* {{{ */
+		const struct timespec *ts_int,
+		const struct timeval  *tv_begin,
+		const struct timeval  *tv_end)
+{
+	ts_dest->tv_sec = tv_begin->tv_sec + ts_int->tv_sec;
+	ts_dest->tv_nsec = (tv_begin->tv_usec * 1000) + ts_int->tv_nsec;
+	time_normalize (ts_dest);
+
+	/* Assure that `(begin + interval) > end'.
+	 * This may seem overly complicated, but `tv_sec' is of type `time_t'
+	 * which may be `unsigned. *sigh* */
+	if ((tv_end->tv_sec > ts_dest->tv_sec)
+			|| ((tv_end->tv_sec == ts_dest->tv_sec)
+				&& ((tv_end->tv_usec * 1000) > ts_dest->tv_nsec)))
+	{
+		ts_dest->tv_sec  = 0;
+		ts_dest->tv_nsec = 0;
+		return;
+	}
+
+	ts_dest->tv_sec = ts_dest->tv_sec - tv_end->tv_sec;
+	ts_dest->tv_nsec = ts_dest->tv_nsec - (tv_end->tv_usec * 1000);
+	time_normalize (ts_dest);
+} /* }}} void time_calc */
+
+#if USE_NCURSES
+static int context_window_repaint (ping_context_t *ctx, /* {{{ */
+		int index)
+{
+	if (ctx == NULL)
+		return (EINVAL);
+
+	if (ctx->window == NULL)
+	{
+		ctx->window = newwin (/* height = */ 4, /* width = */ 0,
+				/* start y = */ 4 * index, /* start x = */ 0);
+	}
+	else /* if (ctx->window != NULL) */
+	{
+		werase (ctx->window);
+	}
+
+	box (ctx->window, 0, 0);
+	mvwprintw (ctx->window, /* y = */ 0, /* x = */ 5,
+			" %s ping statistics ",
+			ctx->host);
+	mvwprintw (ctx->window, /* y = */ 1, /* x = */ 2,
+			"%i packets transmitted, %i received, %.2f%% packet "
+			"loss, time %.1fms",
+			ctx->req_sent, ctx->req_rcvd,
+			context_get_packet_loss (ctx),
+			ctx->latency_total);
+	if (ctx->req_rcvd != 0)
+	{
+		double average;
+		double deviation;
+
+		average = context_get_average (ctx);
+		deviation = context_get_stddev (ctx);
+			
+		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
+				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
+				ctx->latency_min,
+				average,
+				ctx->latency_max,
+				deviation);
+	}
+
+	wrefresh (ctx->window);
+
+	return (0);
+} /* }}} int context_window_repaint */
+
+static int resize_windows (pingobj_t *ping) /* {{{ */
+{
+	int index;
+	pingobj_iter_t *iter;
+	int width = 0;
+	int height = 0;
+	int need_resize = 0;
+
+	while (42)
+	{
+		int key = wgetch (stdscr);
+		if (key == ERR)
+			break;
+		else if (key == KEY_RESIZE)
+			need_resize = 1;
+	}
+
+	if (!need_resize)
+		return (0);
+
+	getmaxyx (stdscr, height, width);
+	if ((height < 1) || (width < 1))
+		return (EINVAL);
+
+	index = 0;
+	for (iter = ping_iterator_get (ping);
+			iter != NULL;
+			iter = ping_iterator_next (iter))
+	{
+		ping_context_t *ctx = ping_iterator_get_context (iter);
+
+		if (ctx->window == NULL)
+		{
+			index++;
+			continue;
+		}
+
+		wresize (ctx->window, 4, width);
+		context_window_repaint (ctx, index);
+
+		index++;
+	}
+
+	if (main_win != NULL)
+	{
+		wresize (main_win, height - (4 * index), width);
+		/* touchwin (main_win); */
+		/* wrefresh (main_win); */
+		clearok (main_win, TRUE);
+	}
+
+	return (0);
+} /* }}} int resize_windows */
+#endif
+
+static void print_host (pingobj_iter_t *iter, /* {{{ */
+		int index)
 {
 	double          latency;
 	unsigned int    sequence;
@@ -362,96 +513,24 @@ static void print_host (pingobj_iter_t *iter)
 	}
 
 #if USE_NCURSES
+	context_window_repaint (context, index);
 	wrefresh (main_win);
-	werase (context->window);
-	box (context->window, 0, 0);
-	mvwprintw (context->window, /* y = */ 0, /* x = */ 5,
-			" %s ping statistics ",
-			context->host);
-	mvwprintw (context->window, /* y = */ 1, /* x = */ 2,
-			"%i packets transmitted, %i received, %.2f%% packet "
-			"loss, time %.1fms",
-			context->req_sent, context->req_rcvd,
-			100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
-			context->latency_total);
-	if (context->req_rcvd != 0)
-	{
-		double average;
-		double deviation;
-
-		average = context_get_average (context);
-		deviation = context_get_stddev (context);
-			
-		mvwprintw (context->window, /* y = */ 2, /* x = */ 2,
-				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
-				context->latency_min,
-				average,
-				context->latency_max,
-				deviation);
-	}
-	wrefresh (context->window);
 #endif
-}
-
-static void time_normalize (struct timespec *ts)
-{
-	while (ts->tv_nsec < 0)
-	{
-		if (ts->tv_sec == 0)
-		{
-			ts->tv_nsec = 0;
-			return;
-		}
-
-		ts->tv_sec  -= 1;
-		ts->tv_nsec += 1000000000;
-	}
-
-	while (ts->tv_nsec >= 1000000000)
-	{
-		ts->tv_sec  += 1;
-		ts->tv_nsec -= 1000000000;
-	}
-}
-
-static void time_calc (struct timespec *ts_dest, /* {{{ */
-		const struct timespec *ts_int,
-		const struct timeval  *tv_begin,
-		const struct timeval  *tv_end)
-{
-	ts_dest->tv_sec = tv_begin->tv_sec + ts_int->tv_sec;
-	ts_dest->tv_nsec = (tv_begin->tv_usec * 1000) + ts_int->tv_nsec;
-	time_normalize (ts_dest);
-
-	/* Assure that `(begin + interval) > end'.
-	 * This may seem overly complicated, but `tv_sec' is of type `time_t'
-	 * which may be `unsigned. *sigh* */
-	if ((tv_end->tv_sec > ts_dest->tv_sec)
-			|| ((tv_end->tv_sec == ts_dest->tv_sec)
-				&& ((tv_end->tv_usec * 1000) > ts_dest->tv_nsec)))
-	{
-		ts_dest->tv_sec  = 0;
-		ts_dest->tv_nsec = 0;
-		return;
-	}
-
-	ts_dest->tv_sec = ts_dest->tv_sec - tv_end->tv_sec;
-	ts_dest->tv_nsec = ts_dest->tv_nsec - (tv_end->tv_usec * 1000);
-	time_normalize (ts_dest);
-} /* }}} void time_calc */
+} /* }}} void print_host */
 
 static int print_header (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
-	int i;
+	int index;
 
 #if USE_NCURSES
 	initscr ();
 	cbreak ();
 	noecho ();
+	nodelay (stdscr, TRUE);
 #endif
 
-	i = 0;
+	index = 0;
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
 			iter = ping_iterator_next (iter))
@@ -471,13 +550,7 @@ static int print_header (pingobj_t *ping) /* {{{ */
 		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
 
 #if USE_NCURSES
-		context->window = newwin (/* height = */ 4, COLS,
-				/* start y = */ 4*i, /* start x = */ 0);
-		box (context->window, 0, 0);
-		mvwprintw (context->window, /* y = */ 0, /* x = */ 5,
-				" %s ping statistics ",
-				context->host);
-		wrefresh (context->window);
+		context_window_repaint (context, index);
 #else /* !USE_NCURSES */
 		printf ("PING %s (%s) %zu bytes of data.\n",
 				context->host, context->addr, buffer_size);
@@ -485,19 +558,32 @@ static int print_header (pingobj_t *ping) /* {{{ */
 
 		ping_iterator_set_context (iter, (void *) context);
 
-		i++;
+		index++;
 	}
 
 #if USE_NCURSES
-	delwin (main_win);
-	main_win = newwin (LINES - 4*i, COLS, 4*i, 0);
+	main_win = newwin (/* height = */ 0, /* width = */ 0,
+			/* y = */ 4 * index, /* x = */ 0);
+	/* Allow scrolling */
 	scrollok (main_win, TRUE);
+	/* Allow hardware accelerated scrolling. */
+	idlok (main_win, TRUE);
+
+	/* Don't know what good this does exactly, but without this code
+	 * "resize_windows" will be called right after startup and *somehow*
+	 * this leads to display errors. If we purge all initial characters
+	 * here, the problem goes away. "wgetch" is non-blocking due to
+	 * "nodelay" (see above). */
+	while (wgetch (stdscr) != ERR)
+	{
+		/* eat up characters */;
+	}
 #endif
 
 	return (0);
 } /* }}} int print_header */
 
-static int print_footer (pingobj_t *ping)
+static int print_footer (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
 
@@ -751,6 +837,7 @@ int main (int argc, char **argv) /* {{{ */
 
 	while (opt_count != 0)
 	{
+		int index;
 		int status;
 
 		if (gettimeofday (&tv_begin, NULL) < 0)
@@ -766,13 +853,17 @@ int main (int argc, char **argv) /* {{{ */
 			return (1);
 		}
 
+		index = 0;
 		for (iter = ping_iterator_get (ping);
 				iter != NULL;
 				iter = ping_iterator_next (iter))
 		{
-			print_host (iter);
+			print_host (iter, index);
+			index++;
 		}
+#if !USE_NCURSES
 		fflush (stdout);
+#endif
 
 		/* Don't sleep in the last iteration */
 		if (opt_count == 1)
@@ -799,7 +890,15 @@ int main (int argc, char **argv) /* {{{ */
 				/* sigint */
 				break;
 			}
+
+#if USE_NCURSES
+			resize_windows (ping);
+#endif
 		}
+
+#if USE_NCURSES
+		resize_windows (ping);
+#endif
 
 		if (opt_count > 0)
 			opt_count--;
