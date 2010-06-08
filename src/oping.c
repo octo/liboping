@@ -365,9 +365,11 @@ static int context_window_repaint (ping_context_t *ctx, /* {{{ */
 	}
 
 	box (ctx->window, 0, 0);
+	wattron (ctx->window, A_BOLD);
 	mvwprintw (ctx->window, /* y = */ 0, /* x = */ 5,
-			" %s ping statistics ",
-			ctx->host);
+			" %s ", ctx->host);
+	wattroff (ctx->window, A_BOLD);
+	wprintw (ctx->window, "ping statistics ");
 	mvwprintw (ctx->window, /* y = */ 1, /* x = */ 2,
 			"%i packets transmitted, %i received, %.2f%% packet "
 			"loss, time %.1fms",
