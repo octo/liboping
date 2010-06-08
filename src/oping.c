@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006  Florian octo Forster <octo at verplant.org>
+ * Copyright (C) 2006-2010  Florian octo Forster <octo at verplant.org>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -117,6 +117,9 @@ static ping_context_t *context_create (void)
 
 static void context_destroy (ping_context_t *context)
 {
+	if (context == NULL)
+		return;
+
 	free (context);
 }
 
@@ -305,7 +308,7 @@ static void time_normalize (struct timespec *ts)
 	}
 }
 
-static void time_calc (struct timespec *ts_dest,
+static void time_calc (struct timespec *ts_dest, /* {{{ */
 		const struct timespec *ts_int,
 		const struct timeval  *tv_begin,
 		const struct timeval  *tv_end)
@@ -329,9 +332,88 @@ static void time_calc (struct timespec *ts_dest,
 	ts_dest->tv_sec = ts_dest->tv_sec - tv_end->tv_sec;
 	ts_dest->tv_nsec = ts_dest->tv_nsec - (tv_end->tv_usec * 1000);
 	time_normalize (ts_dest);
-}
+} /* }}} void time_calc */
 
-int main (int argc, char **argv)
+static int print_header (pingobj_t *ping) /* {{{ */
+{
+	pingobj_iter_t *iter;
+	int i;
+
+	i = 0;
+	for (iter = ping_iterator_get (ping);
+			iter != NULL;
+			iter = ping_iterator_next (iter))
+	{
+		ping_context_t *context;
+		size_t buffer_size;
+
+		context = context_create ();
+
+		buffer_size = sizeof (context->host);
+		ping_iterator_get_info (iter, PING_INFO_HOSTNAME, context->host, &buffer_size);
+
+		buffer_size = sizeof (context->addr);
+		ping_iterator_get_info (iter, PING_INFO_ADDRESS, context->addr, &buffer_size);
+
+		buffer_size = 0;
+		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
+
+		printf ("PING %s (%s) %zu bytes of data.\n",
+				context->host, context->addr, buffer_size);
+
+		ping_iterator_set_context (iter, (void *) context);
+
+		i++;
+	}
+
+	return (0);
+} /* }}} int print_header */
+
+static int print_footer (pingobj_t *ping)
+{
+	pingobj_iter_t *iter;
+
+	for (iter = ping_iterator_get (ping);
+			iter != NULL;
+			iter = ping_iterator_next (iter))
+	{
+		ping_context_t *context;
+
+		context = ping_iterator_get_context (iter);
+
+		printf ("\n--- %s ping statistics ---\n"
+				"%i packets transmitted, %i received, %.2f%% packet loss, time %.1fms\n",
+				context->host, context->req_sent, context->req_rcvd,
+				100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
+				context->latency_total);
+
+		if (context->req_rcvd != 0)
+		{
+			double num_total;
+			double average;
+			double deviation;
+
+			num_total = (double) context->req_rcvd;
+
+			average = context->latency_total / num_total;
+			deviation = sqrt (((num_total * context->latency_total_square) - (context->latency_total * context->latency_total))
+					/ (num_total * (num_total - 1.0)));
+
+			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
+					context->latency_min,
+					average,
+					context->latency_max,
+					deviation);
+		}
+
+		ping_iterator_set_context (iter, NULL);
+		context_destroy (context);
+	}
+
+	return (0);
+} /* }}} int print_footer */
+
+int main (int argc, char **argv) /* {{{ */
 {
 	pingobj_t      *ping;
 	pingobj_iter_t *iter;
@@ -526,32 +608,7 @@ int main (int argc, char **argv)
 	saved_set_uid = (uid_t) -1;
 #endif
 
-	i = 0;
-	for (iter = ping_iterator_get (ping);
-			iter != NULL;
-			iter = ping_iterator_next (iter))
-	{
-		ping_context_t *context;
-		size_t buffer_size;
-
-		context = context_create ();
-
-		buffer_size = sizeof (context->host);
-		ping_iterator_get_info (iter, PING_INFO_HOSTNAME, context->host, &buffer_size);
-
-		buffer_size = sizeof (context->addr);
-		ping_iterator_get_info (iter, PING_INFO_ADDRESS, context->addr, &buffer_size);
-
-		buffer_size = 0;
-		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
-
-		printf ("PING %s (%s) %zu bytes of data.\n",
-				context->host, context->addr, buffer_size);
-
-		ping_iterator_set_context (iter, (void *) context);
-
-		i++;
-	}
+	print_header (ping);
 
 	if (i == 0)
 		return (1);
@@ -620,44 +677,11 @@ int main (int argc, char **argv)
 			opt_count--;
 	} /* while (opt_count != 0) */
 
-	for (iter = ping_iterator_get (ping);
-			iter != NULL;
-			iter = ping_iterator_next (iter))
-	{
-		ping_context_t *context;
-
-		context = ping_iterator_get_context (iter);
-
-		printf ("\n--- %s ping statistics ---\n"
-				"%i packets transmitted, %i received, %.2f%% packet loss, time %.1fms\n",
-				context->host, context->req_sent, context->req_rcvd,
-				100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
-				context->latency_total);
-
-		if (context->req_rcvd != 0)
-		{
-			double num_total;
-			double average;
-			double deviation;
-
-			num_total = (double) context->req_rcvd;
-
-			average = context->latency_total / num_total;
-			deviation = sqrt (((num_total * context->latency_total_square) - (context->latency_total * context->latency_total))
-					/ (num_total * (num_total - 1.0)));
-
-			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
-					context->latency_min,
-					average,
-					context->latency_max,
-					deviation);
-		}
-
-		ping_iterator_set_context (iter, NULL);
-		context_destroy (context);
-	}
+	print_footer (ping);
 
 	ping_destroy (ping);
 
 	return (0);
-}
+} /* }}} int main */
+
+/* vim: set fdm=marker : */
