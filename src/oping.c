@@ -102,13 +102,13 @@ static int     opt_send_ttl   = 64;
 static WINDOW *main_win = NULL;
 #endif
 
-static void sigint_handler (int signal)
+static void sigint_handler (int signal) /* {{{ */
 {
 	/* Make compiler happy */
 	signal = 0;
 	/* Exit the loop */
 	opt_count = 0;
-}
+} /* }}} void sigint_handler */
 
 static ping_context_t *context_create (void)
 {
@@ -179,6 +179,18 @@ static double context_get_stddev (ping_context_t *ctx) /* {{{ */
 				/ (num_total * (num_total - 1.0))));
 } /* }}} double context_get_stddev */
 
+static double context_get_packet_loss (const ping_context_t *ctx) /* {{{ */
+{
+	if (ctx == NULL)
+		return (-1.0);
+
+	if (ctx->req_sent < 1)
+		return (0.0);
+
+	return (100.0 * (ctx->req_sent - ctx->req_rcvd)
+			/ ((double) ctx->req_sent));
+} /* }}} double context_get_packet_loss */
+
 static void usage_exit (const char *name, int status)
 {
 	int name_length;
@@ -204,7 +216,7 @@ static void usage_exit (const char *name, int status)
 	exit (status);
 }
 
-static int read_options (int argc, char **argv)
+static int read_options (int argc, char **argv) /* {{{ */
 {
 	int optchar;
 
@@ -286,7 +298,7 @@ static int read_options (int argc, char **argv)
 	}
 
 	return (optind);
-}
+} /* }}} read_options */
 
 static void print_host (pingobj_iter_t *iter)
 {
@@ -504,7 +516,7 @@ static int print_footer (pingobj_t *ping)
 		printf ("\n--- %s ping statistics ---\n"
 				"%i packets transmitted, %i received, %.2f%% packet loss, time %.1fms\n",
 				context->host, context->req_sent, context->req_rcvd,
-				100.0 * (context->req_sent - context->req_rcvd) / ((double) context->req_sent),
+				context_get_packet_loss (context),
 				context->latency_total);
 
 		if (context->req_rcvd != 0)
