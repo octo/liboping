@@ -81,6 +81,7 @@ typedef struct ping_context
 	char host[NI_MAXHOST];
 	char addr[NI_MAXHOST];
 
+	int index;
 	int req_sent;
 	int req_rcvd;
 
@@ -102,6 +103,8 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 
+static int host_num = 0;
+
 #if USE_NCURSES
 static WINDOW *main_win = NULL;
 #endif
@@ -114,7 +117,7 @@ static void sigint_handler (int signal) /* {{{ */
 	opt_count = 0;
 } /* }}} void sigint_handler */
 
-static ping_context_t *context_create (void)
+static ping_context_t *context_create (void) /* {{{ */
 {
 	ping_context_t *ret;
 
@@ -133,9 +136,9 @@ static ping_context_t *context_create (void)
 #endif
 
 	return (ret);
-}
+} /* }}} ping_context_t *context_create */
 
-static void context_destroy (ping_context_t *context)
+static void context_destroy (ping_context_t *context) /* {{{ */
 {
 	if (context == NULL)
 		return;
@@ -149,7 +152,7 @@ static void context_destroy (ping_context_t *context)
 #endif
 
 	free (context);
-}
+} /* }}} void context_destroy */
 
 static double context_get_average (ping_context_t *ctx) /* {{{ */
 {
@@ -195,7 +198,40 @@ static double context_get_packet_loss (const ping_context_t *ctx) /* {{{ */
 			/ ((double) ctx->req_sent));
 } /* }}} double context_get_packet_loss */
 
-static void usage_exit (const char *name, int status)
+static int ping_initialize_contexts (pingobj_t *ping) /* {{{ */
+{
+	pingobj_iter_t *iter;
+	int index;
+
+	if (ping == NULL)
+		return (EINVAL);
+
+	index = 0;
+	for (iter = ping_iterator_get (ping);
+			iter != NULL;
+			iter = ping_iterator_next (iter))
+	{
+		ping_context_t *context;
+		size_t buffer_size;
+
+		context = context_create ();
+		context->index = index;
+
+		buffer_size = sizeof (context->host);
+		ping_iterator_get_info (iter, PING_INFO_HOSTNAME, context->host, &buffer_size);
+
+		buffer_size = sizeof (context->addr);
+		ping_iterator_get_info (iter, PING_INFO_ADDRESS, context->addr, &buffer_size);
+
+		ping_iterator_set_context (iter, (void *) context);
+
+		index++;
+	}
+
+	return (0);
+} /* }}} int ping_initialize_contexts */
+
+static void usage_exit (const char *name, int status) /* {{{ */
 {
 	int name_length;
 
@@ -218,7 +254,7 @@ static void usage_exit (const char *name, int status)
 			"for contributions see `AUTHORS'\n",
 			name);
 	exit (status);
-}
+} /* }}} void usage_exit */
 
 static int read_options (int argc, char **argv) /* {{{ */
 {
@@ -352,21 +388,12 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
-static int context_window_repaint (ping_context_t *ctx, /* {{{ */
-		int index)
+static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
 {
-	if (ctx == NULL)
+	if ((ctx == NULL) || (ctx->window == NULL))
 		return (EINVAL);
 
-	if (ctx->window == NULL)
-	{
-		ctx->window = newwin (/* height = */ 4, /* width = */ 0,
-				/* start y = */ 4 * index, /* start x = */ 0);
-	}
-	else /* if (ctx->window != NULL) */
-	{
-		werase (ctx->window);
-	}
+	werase (ctx->window);
 
 	box (ctx->window, 0, 0);
 	wattron (ctx->window, A_BOLD);
@@ -399,14 +426,61 @@ static int context_window_repaint (ping_context_t *ctx, /* {{{ */
 	wrefresh (ctx->window);
 
 	return (0);
-} /* }}} int context_window_repaint */
+} /* }}} int update_stats_from_context */
 
-static int resize_windows (pingobj_t *ping) /* {{{ */
+static int on_resize (pingobj_t *ping) /* {{{ */
 {
-	int index;
 	pingobj_iter_t *iter;
 	int width = 0;
 	int height = 0;
+	int main_win_height;
+
+	getmaxyx (stdscr, height, width);
+	if ((height < 1) || (width < 1))
+		return (EINVAL);
+
+	main_win_height = height - (4 * host_num);
+#if 1
+	wresize (main_win, main_win_height, /* width = */ 0);
+#else
+	delwin (main_win);
+	main_win = newwin (/* height = */ main_win_height,
+			/* width = */ 0,
+			/* y = */ 0, /* x = */ 0);
+#endif
+	/* Allow scrolling */
+	scrollok (main_win, TRUE);
+	/* wsetscrreg (main_win, 0, main_win_height - 1); */
+	/* Allow hardware accelerated scrolling. */
+	idlok (main_win, TRUE);
+	wrefresh (main_win);
+
+	for (iter = ping_iterator_get (ping);
+			iter != NULL;
+			iter = ping_iterator_next (iter))
+	{
+		ping_context_t *context;
+
+		context = ping_iterator_get_context (iter);
+		if (context == NULL)
+			continue;
+
+		if (context->window != NULL)
+		{
+			delwin (context->window);
+			context->window = NULL;
+		}
+		context->window = newwin (/* height = */ 4,
+				/* width = */ 0,
+				/* y = */ main_win_height + (4 * context->index),
+				/* x = */ 0);
+	}
+
+	return (0);
+} /* }}} */
+
+static int check_resize (pingobj_t *ping) /* {{{ */
+{
 	int need_resize = 0;
 
 	while (42)
@@ -418,45 +492,132 @@ static int resize_windows (pingobj_t *ping) /* {{{ */
 			need_resize = 1;
 	}
 
-	if (!need_resize)
+	if (need_resize)
+		return (on_resize (ping));
+	else
 		return (0);
+} /* }}} int check_resize */
+
+static int pre_loop_hook (pingobj_t *ping) /* {{{ */
+{
+	pingobj_iter_t *iter;
+	int width = 0;
+	int height = 0;
+	int main_win_height;
+
+	initscr ();
+	cbreak ();
+	noecho ();
+	nodelay (stdscr, TRUE);
 
 	getmaxyx (stdscr, height, width);
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-	index = 0;
+	if (has_colors () == TRUE)
+	{
+		start_color ();
+		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
+		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
+		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
+	}
+
+	main_win_height = height - (4 * host_num);
+	main_win = newwin (/* height = */ main_win_height,
+			/* width = */ 0,
+			/* y = */ 0, /* x = */ 0);
+	/* Allow scrolling */
+	scrollok (main_win, TRUE);
+	/* wsetscrreg (main_win, 0, main_win_height - 1); */
+	/* Allow hardware accelerated scrolling. */
+	idlok (main_win, TRUE);
+	wmove (main_win, /* y = */ main_win_height - 1, /* x = */ 0);
+	wrefresh (main_win);
+
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
 			iter = ping_iterator_next (iter))
 	{
-		ping_context_t *ctx = ping_iterator_get_context (iter);
+		ping_context_t *context;
 
-		if (ctx->window == NULL)
-		{
-			index++;
+		context = ping_iterator_get_context (iter);
+		if (context == NULL)
 			continue;
+
+		if (context->window != NULL)
+		{
+			delwin (context->window);
+			context->window = NULL;
 		}
-
-		wresize (ctx->window, 4, width);
-		context_window_repaint (ctx, index);
-
-		index++;
+		context->window = newwin (/* height = */ 4,
+				/* width = */ 0,
+				/* y = */ main_win_height + (4 * context->index),
+				/* x = */ 0);
 	}
 
-	if (main_win != NULL)
+
+	/* Don't know what good this does exactly, but without this code
+	 * "check_resize" will be called right after startup and *somehow*
+	 * this leads to display errors. If we purge all initial characters
+	 * here, the problem goes away. "wgetch" is non-blocking due to
+	 * "nodelay" (see above). */
+	while (wgetch (stdscr) != ERR)
 	{
-		wresize (main_win, height - (4 * index), width);
-		/* touchwin (main_win); */
-		/* wrefresh (main_win); */
-		clearok (main_win, TRUE);
+		/* eat up characters */;
 	}
 
 	return (0);
-} /* }}} int resize_windows */
+} /* }}} int pre_loop_hook */
+
+static int pre_sleep_hook (pingobj_t *ping) /* {{{ */
+{
+	return (check_resize (ping));
+} /* }}} int pre_sleep_hook */
+
+static int post_sleep_hook (pingobj_t *ping) /* {{{ */
+{
+	return (check_resize (ping));
+} /* }}} int pre_sleep_hook */
+#else /* if !USE_NCURSES */
+static int pre_loop_hook (pingobj_t *ping) /* {{{ */
+{
+	pingobj_iter_t *iter;
+
+	for (iter = ping_iterator_get (ping);
+			iter != NULL;
+			iter = ping_iterator_next (iter))
+	{
+		ping_context_t *ctx;
+		size_t buffer_size;
+
+		ctx = ping_iterator_get_context (iter);
+		if (ctx == NULL)
+			continue;
+
+		buffer_size = 0;
+		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
+
+		printf ("PING %s (%s) %zu bytes of data.\n",
+				ctx->host, ctx->addr, buffer_size);
+	}
+
+	return (0);
+} /* }}} int pre_loop_hook */
+
+static int pre_sleep_hook (__attribute__((unused)) pingobj_t *ping) /* {{{ */
+{
+	fflush (stdout);
+
+	return (0);
+} /* }}} int pre_sleep_hook */
+
+static int post_sleep_hook (__attribute__((unused)) pingobj_t *ping) /* {{{ */
+{
+	return (0);
+} /* }}} int post_sleep_hook */
 #endif
 
-static void print_host (pingobj_iter_t *iter, /* {{{ */
+static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		int index)
 {
 	double          latency;
@@ -565,85 +726,12 @@ static void print_host (pingobj_iter_t *iter, /* {{{ */
 	}
 
 #if USE_NCURSES
-	context_window_repaint (context, index);
+	update_stats_from_context (context);
 	wrefresh (main_win);
 #endif
-} /* }}} void print_host */
+} /* }}} void update_host_hook */
 
-static int print_header (pingobj_t *ping) /* {{{ */
-{
-	pingobj_iter_t *iter;
-	int index;
-
-#if USE_NCURSES
-	initscr ();
-	cbreak ();
-	noecho ();
-	nodelay (stdscr, TRUE);
-
-	if (has_colors () == TRUE)
-	{
-		start_color ();
-		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
-		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
-		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
-	}
-#endif
-
-	index = 0;
-	for (iter = ping_iterator_get (ping);
-			iter != NULL;
-			iter = ping_iterator_next (iter))
-	{
-		ping_context_t *context;
-		size_t buffer_size;
-
-		context = context_create ();
-
-		buffer_size = sizeof (context->host);
-		ping_iterator_get_info (iter, PING_INFO_HOSTNAME, context->host, &buffer_size);
-
-		buffer_size = sizeof (context->addr);
-		ping_iterator_get_info (iter, PING_INFO_ADDRESS, context->addr, &buffer_size);
-
-		buffer_size = 0;
-		ping_iterator_get_info (iter, PING_INFO_DATA, NULL, &buffer_size);
-
-#if USE_NCURSES
-		context_window_repaint (context, index);
-#else /* !USE_NCURSES */
-		printf ("PING %s (%s) %zu bytes of data.\n",
-				context->host, context->addr, buffer_size);
-#endif
-
-		ping_iterator_set_context (iter, (void *) context);
-
-		index++;
-	}
-
-#if USE_NCURSES
-	main_win = newwin (/* height = */ 0, /* width = */ 0,
-			/* y = */ 4 * index, /* x = */ 0);
-	/* Allow scrolling */
-	scrollok (main_win, TRUE);
-	/* Allow hardware accelerated scrolling. */
-	idlok (main_win, TRUE);
-
-	/* Don't know what good this does exactly, but without this code
-	 * "resize_windows" will be called right after startup and *somehow*
-	 * this leads to display errors. If we purge all initial characters
-	 * here, the problem goes away. "wgetch" is non-blocking due to
-	 * "nodelay" (see above). */
-	while (wgetch (stdscr) != ERR)
-	{
-		/* eat up characters */;
-	}
-#endif
-
-	return (0);
-} /* }}} int print_header */
-
-static int print_footer (pingobj_t *ping) /* {{{ */
+static int post_loop_hook (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
 
@@ -685,7 +773,7 @@ static int print_footer (pingobj_t *ping) /* {{{ */
 	}
 
 	return (0);
-} /* }}} int print_footer */
+} /* }}} int post_loop_hook */
 
 int main (int argc, char **argv) /* {{{ */
 {
@@ -831,6 +919,10 @@ int main (int argc, char **argv) /* {{{ */
 				fprintf (stderr, "Adding host `%s' failed: %s\n", host, errmsg);
 				continue;
 			}
+			else
+			{
+				host_num++;
+			}
 		}
 
 #if _POSIX_SAVED_IDS
@@ -867,6 +959,10 @@ int main (int argc, char **argv) /* {{{ */
 			fprintf (stderr, "Adding host `%s' failed: %s\n", argv[i], errmsg);
 			continue;
 		}
+		else
+		{
+			host_num++;
+		}
 	}
 
 	/* Permanently drop root privileges if we're setuid-root. */
@@ -882,7 +978,7 @@ int main (int argc, char **argv) /* {{{ */
 	saved_set_uid = (uid_t) -1;
 #endif
 
-	print_header (ping);
+	ping_initialize_contexts (ping);
 
 	if (i == 0)
 		return (1);
@@ -894,6 +990,8 @@ int main (int argc, char **argv) /* {{{ */
 		perror ("sigaction");
 		return (1);
 	}
+
+	pre_loop_hook (ping);
 
 	while (opt_count != 0)
 	{
@@ -918,12 +1016,11 @@ int main (int argc, char **argv) /* {{{ */
 				iter != NULL;
 				iter = ping_iterator_next (iter))
 		{
-			print_host (iter, index);
+			update_host_hook (iter, index);
 			index++;
 		}
-#if !USE_NCURSES
-		fflush (stdout);
-#endif
+
+		pre_sleep_hook (ping);
 
 		/* Don't sleep in the last iteration */
 		if (opt_count == 1)
@@ -950,21 +1047,15 @@ int main (int argc, char **argv) /* {{{ */
 				/* sigint */
 				break;
 			}
-
-#if USE_NCURSES
-			resize_windows (ping);
-#endif
 		}
 
-#if USE_NCURSES
-		resize_windows (ping);
-#endif
+		post_sleep_hook (ping);
 
 		if (opt_count > 0)
 			opt_count--;
 	} /* while (opt_count != 0) */
 
-	print_footer (ping);
+	post_loop_hook (ping);
 
 	ping_destroy (ping);
 
