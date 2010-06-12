@@ -440,14 +440,7 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 		return (EINVAL);
 
 	main_win_height = height - (4 * host_num);
-#if 1
-	wresize (main_win, main_win_height, /* width = */ 0);
-#else
-	delwin (main_win);
-	main_win = newwin (/* height = */ main_win_height,
-			/* width = */ 0,
-			/* y = */ 0, /* x = */ 0);
-#endif
+	wresize (main_win, main_win_height, /* width = */ width);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
 	/* wsetscrreg (main_win, 0, main_win_height - 1); */
