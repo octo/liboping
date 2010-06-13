@@ -12,7 +12,7 @@ Vcs-Browser: http://git.tokkee.org/?p=pkg-liboping.git
 Package: liboping-dev
 Section: libdevel
 Architecture: any
-Depends: liboping0 (= ${binary:Version})
+Depends: liboping0 (= ${binary:Version}), ${misc:Depends}
 Conflicts: liboping0-dev
 Replaces: liboping0-dev
 Description: C/C++ library to generate ICMP ECHO_REQUESTs (development files)
@@ -23,7 +23,7 @@ Description: C/C++ library to generate ICMP ECHO_REQUESTs (development files)
 
 Package: liboping0
 Architecture: any
-Depends: ${shlibs:Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
 Description: C/C++ library to generate ICMP ECHO_REQUESTs
  liboping features pinging multiple hosts in parallel using IPv4 or IPv6
  transparently. The interface is object oriented.
@@ -33,7 +33,8 @@ Description: C/C++ library to generate ICMP ECHO_REQUESTs
 Package: oping
 Section: net
 Architecture: any
-Depends: ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version})
+Depends: ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version}),
+ ${misc:Depends}
 Description: sends ICMP_ECHO requests to network hosts
  oping uses ICMP packages (better known as "ping packets") to test the
  reachability of network hosts. It supports pinging multiple hosts in parallel
@@ -42,7 +43,8 @@ Description: sends ICMP_ECHO requests to network hosts
 Package: libnet-oping-perl
 Section: perl
 Architecture: any
-Depends: ${perl:Depends}, ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version})
+Depends: ${perl:Depends}, ${shlibs:Depends},
+ liboping0 (>= ${source:Upstream-Version}), ${misc:Depends}
 Description: module for ICMP latency measurement
  Net::Oping is a Perl module for sending ICMP ECHO_REQUESTs (better known as
  "ping packets") and measuring the time that elapses until the reception of an

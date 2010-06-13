@@ -5,8 +5,9 @@ liboping (1.4.0-1) unstable; urgency=low
     - Updated standards-version to 3.8.4 -- no changes.
     - Build-depend on libncurses5-dev, required by the new "noping" ncurses
       front-end to liboping.
+    - Let all packages depend on ${misc:Depends} as recommended by debhelper.
 
- -- Sebastian Harl <tokkee@debian.org>  Mon, 14 Jun 2010 00:22:45 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Mon, 14 Jun 2010 00:29:13 +0200
 
 liboping (1.3.4-1) unstable; urgency=low
 
