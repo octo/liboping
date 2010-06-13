@@ -1,4 +1,4 @@
-AC_INIT(liboping, 1.3.4)
+AC_INIT(liboping, 1.4.0)
 AC_CONFIG_SRCDIR(src/liboping.c)
 AC_CONFIG_HEADERS(src/config.h)
 AM_INIT_AUTOMAKE(dist-bzip2)
