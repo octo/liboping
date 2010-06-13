@@ -73,6 +73,22 @@ I<oping> is installed with the SUID-bit.
 
 =back
 
+=head1 COLORS
+
+If supported by the terminal, I<noping> will highlight the round-trip times
+(RTT) using the colors green, yellow and red. Green signals RTTs that are in
+the "expected" range, yellow marks moderately unusual times and times that
+differ a lot from the expected value are printed in red.
+
+The information used to categorize round-trip times is the I<average>
+round-trip time and the I<standard deviation>. RTTs that differ from the
+average by less than the standard deviation are considered to be "normal" and
+are printed in green. Times that differ from the average more than the standard
+deviation but less than twice the standard deviation are considered "moderately
+unusual" and are printed in yellow. Times differing more than twice the
+standard deviation from the average are considered to be "unusual" and are
+printed in red.
+
 =head1 SEE ALSO
 
 L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
