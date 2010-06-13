@@ -8,14 +8,22 @@ B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] I<host> [I<host> [
 
 B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] B<-f> I<filename>
 
+B<noping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] I<host> [I<host> [I<host> ...]]
+
+B<noping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] B<-f> I<filename>
+
 =head1 DESCRIPTION
 
-oping uses ICMPv4 or ICMPv6 ECHO_REQUEST packets to measure a hosts
+B<oping> uses ICMPv4 or ICMPv6 ECHO_REQUEST packets to measure a hosts
 reachability and the network latency. In contrast to the original L<ping(8)>
 utility B<oping> can send ICMP packets to multiple hosts in parallel and wait
-for all ECHO_RESPONSE packets to arrive. In contrast to the
-B<fping> utility (URL is listed in L<"SEE ALSO">) B<oping> can use both, IPv4
-and IPv6 transparently and side by side.
+for all ECHO_RESPONSE packets to arrive. In contrast to the B<fping> utility
+(URL is listed in L<"SEE ALSO">) B<oping> can use both, IPv4 and IPv6
+transparently and side by side.
+
+B<noping> is an ncurses-based front-end to I<liboping> which displays ping
+statistics online and highlights aberrant round-trip times if the terminal
+supports colors.
 
 =head1 OPTIONS
 
@@ -74,4 +82,4 @@ L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
 Its homepage can be found at L<http://verplant.org/liboping/>.
 
-(c) 2005-2009 by Florian octo Forster.
+(c) 2005-2010 by Florian octo Forster.
