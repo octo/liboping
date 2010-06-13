@@ -63,6 +63,7 @@
 #endif
 
 #if USE_NCURSES
+# define NCURSES_OPAQUE 1
 # include <ncurses.h>
 
 # define OPING_GREEN 1
