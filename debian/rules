@@ -77,7 +77,7 @@ install: build
 	
 	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
 	
-	chmod u+s debian/tmp/usr/bin/oping
+	chmod u+s debian/tmp/usr/bin/oping debian/tmp/usr/bin/noping
 	mkdir -p debian/oping/usr/share/lintian/overrides/
 	cp debian/oping.overrides debian/oping/usr/share/lintian/overrides/oping
 	
@@ -98,7 +98,7 @@ binary-arch: build install
 	dh_link
 	dh_strip
 	dh_compress
-	dh_fixperms -Xusr/bin/oping
+	dh_fixperms -Xusr/bin/oping -Xusr/bin/noping
 	dh_makeshlibs
 	dh_installdeb
 	dh_shlibdeps -ldebian/liboping0/usr/lib/

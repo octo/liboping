@@ -11,8 +11,10 @@ liboping (1.4.0-1) unstable; urgency=low
     - Added /usr/bin/noping.
   * debian/oping.links:
     - Make noping.8 be a symlink to oping.8.
+  * debian/rules, debian/oping.overrides:
+    - Install /usr/bin/noping setuid root and document that in overrides.
 
- -- Sebastian Harl <tokkee@debian.org>  Mon, 14 Jun 2010 23:32:26 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Tue, 15 Jun 2010 00:08:46 +0200
 
 liboping (1.3.4-1) unstable; urgency=low
 
