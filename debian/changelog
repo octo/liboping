@@ -9,8 +9,10 @@ liboping (1.4.0-1) unstable; urgency=low
     - Improved oping's package description.
   * debian/oping.install:
     - Added /usr/bin/noping.
+  * debian/oping.links:
+    - Make noping.8 be a symlink to oping.8.
 
- -- Sebastian Harl <tokkee@debian.org>  Mon, 14 Jun 2010 23:21:37 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Mon, 14 Jun 2010 23:32:26 +0200
 
 liboping (1.3.4-1) unstable; urgency=low
 
