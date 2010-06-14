@@ -38,7 +38,12 @@ Depends: ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version}),
 Description: sends ICMP_ECHO requests to network hosts
  oping uses ICMP packages (better known as "ping packets") to test the
  reachability of network hosts. It supports pinging multiple hosts in parallel
- using IPv4 or IPv6 transparently.
+ using IPv4 and/or IPv6 transparently.
+ .
+ This package contains two command line applications: "oping" is a replacement
+ for tools like ping(1), ping6(1) and fping(1). "noping" is an ncurses-based
+ tool which displays statistics while pinging and highlights aberrant
+ round-trip times.
 
 Package: libnet-oping-perl
 Section: perl
