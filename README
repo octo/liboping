@@ -35,6 +35,18 @@ Perl bindings
   “--without-perl-bindings”.
 
 
+Licensing terms
+━━━━━━━━━━━━━━━
+
+  liboping is licensed under the “GNU Lesser General Public License” (LGPL),
+  version 2.1 or later. The exact licensing terms can be found in the file
+  “COPYING” included in the source distribution of liboping.
+
+  The “oping” and “noping” utilities included in this package are licensed
+  under the “GNU General Public License” (GPL), version 2. The full licensing
+  terms can be found online at <http://www.gnu.org/licenses/gpl-2.0.html>.
+
+
 Author
 ━━━━━━
 
