@@ -29,6 +29,11 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 
+#ifdef BUILD_WITH_ARP
+#include <pcap.h>
+#include <libnet.h>
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -57,6 +62,73 @@ typedef struct pingobj pingobj_t;
 #define PING_DEF_TTL     255
 #define PING_DEF_AF      AF_UNSPEC
 #define PING_DEF_DATA    "Florian Forster <octo@verplant.org> http://verplant.org/"
+
+#ifndef ETH_ALEN
+#define ETH_ALEN 6
+#endif
+
+#ifndef IP_ALEN
+#define IP_ALEN 4
+#endif
+
+#define PING_ERRMSG_LEN 256
+
+#if WITH_DEBUG
+# define dprintf(...) printf ("%s[%4i]: %-20s: ", __FILE__, __LINE__, __FUNCTION__); printf (__VA_ARGS__)
+#else
+# define dprintf(...) /**/
+#endif
+
+struct pinghost
+{
+	/* username: name passed in by the user */
+	char                    *username;
+	/* hostname: name returned by the reverse lookup */
+	char                    *hostname;
+	struct sockaddr_storage *addr;
+	socklen_t                addrlen;
+	int                      addrfamily;
+	int                      fd;
+	int                      ident;
+	int                      sequence;
+	struct timeval          *timer;
+	double                   latency;
+	uint32_t                 dropped;
+	int                      recv_ttl;
+	char                    *data;
+#ifdef BUILD_WITH_ARP
+  int                      timeout_reached;
+#endif
+
+	void                    *context;
+
+	struct pinghost         *next;
+};
+
+struct pingobj
+{
+	double                   timeout;
+	int                      ttl;
+	int                      addrfamily;
+	char                    *data;
+
+	struct sockaddr         *srcaddr;
+	socklen_t                srcaddrlen;
+
+	char                    *device;
+
+	char                     errmsg[PING_ERRMSG_LEN];
+
+	pinghost_t              *head;
+	
+#ifdef BUILD_WITH_ARP
+  // arp
+  int                     use_arp;
+  pcap_t                  *pcap;
+  libnet_t                *ln;
+  uint8_t                 srcmac[ETH_ALEN];
+#endif
+};
 
 /*
  * Method definitions
@@ -91,6 +163,12 @@ const char *ping_get_error (pingobj_t *obj);
 
 void *ping_iterator_get_context (pingobj_iter_t *iter);
 void  ping_iterator_set_context (pingobj_iter_t *iter, void *context);
+
+#ifdef BUILD_WITH_ARP
+int ping_send_all_arp(pingobj_t *obj);
+int ping_receive_all_arp(pingobj_t *obj);
+int arp_init(pingobj_t *pingobj);
+#endif
 
 #ifdef __cplusplus
 }

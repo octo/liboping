@@ -69,6 +69,8 @@
 # include <netdb.h>
 #endif
 
+#include "oping.h"
+
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
 #endif
@@ -91,55 +93,6 @@
 # include <netinet/icmp6.h>
 #endif
 
-#include "oping.h"
-
-#if WITH_DEBUG
-# define dprintf(...) printf ("%s[%4i]: %-20s: ", __FILE__, __LINE__, __FUNCTION__); printf (__VA_ARGS__)
-#else
-# define dprintf(...) /**/
-#endif
-
-#define PING_ERRMSG_LEN 256
-
-struct pinghost
-{
-	/* username: name passed in by the user */
-	char                    *username;
-	/* hostname: name returned by the reverse lookup */
-	char                    *hostname;
-	struct sockaddr_storage *addr;
-	socklen_t                addrlen;
-	int                      addrfamily;
-	int                      fd;
-	int                      ident;
-	int                      sequence;
-	struct timeval          *timer;
-	double                   latency;
-	uint32_t                 dropped;
-	int                      recv_ttl;
-	char                    *data;
-
-	void                    *context;
-
-	struct pinghost         *next;
-};
-
-struct pingobj
-{
-	double                   timeout;
-	int                      ttl;
-	int                      addrfamily;
-	char                    *data;
-
-	struct sockaddr         *srcaddr;
-	socklen_t                srcaddrlen;
-
-	char                    *device;
-
-	char                     errmsg[PING_ERRMSG_LEN];
-
-	pinghost_t              *head;
-};
 
 /*
  * private (static) functions
@@ -540,8 +493,8 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 					cmsg->cmsg_level);
 		}
 	} /* }}} for (cmsg) */
-
-	if (ph->addrfamily == AF_INET)
+  
+  if (ph->addrfamily == AF_INET)
 	{
 		host = ping_receive_ipv4 (obj, payload_buffer, payload_buffer_len);
 		if (host == NULL)
@@ -790,7 +743,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	status = ping_sendto (obj, ph, buf, buflen);
 	if (status < 0)
 	{
-		perror ("ping_sendto");
+    // perror ("ping_sendto");
 		return (-1);
 	}
 
@@ -835,7 +788,7 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	status = ping_sendto (obj, ph, buf, buflen);
 	if (status < 0)
 	{
-		perror ("ping_sendto");
+    // perror ("ping_sendto");
 		return (-1);
 	}
 
@@ -1010,7 +963,7 @@ static void ping_free (pinghost_t *ph)
 
 	if (ph->data != NULL)
 		free (ph->data);
-
+  
 	free (ph);
 }
 
@@ -1066,6 +1019,15 @@ void ping_destroy (pingobj_t *obj)
 
 	if (obj->device != NULL)
 		free (obj->device);
+  
+#ifdef BUILD_WITH_ARP
+  // arp
+  if (obj->pcap != NULL)
+    pcap_close(obj->pcap);
+  
+  if (obj->ln != NULL)
+    libnet_destroy(obj->ln);
+#endif
 
 	free (obj);
 
@@ -1194,7 +1156,6 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 		case PING_OPT_DEVICE:
 		{
-#ifdef SO_BINDTODEVICE
 			char *device = strdup ((char *) value);
 
 			if (device == NULL)
@@ -1203,14 +1164,12 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				ret = -1;
 				break;
 			}
+			
+      dprintf("Device: %s\n", device);
 
 			if (obj->device != NULL)
 				free (obj->device);
 			obj->device = device;
-#else /* ! SO_BINDTODEVICE */
-			ping_set_errno (obj, ENOTSUP);
-			ret = -1;
-#endif /* ! SO_BINDTODEVICE */
 		} /* case PING_OPT_DEVICE */
 		break;
 
@@ -1229,12 +1188,25 @@ int ping_send (pingobj_t *obj)
 	if (obj == NULL)
 		return (-1);
 
-	if (ping_send_all (obj) < 0)
-		return (-1);
+#ifdef BUILD_WITH_ARP
+  if (obj->use_arp) {
+    if(ping_send_all_arp (obj) < 0)
+      return (-1);
+    
+    if ((ret = ping_receive_all_arp (obj)) < 0)
+      return (-2);
+  }
+  else {
+#endif
+    if (ping_send_all (obj) < 0)
+      return (-1);
 
-	if ((ret = ping_receive_all (obj)) < 0)
-		return (-2);
-
+    if ((ret = ping_receive_all (obj)) < 0)
+      return (-2);
+#ifdef BUILD_WITH_ARP
+  }
+#endif
+  
 	return (ret);
 }
 

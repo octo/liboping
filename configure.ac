@@ -196,6 +196,15 @@ AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" = "xyes")
 
 AC_FUNC_STRERROR_R
 
+AC_ARG_ENABLE(arp, [AS_HELP_STRING([--with-arp], [Enable arp ping support.])],
+[
+  if test "x$with_arp" = "xyes"
+  then
+  	AC_DEFINE(WITH_ARP, 1, [Define to 1 if you want to have arp ping support.])
+  fi
+], [])
+AM_CONDITIONAL(BUILD_WITH_ARP, test "x$with_arp" = "xyes")
+
 AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debugging output.])],
 [
 	if test "x$enable_debug" = "xyes"

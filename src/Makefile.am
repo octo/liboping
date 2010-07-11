@@ -29,7 +29,14 @@ if BUILD_WITH_LIBXNET
 liboping_la_LDFLAGS += -lxnet
 endif
 
+if BUILD_WITH_ARP
+liboping_la_LDFLAGS += -lpcap `libnet113-config --libs`
+liboping_la_CPPFLAGS = `libnet113-config --cflags` `libnet113-config --defines`
+
+liboping_la_SOURCES = oping.h liboping.c arp.c
+else
 liboping_la_SOURCES = oping.h liboping.c
+endif
 
 bin_PROGRAMS = oping
 
