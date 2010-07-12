@@ -214,6 +214,71 @@ AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debuggi
 ], [])
 AM_CONDITIONAL(BUILD_WITH_DEBUG, test "x$enable_debug" = "xyes")
 
+pcap_config_path="pcap-config"
+AC_ARG_WITH(pcap, [AS_HELP_STRING([--with-pcap@<:@=OPTIONS@:>@], [Set the path to the PCAP library.])],
+[
+	if test "x$withval" != "xno" && test "x$withval" != "xyes"
+	then
+		if test -x "$withval"
+		then
+			pcap_config_path="$withval"
+			with_pcap="yes"
+		else if test -x "$withval/bin/pcap-config"
+		then
+			pcap_config_path="$withval/bin/pcap-config"
+			with_pcap="yes"
+		else
+			AC_MSG_WARN([Argument of "--with-pcap" does not point to "pcap-config"]);
+			with_pcap="no"
+		fi; fi
+	fi
+], [with_pcap="yes"])
+
+if test "x$with_pcap" = "xyes"
+then
+	with_pcap_cppflags=`"$pcap_config_path" --cflags`
+	if test $? != 0
+	then
+		with_pcap="no"
+	fi
+fi
+
+if test "x$with_pcap" = "xyes"
+then
+	with_pcap_ldflags=`"$pcap_config_path" --libs`
+	if test $? != 0
+	then
+		with_pcap="no"
+	fi
+fi
+
+SAVE_CPPFLAGS="$CPPFLAGS"
+SAVE_LDFLAGS="$LDFLAGS"
+CPPFLAGS="$CPPFLAGS $with_pcap_cppflags"
+LDFLAGS="$LDFLAGS $with_pcap_ldflags"
+
+if test "x$with_pcap" = "xyes"
+then
+	AC_CHECK_HEADERS(pcap.h, [with_pcap="yes"], [with_pcap="no"])
+fi
+if test "x$with_pcap" = "xyes"
+then
+	AC_CHECK_LIB(pcap, pcap_open_live, [with_pcap="yes"], [with_pcap="no"])
+fi
+
+CPPFLAGS="$SAVE_CPPFLAGS"
+LDFLAGS="$SAVE_LDFLAGS"
+
+if test "x$with_pcap" = "xyes"
+then
+	WITH_PCAP_CPPFLAGS="$with_pcap_cppflags"
+	WITH_PCAP_LDFLAGS="$with_pcap_ldflags"
+	AC_SUBST(WITH_PCAP_CPPFLAGS)
+	AC_SUBST(WITH_PCAP_LDFLAGS)
+	AC_DEFINE(HAVE_LIBPCAP, 1, [Define to 1 if you have the pcap library.])
+fi
+AM_CONDITIONAL(BUILD_WITH_PCAP, test "x$with_pcap" = "xyes")
+
 AC_ARG_WITH(perl-bindings, [AS_HELP_STRING([--with-perl-bindings@<:@=OPTIONS@:>@], [Options passed to "perl Makefile.PL".])],
 [
 	if test "x$withval" != "xno" && test "x$withval" != "xyes"
