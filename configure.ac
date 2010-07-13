@@ -215,7 +215,7 @@ AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debuggi
 AM_CONDITIONAL(BUILD_WITH_DEBUG, test "x$enable_debug" = "xyes")
 
 pcap_config_path="pcap-config"
-AC_ARG_WITH(pcap, [AS_HELP_STRING([--with-pcap@<:@=OPTIONS@:>@], [Set the path to the PCAP library.])],
+AC_ARG_WITH(libpcap, [AS_HELP_STRING([--with-libpcap@<:@=OPTIONS@:>@], [Set the path to the PCAP library.])],
 [
 	if test "x$withval" != "xno" && test "x$withval" != "xyes"
 	then
@@ -271,13 +271,78 @@ LDFLAGS="$SAVE_LDFLAGS"
 
 if test "x$with_pcap" = "xyes"
 then
-	WITH_PCAP_CPPFLAGS="$with_pcap_cppflags"
-	WITH_PCAP_LDFLAGS="$with_pcap_ldflags"
-	AC_SUBST(WITH_PCAP_CPPFLAGS)
-	AC_SUBST(WITH_PCAP_LDFLAGS)
+	WITH_LIBPCAP_CPPFLAGS="$with_pcap_cppflags"
+	WITH_LIBPCAP_LDFLAGS="$with_pcap_ldflags"
+	AC_SUBST(WITH_LIBPCAP_CPPFLAGS)
+	AC_SUBST(WITH_LIBPCAP_LDFLAGS)
 	AC_DEFINE(HAVE_LIBPCAP, 1, [Define to 1 if you have the pcap library.])
 fi
-AM_CONDITIONAL(BUILD_WITH_PCAP, test "x$with_pcap" = "xyes")
+AM_CONDITIONAL(BUILD_WITH_LIBPCAP, test "x$with_pcap" = "xyes")
+
+libnet_config_path="libnet-config"
+AC_ARG_WITH(libnet, [AS_HELP_STRING([--with-libnet@<:@=OPTIONS@:>@], [Set the path to the libnet library.])],
+[
+	if test "x$withval" != "xno" && test "x$withval" != "xyes"
+	then
+		if test -x "$withval"
+		then
+			libnet_config_path="$withval"
+			with_libnet="yes"
+		else if test -x "$withval/bin/libnet-config"
+		then
+			libnet_config_path="$withval/bin/libnet-config"
+			with_libnet="yes"
+		else
+			AC_MSG_WARN([Argument of "--with-libnet" does not point to "libnet-config"]);
+			with_libnet="no"
+		fi; fi
+	fi
+], [with_libnet="yes"])
+
+if test "x$with_libnet" = "xyes"
+then
+	with_libnet_cppflags=`"$libnet_config_path" --cflags`
+	if test $? != 0
+	then
+		with_libnet="no"
+	fi
+fi
+
+if test "x$with_libnet" = "xyes"
+then
+	with_libnet_ldflags=`"$libnet_config_path" --libs`
+	if test $? != 0
+	then
+		with_libnet="no"
+	fi
+fi
+
+SAVE_CPPFLAGS="$CPPFLAGS"
+SAVE_LDFLAGS="$LDFLAGS"
+CPPFLAGS="$CPPFLAGS $with_libnet_cppflags"
+LDFLAGS="$LDFLAGS $with_libnet_ldflags"
+
+if test "x$with_libnet" = "xyes"
+then
+	AC_CHECK_HEADERS(libnet.h, [with_libnet="yes"], [with_libnet="no"])
+fi
+if test "x$with_libnet" = "xyes"
+then
+	AC_CHECK_LIB(net, libnet_init, [with_libnet="yes"], [with_libnet="no"])
+fi
+
+CPPFLAGS="$SAVE_CPPFLAGS"
+LDFLAGS="$SAVE_LDFLAGS"
+
+if test "x$with_libnet" = "xyes"
+then
+	WITH_LIBNET_CPPFLAGS="$with_libnet_cppflags"
+	WITH_LIBNET_LDFLAGS="$with_libnet_ldflags"
+	AC_SUBST(WITH_LIBNET_CPPFLAGS)
+	AC_SUBST(WITH_LIBNET_LDFLAGS)
+	AC_DEFINE(HAVE_LIBNET, 1, [Define to 1 if you have the libnet library.])
+fi
+AM_CONDITIONAL(BUILD_WITH_LIBNET, test "x$with_libnet" = "xyes")
 
 AC_ARG_WITH(perl-bindings, [AS_HELP_STRING([--with-perl-bindings@<:@=OPTIONS@:>@], [Options passed to "perl Makefile.PL".])],
 [
