@@ -21,30 +21,34 @@ lib_LTLIBRARIES = liboping.la
 #   set age to 0. 
 #
 # <http://www.gnu.org/software/libtool/manual/html_node/Updating-version-info.html>
-liboping_la_LDFLAGS = -version-info @LIBOPING_CURRENT@:@LIBOPING_REVISION@:@LIBOPING_AGE@
+liboping_la_SOURCES = oping.h liboping.c
+
+liboping_la_CPPFLAGS = $(AM_CPPFLAGS)
+liboping_la_LDFLAGS = $(AM_LDFLAGS) -version-info @LIBOPING_CURRENT@:@LIBOPING_REVISION@:@LIBOPING_AGE@
+liboping_la_LIBADD =
 if BUILD_WITH_LIBSOCKET
-liboping_la_LDFLAGS += -lsocket
+liboping_la_LIBADD += -lsocket
 endif
 if BUILD_WITH_LIBXNET
-liboping_la_LDFLAGS += -lxnet
+liboping_la_LIBADD += -lxnet
 endif
 
-if BUILD_WITH_ARP
-liboping_la_LDFLAGS += -lpcap `libnet113-config --libs`
-liboping_la_CPPFLAGS = `libnet113-config --cflags` `libnet113-config --defines`
+# Activate ARP stuff if libnet and libpcap are available.
+if BUILD_WITH_LIBNET
+if BUILD_WITH_LIBPCAP
+liboping_la_SOURCES += arp.c
 
-liboping_la_SOURCES = oping.h liboping.c arp.c
-else
-liboping_la_SOURCES = oping.h liboping.c
+liboping_la_CPPFLAGS += @WITH_LIBPCAP_CPPFLAGS@ @WITH_LIBNET_CPPFLAGS@
+liboping_la_LIBADD += @WITH_LIBPCAP_LDFLAGS@ @WITH_LIBNET_LDFLAGS@
+endif
 endif
 
 bin_PROGRAMS = oping
 
 oping_SOURCES = oping.c
-oping_LDADD = liboping.la
-oping_LDFLAGS = -lm
+oping_LDADD = liboping.la -lm
 if BUILD_WITH_LIBRT
-oping_LDFLAGS += -lrt
+oping_LDADD += -lrt
 endif
 
 if BUILD_WITH_LIBNCURSES
@@ -52,9 +56,8 @@ bin_PROGRAMS += noping
 
 noping_SOURCES = oping.c
 noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1
-noping_LDADD = liboping.la
-noping_LDFLAGS = -lm -lncurses
+noping_LDADD = liboping.la -lm -lncurses
 if BUILD_WITH_LIBRT
-noping_LDFLAGS += -lrt
+noping_LDADD += -lrt
 endif
 endif # BUILD_WITH_LIBNCURSES
