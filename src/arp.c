@@ -214,6 +214,11 @@ void arp_pings_recv(pingobj_t *pingobj) {
 int ping_send_all_arp(pingobj_t *obj) {
   pinghost_t *host;
   
+  // check if init is done
+  if( obj->ln == NULL ) {
+    arp_init(obj);
+  }
+  
   for(host = obj->head; host != NULL; host = host->next) {
     if( arp_ping_send(obj, host) < 0 ) {
       return -1;
