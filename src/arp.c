@@ -24,8 +24,6 @@
 // #define PCAP_FILTER "arp"
 // match arp reply packets sent to me originating from ip give
 // "arp && ether dst 00:16:cb:07:4d:da && src 192.168.0.138 && arp[7] = 0x02"
-// #define PCAP_FILTER "arp && ether dst %s && src %s && arp[7] = 0x02"
-// #define PCAP_FILTER_LEN 80
 #define PCAP_FILTER "arp && ether dst %02x:%02x:%02x:%02x:%02x:%02x && arp[7] = 0x02"
 #define PCAP_FILTER_LEN 60
 
