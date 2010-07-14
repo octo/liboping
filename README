@@ -24,6 +24,8 @@ Features
   • Support for IPv4 and IPv6.
 
   • Object oriented interface.
+  
+  • Support for ARP Ping
 
 
 Perl bindings
