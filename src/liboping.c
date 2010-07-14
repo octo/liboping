@@ -1051,6 +1051,15 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 				ret = -1;
 			}
 			break;
+		
+		case PING_OPT_ARP:
+#ifdef BUILD_WITH_ARP
+			obj->use_arp = *((int*) value);
+#else
+			ping_set_errno (obj, ENOTSUP);
+			ret = -1;
+#endif
+			break;
 
 		case PING_OPT_TTL:
 			obj->ttl = *((int *) value);
