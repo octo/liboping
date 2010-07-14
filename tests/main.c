@@ -17,11 +17,14 @@
 int main (int argc, char const *argv[])
 {
   pingobj_t       *ping;
-  pinghost_t      *ph;
+  pingobj_iter_t  *ph;
   struct ifaddrs  *addrs, *addr;
   char            *ip;
   bool            found = false;
+  int             enable_arp = 1;
   char            source_address[INET_ADDRSTRLEN + 1];
+  double          latency;
+  char            address[100];
   
   
   if( argc < 3 ) {
@@ -80,17 +83,27 @@ int main (int argc, char const *argv[])
     }
   }
   
-  if( arp_init(ping) < 0 ) {
-    FUNCTION_ERROR("arp_init failed\n");
+  if( ping_setopt(ping, PING_OPT_ARP, (void *) &enable_arp) != 0 ) {
+    FUNCTION_ERROR("Setting arp mode failed: %s\n", ping_get_error(ping));
   }
   
-  ping->use_arp = 1;
-  
   for(int i = 0; i< 4; i++) {
+    size_t len;
+    
     ping_send(ping);
-  
-    for( ph = ping->head; ph != NULL; ph = ph->next ) {
-      printf("latency [%s]: %f\n", inet_ntoa(((struct sockaddr_in *)ph->addr)->sin_addr), ph->latency * 1000);
+    
+    for( ph = ping_iterator_get(ping); ph != NULL; ph = ping_iterator_next(ph)) {
+      len = sizeof(latency);
+      ping_iterator_get_info(ph, PING_INFO_LATENCY, &latency, &len);
+      len = sizeof(address);
+      ping_iterator_get_info(ph, PING_INFO_ADDRESS, address, &len);
+      
+      if( latency != -1 ){
+        printf("latency [%s]: %f\n", address, latency * 1000);
+      }
+      else {
+        printf("latency [%s]: timeout\n", address);
+      }
     }
   }
   
