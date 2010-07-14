@@ -16,6 +16,7 @@
 
 int main (int argc, char const *argv[])
 {
+  int             i;
   pingobj_t       *ping;
   pingobj_iter_t  *ph;
   struct ifaddrs  *addrs, *addr;
@@ -77,7 +78,7 @@ int main (int argc, char const *argv[])
   }
   
   // add the hosts
-  for(int i= 2; i< argc; i++) {
+  for(i= 2; i< argc; i++) {
     if( ping_host_add(ping, argv[i]) < 0 ) {
       FUNCTION_ERROR("Unable to add host '%s' : %s\n", argv[i], ping_get_error(ping));
     }
@@ -87,7 +88,7 @@ int main (int argc, char const *argv[])
     FUNCTION_ERROR("Setting arp mode failed: %s\n", ping_get_error(ping));
   }
   
-  for(int i = 0; i< 4; i++) {
+  for(i = 0; i< 4; i++) {
     size_t len;
     
     ping_send(ping);
