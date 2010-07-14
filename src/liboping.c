@@ -744,7 +744,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	status = ping_sendto (obj, ph, buf, buflen);
 	if (status < 0)
 	{
-    // perror ("ping_sendto");
+		// perror ("ping_sendto");
 		return (-1);
 	}
 
@@ -789,7 +789,7 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	status = ping_sendto (obj, ph, buf, buflen);
 	if (status < 0)
 	{
-    // perror ("ping_sendto");
+		// perror ("ping_sendto");
 		return (-1);
 	}
 
@@ -1020,14 +1020,14 @@ void ping_destroy (pingobj_t *obj)
 
 	if (obj->device != NULL)
 		free (obj->device);
-  
+	
 #ifdef BUILD_WITH_ARP
-  // arp
-  if (obj->pcap != NULL)
-    pcap_close(obj->pcap);
-  
-  if (obj->ln != NULL)
-    libnet_destroy(obj->ln);
+	// arp
+	if (obj->pcap != NULL)
+		pcap_close(obj->pcap);
+	
+	if (obj->ln != NULL)
+		libnet_destroy(obj->ln);
 #endif
 
 	free (obj);
@@ -1199,24 +1199,24 @@ int ping_send (pingobj_t *obj)
 		return (-1);
 
 #ifdef BUILD_WITH_ARP
-  if (obj->use_arp) {
-    if(ping_send_all_arp (obj) < 0)
-      return (-1);
-    
-    if ((ret = ping_receive_all_arp (obj)) < 0)
-      return (-2);
-  }
-  else {
+	if (obj->use_arp) {
+		if(ping_send_all_arp (obj) < 0)
+			return (-1);
+		
+		if ((ret = ping_receive_all_arp (obj)) < 0)
+			return (-2);
+	}
+	else {
 #endif
-    if (ping_send_all (obj) < 0)
-      return (-1);
+		if (ping_send_all (obj) < 0)
+			return (-1);
 
-    if ((ret = ping_receive_all (obj)) < 0)
-      return (-2);
+		if ((ret = ping_receive_all (obj)) < 0)
+			return (-2);
 #ifdef BUILD_WITH_ARP
-  }
+	}
 #endif
-  
+	
 	return (ret);
 }
 
