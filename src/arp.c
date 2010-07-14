@@ -1,5 +1,6 @@
 
 #include "oping.h"
+#include "oping_private.h"
 
 
 // #define PCAP_FILTER "arp"

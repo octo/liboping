@@ -70,6 +70,7 @@
 #endif
 
 #include "oping.h"
+#include "oping_private.h"
 
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
