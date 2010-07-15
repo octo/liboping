@@ -1021,7 +1021,7 @@ void ping_destroy (pingobj_t *obj)
 	if (obj->device != NULL)
 		free (obj->device);
 	
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
 	// arp
 	if (obj->pcap != NULL)
 		pcap_close(obj->pcap);
@@ -1054,7 +1054,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			break;
 		
 		case PING_OPT_ARP:
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
 			obj->use_arp = *((int*) value);
 #else
 			ping_set_errno (obj, ENOTSUP);
@@ -1198,7 +1198,7 @@ int ping_send (pingobj_t *obj)
 	if (obj == NULL)
 		return (-1);
 
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
 	if (obj->use_arp) {
 		if(ping_send_all_arp (obj) < 0)
 			return (-1);
@@ -1213,7 +1213,7 @@ int ping_send (pingobj_t *obj)
 
 		if ((ret = ping_receive_all (obj)) < 0)
 			return (-2);
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
 	}
 #endif
 	

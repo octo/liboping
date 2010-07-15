@@ -41,7 +41,7 @@ struct pinghost
 	uint32_t                 dropped;
 	int                      recv_ttl;
 	char                    *data;
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
   int                      timeout_reached;
 #endif
 
@@ -66,7 +66,7 @@ struct pingobj
 
 	pinghost_t              *head;
 	
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
   // arp
   int                     use_arp;
   pcap_t                  *pcap;
@@ -75,7 +75,7 @@ struct pingobj
 #endif
 };
 
-#ifdef BUILD_WITH_ARP
+#ifdef ENABLE_ARP
 int ping_send_all_arp(pingobj_t *obj);
 int ping_receive_all_arp(pingobj_t *obj);
 int arp_init(pingobj_t *pingobj);

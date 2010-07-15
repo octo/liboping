@@ -34,13 +34,11 @@ liboping_la_LIBADD += -lxnet
 endif
 
 # Activate ARP stuff if libnet and libpcap are available.
-if BUILD_WITH_LIBNET
-if BUILD_WITH_LIBPCAP
+if BUILD_WITH_ARP
 liboping_la_SOURCES += arp.c
 
 liboping_la_CPPFLAGS += @WITH_LIBPCAP_CPPFLAGS@ @WITH_LIBNET_CPPFLAGS@
 liboping_la_LIBADD += @WITH_LIBPCAP_LDFLAGS@ @WITH_LIBNET_LDFLAGS@
-endif
 endif
 
 bin_PROGRAMS = oping

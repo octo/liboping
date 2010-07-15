@@ -196,15 +196,6 @@ AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" = "xyes")
 
 AC_FUNC_STRERROR_R
 
-AC_ARG_ENABLE(arp, [AS_HELP_STRING([--enable-arp], [Enable arp ping support.])],
-[
-  if test "x$with_arp" = "xyes"
-  then
-  	AC_DEFINE(WITH_ARP, 1, [Define to 1 if you want to have arp ping support.])
-  fi
-], [])
-AM_CONDITIONAL(BUILD_WITH_ARP, test "x$with_arp" = "xyes")
-
 AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debugging output.])],
 [
 	if test "x$enable_debug" = "xyes"
@@ -343,6 +334,21 @@ then
 	AC_DEFINE(HAVE_LIBNET, 1, [Define to 1 if you have the libnet library.])
 fi
 AM_CONDITIONAL(BUILD_WITH_LIBNET, test "x$with_libnet" = "xyes")
+
+AC_ARG_ENABLE(arp, [AS_HELP_STRING([--disable-arp], [Disable ARP ping support.])], [],
+[
+	if test "x$with_pcap" = "xyes" && test "x$with_libnet" = "xyes"
+	then
+		with_arp="yes"
+	else
+		with_arp="no"
+	fi
+])
+if test "x$with_arp" = "xyes"
+then
+	AC_DEFINE(ENABLE_ARP, 1, [Define to 1 if you want to have arp ping support.])
+fi
+AM_CONDITIONAL(BUILD_WITH_ARP, test "x$with_arp" = "xyes")
 
 AC_ARG_WITH(perl-bindings, [AS_HELP_STRING([--with-perl-bindings@<:@=OPTIONS@:>@], [Options passed to "perl Makefile.PL".])],
 [
