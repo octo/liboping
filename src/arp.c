@@ -17,122 +17,109 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
+
+#include <stdlib.h>
+
+#if HAVE_STDINT_H
+# include <stdint.h>
+#endif
+#if HAVE_INTTYPES_H
+# include <inttypes.h>
+#endif
+
 #include "oping.h"
 #include "oping_private.h"
 
+/*
+ * Private functions
+ */
+static int arp_ping_send(pingobj_t *pingobj, pinghost_t *ph) /* {{{ */
+{
+  uint8_t ethnull[ETH_ALEN];
+  uint8_t ethall[ETH_ALEN];
+  libnet_ptag_t status;
 
-/* #define PCAP_FILTER "arp" */
-/* match arp reply packets sent to me originating from ip give */
-/* "arp && ether dst 00:16:cb:07:4d:da && src 192.168.0.138 && arp[7] = 0x02" */
-#define PCAP_FILTER "arp && ether dst %02x:%02x:%02x:%02x:%02x:%02x && arp[7] = 0x02"
-#define PCAP_FILTER_LEN 60
+  /* sender's protocol address */
+  void *spa;
+  /* targer protocol address */
+  void *tpa;
 
-static uint8_t ethnull[ETH_ALEN];
-static uint8_t ethall[ETH_ALEN];
+  /* TODO: Check if this is an IPv4 address. If not, return an appropriate
+   * error. */
 
-/* initialize structure
- * must be called after ping_construct */
-int arp_init(pingobj_t *pingobj) {
-  struct bpf_program arp_p;
-  char pcap_filter[PCAP_FILTER_LEN];
-  char ebuf[PCAP_ERRBUF_SIZE] = "\0";
-  uint8_t *cp;
-  
-  bzero(ethnull, sizeof(ethnull));
-  memset(ethall, 0xff, ETH_ALEN);
-  
-  /* libnet init */
-  if( !(pingobj->ln = libnet_init(LIBNET_LINK_ADV, pingobj->device, ebuf)) ) {
-      dprintf("libnet_init: %s\n", ebuf);
-      return -1;
-  }
-  
-  /* get interface mac address */
-  cp = (uint8_t *) libnet_get_hwaddr(pingobj->ln);
-  if( cp == NULL ) {
-    dprintf("arping: libnet_get_hwaddr(): %s\n", libnet_geterror(pingobj->ln));
+  memset (ethnull, 0x00, sizeof (ethnull));
+  memset (ethall,  0xff, sizeof (ethall));
+
+  spa = &((struct sockaddr_in *) pingobj->srcaddr)->sin_addr;
+  tpa = &((struct sockaddr_in *) ph->addr)->sin_addr;
+
+  status = libnet_build_arp
+  (
+      /*   hardware address format */ ARPHRD_ETHER,
+      /*   protocol address format */ ETHERTYPE_IP,
+      /*   hardware address length */ ETH_ALEN,
+      /*   protocol address length */ IP_ALEN,
+      /*        ARP operation type */ ARPOP_REQUEST,
+      /* sender's hardware address */ pingobj->srcmac,
+      /* sender's protocol address */ spa,
+      /*   target hardware address */ ethnull,
+      /*   targer protocol address */ tpa,
+      /*                   payload */ (uint8_t *) ph->data,
+      /*            payload length */ (uint32_t) strlen (ph->data),
+      /*            libnet context */ pingobj->ln,
+      /*    build new protocol tag */ 0
+  );
+  if (status == -1)
+  {
+    dprintf("libnet_build_arp: %s", libnet_geterror(pingobj->ln));
     return -1;
   }
-  memcpy(pingobj->srcmac, cp, ETH_ALEN);
   
-  dprintf("mac address : %02x:%02x:%02x:%02x:%02x:%02x\n", 
-      cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]
-    );
-  
-  /* pcap init */
-  if( !(pingobj->pcap = pcap_open_live(pingobj->device, 100, 0, 10, ebuf)) ) {
-    dprintf("pcap_open_live failed: %s\n", ebuf);
+  status = libnet_build_ethernet
+  (
+      /* destination ethernet address */ ethall,
+      /*      source ethernet address */ pingobj->srcmac,
+      /*    upper layer protocol type */ ETHERTYPE_ARP,
+      /*                      payload */ NULL,
+      /*               payload length */ 0,
+      /*               libnet context */ pingobj->ln,
+      /*       build new protocol tag */ 0
+  );
+  if (status == -1)
+  {
+    dprintf("libnet_build_ethernet: %s", libnet_geterror(pingobj->ln));
     return -1;
   }
   
-  if( strlen(ebuf) ) dprintf("warning: %s\n", ebuf);
-  
-  snprintf(pcap_filter, PCAP_FILTER_LEN, PCAP_FILTER, cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
-  dprintf("pcap filter: %s\n", pcap_filter);
-  
-  /* compile pcap filter */
-  if( pcap_compile(pingobj->pcap, &arp_p, pcap_filter, 0, -1) == -1 ) {
-      dprintf("pcap_compile(): %s\n", pcap_geterr(pingobj->pcap));
-      return -1;
-  }
-  
-  if( pcap_setfilter(pingobj->pcap, &arp_p) == -1 ) {
-      dprintf("pcap_setfilter(): %s\n", pcap_geterr(pingobj->pcap));
-      return -1;
-  }
-  
-  return 0;
-}
-
-/* below: to rewrite */
-
-int arp_ping_send(pingobj_t *pingobj, pinghost_t *ph) {
-  
-  if( libnet_build_arp(ARPHRD_ETHER, ETHERTYPE_IP, ETH_ALEN, IP_ALEN, ARPOP_REQUEST,
-      (uint8_t *) pingobj->srcmac,                              /* src mac address */
-      (uint8_t *) &((struct sockaddr_in *) pingobj->srcaddr)->sin_addr,                   /* src ip address */
-      ethnull,                                                  /* dst mac address */
-      (uint8_t *) &(((struct sockaddr_in *) ph->addr)->sin_addr),   /* dest ip address */
-      (u_int8_t *) ph->data,                                                 /* payload */
-      strlen(ph->data),                                         /* payload size */
-      pingobj->ln,
-      0                                                         /* build new packet */
-      ) == -1) {
-        dprintf("libnet_build_arp: %s", libnet_geterror(pingobj->ln));
-        return -1;
-  }
-  
-  if( libnet_build_ethernet(
-      ethall,                         /* dest mac address */
-      (uint8_t *) pingobj->srcmac,    /* src mac address */
-      ETHERTYPE_ARP, NULL, 0, pingobj->ln, 0) == -1) {
-        dprintf("libnet_build_ethernet: %s", libnet_geterror(pingobj->ln));
-        return -1;
-  }
-  
-  if( gettimeofday(ph->timer, NULL) == -1 ) {
-    timerclear( ph->timer );
+  if (gettimeofday (ph->timer, NULL) == -1)
+  {
+    timerclear (ph->timer);
+    libnet_clear_packet (pingobj->ln);
     return -1;
   }
   
   ph->latency = -1.0;
   
   /* send packet */
-  if( libnet_write(pingobj->ln) == -1 ) {
-    dprintf("libnet_write: %s", libnet_geterror(pingobj->ln));
+  if (libnet_write(pingobj->ln) == -1)
+  {
+    libnet_clear_packet(pingobj->ln);
+    dprintf ("libnet_write: %s", libnet_geterror(pingobj->ln));
     return -1;
   }
   
   libnet_clear_packet(pingobj->ln);
   return 0;
-}
+} /* }}} int arp_ping_send */
 
 /* wait for all the answers
  * return conditions:
  * - all answers received
  * - timeout reached
  */
-void arp_pings_recv(pingobj_t *pingobj) {
+static void arp_pings_recv(pingobj_t *pingobj) /* {{{ */
+{
   const uint8_t               *data;
   struct pcap_pkthdr          pkthdr;
   pinghost_t                  *host;
@@ -203,7 +190,84 @@ void arp_pings_recv(pingobj_t *pingobj) {
     if( break_loop )
       break;
   }
-}
+} /* }}} void arp_pings_recv */
+
+/*
+ * Semi-public functions
+ * (can be called from liboping.c)
+ */
+int ping_construct_arp (pingobj_t *pingobj) /* {{{ */
+{
+  struct bpf_program arp_p;
+  char mac_addr[20];
+  char pcap_filter[256];
+  char ebuf[PCAP_ERRBUF_SIZE];
+  uint8_t *cp;
+
+  if (pingobj == NULL)
+    return (EINVAL);
+
+  /* Initialize the pointers only used here. The "memset (0)" in
+   * "ping_construct" may not initialize them to NULL. */
+  pingobj->pcap = NULL;
+  pingobj->ln = NULL;
+
+  memset (ebuf, 0, sizeof (ebuf));
+  
+  /* libnet init */
+  pingobj->ln = libnet_init(LIBNET_LINK_ADV, pingobj->device, ebuf);
+  if(pingobj->ln == NULL)
+  {
+    dprintf("libnet_init: %s\n", ebuf);
+    return -1;
+  }
+  
+  /* get interface mac address */
+  cp = (uint8_t *) libnet_get_hwaddr(pingobj->ln);
+  if (cp == NULL)
+  {
+    dprintf("arping: libnet_get_hwaddr(): %s\n", libnet_geterror(pingobj->ln));
+    return -1;
+  }
+  memcpy(pingobj->srcmac, cp, ETH_ALEN);
+  
+  snprintf (mac_addr, sizeof (mac_addr),
+      "%02"PRIx8":%02"PRIx8":%02"PRIx8":%02"PRIx8":%02"PRIx8":%02"PRIx8,
+      cp[0], cp[1], cp[2], cp[3], cp[4], cp[5]);
+  mac_addr[sizeof (mac_addr) - 1] = 0;
+  dprintf("ping_construct_arp: mac_addr = %s\n", mac_addr);
+  
+  /* pcap init */
+  pingobj->pcap = pcap_open_live (pingobj->device, 100, 0, 10, ebuf);
+  if (pingobj->pcap == NULL)
+  {
+    libnet_destroy (pingobj->ln);
+    pingobj->ln = NULL;
+    dprintf("pcap_open_live failed: %s\n", ebuf);
+    return -1;
+  }
+  
+  if (strlen(ebuf) > 0)
+    dprintf("warning: %s\n", ebuf);
+  
+  snprintf (pcap_filter, sizeof (pcap_filter),
+      "arp && ether dst %s && arp[7] = 0x02",
+      mac_addr);
+  dprintf("ping_construct_arp: pcap_filter = %s\n", pcap_filter);
+  
+  /* compile pcap filter */
+  if( pcap_compile(pingobj->pcap, &arp_p, pcap_filter, 0, -1) == -1 ) {
+      dprintf("pcap_compile(): %s\n", pcap_geterr(pingobj->pcap));
+      return -1;
+  }
+  
+  if( pcap_setfilter(pingobj->pcap, &arp_p) == -1 ) {
+      dprintf("pcap_setfilter(): %s\n", pcap_geterr(pingobj->pcap));
+      return -1;
+  }
+  
+  return 0;
+} /* }}} int ping_construct_arp */
 
 void ping_destroy_arp (pingobj_t *obj) /* {{{ */
 {
@@ -223,24 +287,27 @@ void ping_destroy_arp (pingobj_t *obj) /* {{{ */
   }
 } /* }}} void ping_destroy_arp */
 
-int ping_send_all_arp(pingobj_t *obj) {
+int ping_send_all_arp (pingobj_t *obj) /* {{{ */
+{
   pinghost_t *host;
-  
-  /* check if init is done */
-  if( obj->ln == NULL ) {
-    arp_init(obj);
-  }
-  
-  for(host = obj->head; host != NULL; host = host->next) {
-    if( arp_ping_send(obj, host) < 0 ) {
-      return -1;
-    }
-  }
-  
-  return 0;
-}
 
-int ping_receive_all_arp(pingobj_t *obj) {
-  arp_pings_recv(obj);
+  if ((obj == NULL) || (obj->ln == NULL) || (obj->pcap == NULL))
+    return (EINVAL);
+  
+  for (host = obj->head; host != NULL; host = host->next)
+    if (arp_ping_send (obj, host) < 0)
+      return (-1);
+  
+  return (0);
+} /* }}} int ping_send_all_arp */
+
+int ping_receive_all_arp (pingobj_t *obj) /* {{{ */
+{
+  if ((obj == NULL) || (obj->ln == NULL) || (obj->pcap == NULL))
+    return (EINVAL);
+
+  arp_pings_recv (obj);
   return 0;
-}
+} /* }}} int ping_receive_all_arp */
+
+/* vim: set sw=2 sts=2 et fdm=marker : */

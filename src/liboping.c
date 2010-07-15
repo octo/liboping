@@ -991,6 +991,8 @@ pingobj_t *ping_construct (void)
 	obj->addrfamily = PING_DEF_AF;
 	obj->data       = strdup (PING_DEF_DATA);
 
+	(void) ping_construct_arp (obj);
+
 	return (obj);
 }
 
@@ -1048,7 +1050,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 		
 		case PING_OPT_ARP:
 #ifdef ENABLE_ARP
-			obj->use_arp = *((int*) value);
+			obj->use_arp = *((_Bool *) value);
 #else
 			ping_set_errno (obj, ENOTSUP);
 			ret = -1;
@@ -1191,24 +1193,22 @@ int ping_send (pingobj_t *obj)
 	if (obj == NULL)
 		return (-1);
 
-#ifdef ENABLE_ARP
-	if (obj->use_arp) {
-		if(ping_send_all_arp (obj) < 0)
+	if (obj->use_arp)
+	{
+		if (ping_send_all_arp (obj) < 0)
 			return (-1);
 		
 		if ((ret = ping_receive_all_arp (obj)) < 0)
 			return (-2);
 	}
-	else {
-#endif
+	else
+	{
 		if (ping_send_all (obj) < 0)
 			return (-1);
 
 		if ((ret = ping_receive_all (obj)) < 0)
 			return (-2);
-#ifdef ENABLE_ARP
 	}
-#endif
 	
 	return (ret);
 }

@@ -92,9 +92,9 @@ struct pingobj
 
 	pinghost_t              *head;
 
+	_Bool                   use_arp;
 #ifdef ENABLE_ARP
 	/* arp */
-	int                     use_arp;
 	pcap_t                  *pcap;
 	libnet_t                *ln;
 	uint8_t                 srcmac[ETH_ALEN];
@@ -102,12 +102,15 @@ struct pingobj
 };
 
 #ifdef ENABLE_ARP
-int arp_init(pingobj_t *pingobj);
+int ping_construct_arp(pingobj_t *obj);
 void ping_destroy_arp (pingobj_t *obj);
 int ping_send_all_arp(pingobj_t *obj);
 int ping_receive_all_arp(pingobj_t *obj);
 #else
+# define ping_construct_arp(obj) (-1)
 # define ping_destroy_arp(obj) /**/
+# define ping_send_all_arp(obj) (-1)
+# define ping_receive_all_arp(obj) (-1)
 #endif
 
 #endif /* OPING_PRIVATE_H */
