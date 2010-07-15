@@ -1021,14 +1021,7 @@ void ping_destroy (pingobj_t *obj)
 	if (obj->device != NULL)
 		free (obj->device);
 	
-#ifdef ENABLE_ARP
-	// arp
-	if (obj->pcap != NULL)
-		pcap_close(obj->pcap);
-	
-	if (obj->ln != NULL)
-		libnet_destroy(obj->ln);
-#endif
+	ping_destroy_arp (obj);
 
 	free (obj);
 

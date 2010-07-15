@@ -205,6 +205,24 @@ void arp_pings_recv(pingobj_t *pingobj) {
   }
 }
 
+void ping_destroy_arp (pingobj_t *obj) /* {{{ */
+{
+  if (obj == NULL)
+    return;
+
+  if (obj->pcap != NULL)
+  {
+    pcap_close (obj->pcap);
+    obj->pcap = NULL;
+  }
+
+  if (obj->ln != NULL)
+  {
+    libnet_destroy (obj->ln);
+    obj->ln = NULL;
+  }
+} /* }}} void ping_destroy_arp */
+
 int ping_send_all_arp(pingobj_t *obj) {
   pinghost_t *host;
   
