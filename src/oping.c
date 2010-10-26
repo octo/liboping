@@ -115,7 +115,7 @@ static char   *opt_device     = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
-static uint8_t opt_send_tos   = 0;
+static uint8_t opt_send_qos   = 0;
 
 static int host_num = 0;
 
@@ -259,7 +259,8 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
 			"  -t ttl       time to live for each ICMP packet\n"
-			"  -z tos       Type-of-service/class-of-service for each ICMP packet\n"
+			"  -Q qos       Quality of Service (QoS) of outgoing packets\n"
+			"               Use \"-Q help\" for a list of valid options.\n"
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
@@ -274,15 +275,28 @@ static void usage_exit (const char *name, int status) /* {{{ */
 static void usage_tos_exit (const char *arg, int status) /* {{{ */
 {
 	if (arg != 0)
-		fprintf (stderr, "Invalid ToS argument: \"%s\"\n\n", arg);
+		fprintf (stderr, "Invalid QoS argument: \"%s\"\n\n", arg);
 
-	fprintf (stderr, "Valid ToS arguments (option \"-z\") are:\n"
+	fprintf (stderr, "Valid QoS arguments (option \"-Q\") are:\n"
 			"\n"
-			"    lowdelay     (%#04x)    minimize delays\n"
-			"    throughput   (%#04x)    optimize throughput\n"
-			"    reliability  (%#04x)    optimize reliability\n"
-			"    mincost      (%#04x)    minimize cost\n"
-			"    0x00 - 0xff            specify manually\n"
+			"  Differentiated Services (IPv4 and IPv6, RFC 2474)\n"
+			"\n"
+			"    ef                     Expedited Forwarding (EF) PHB group (RFC 3246).\n"
+			"                           (low delay, low loss, low jitter)\n"
+			"    af[1-4][1-3]           Assured Forwarding (AF) PHB group (RFC 2597).\n"
+			"                           For example: \"af12\" (class 1, precedence 2)\n"
+			"\n"
+			"  Type of Service (IPv4, RFC 1349, obsolete)\n"
+			"\n"
+			"    lowdelay     (%#04x)    minimize delay\n"
+			"    throughput   (%#04x)    maximize throughput\n"
+			"    reliability  (%#04x)    maximize reliability\n"
+			"    mincost      (%#04x)    minimize monetary cost\n"
+			"\n"
+			"  Specify manually\n"
+			"\n"
+			"    0x00 - 0xff            Hexadecimal numeric specification.\n"
+			"       0 -  255            Decimal numeric specification.\n"
 			"\n",
 			(unsigned int) IPTOS_LOWDELAY,
 			(unsigned int) IPTOS_THROUGHPUT,
@@ -292,21 +306,59 @@ static void usage_tos_exit (const char *arg, int status) /* {{{ */
 	exit (status);
 } /* }}} void usage_tos_exit */
 
-static int set_opt_send_tos (const char *opt) /* {{{ */
+static int set_opt_send_qos (const char *opt) /* {{{ */
 {
 	if (opt == NULL)
 		return (EINVAL);
 
-	if (strcasecmp ("lowdelay", opt) == 0)
-		opt_send_tos = IPTOS_LOWDELAY;
-	else if (strcasecmp ("throughput", opt) == 0)
-		opt_send_tos = IPTOS_THROUGHPUT;
-	else if (strcasecmp ("reliability", opt) == 0)
-		opt_send_tos = IPTOS_RELIABILITY;
-	else if (strcasecmp ("mincost", opt) == 0)
-		opt_send_tos = IPTOS_MINCOST;
-	else if (strcasecmp ("help", opt) == 0)
+	if (strcasecmp ("help", opt) == 0)
 		usage_tos_exit (/* arg = */ NULL, /* status = */ EXIT_SUCCESS);
+	/* Type of Service (RFC 1349) */
+	else if (strcasecmp ("lowdelay", opt) == 0)
+		opt_send_qos = IPTOS_LOWDELAY;
+	else if (strcasecmp ("throughput", opt) == 0)
+		opt_send_qos = IPTOS_THROUGHPUT;
+	else if (strcasecmp ("reliability", opt) == 0)
+		opt_send_qos = IPTOS_RELIABILITY;
+	else if (strcasecmp ("mincost", opt) == 0)
+		opt_send_qos = IPTOS_MINCOST;
+	/* DiffServ (RFC 2474): */
+	/* * Expedited Forwarding (EF, RFC 3246) */
+	else if (strcasecmp ("ef", opt) == 0)
+		opt_send_qos = 0xB8; /* == 0x2E << 2 */
+	/*  Assured Forwarding (AF, RFC 2597) */
+	else if (strncasecmp ("af", opt, strlen ("af")) == 0)
+	{
+		uint8_t dscp;
+		uint8_t class;
+		uint8_t prec;
+
+		/* There are four classes, AF1x, AF2x, AF3x, and AF4x. */
+		if (opt[2] == '1')
+			class = 1;
+		else if (opt[2] == '2')
+			class = 2;
+		else if (opt[2] == '3')
+			class = 3;
+		else if (opt[2] == '4')
+			class = 4;
+		else
+			usage_tos_exit (/* arg = */ opt, /* status = */ EXIT_SUCCESS);
+
+		/* In each class, there are three precedences, AFx1, AFx2, and AFx3 */
+		if (opt[3] == '1')
+			prec = 1;
+		else if (opt[3] == '2')
+			prec = 2;
+		else if (opt[3] == '3')
+			prec = 3;
+		else
+			usage_tos_exit (/* arg = */ opt, /* status = */ EXIT_SUCCESS);
+
+		dscp = (8 * class) + (2 * prec);
+		/* The lower two bits are used for Explicit Congestion Notification (ECN) */
+		opt_send_qos = dscp << 2;
+	}
 	else
 	{
 		unsigned long value;
@@ -317,14 +369,14 @@ static int set_opt_send_tos (const char *opt) /* {{{ */
 		value = strtoul (opt, &endptr, /* base = */ 0);
 		if ((errno != 0) || (endptr == opt)
 				|| (endptr == NULL) || (*endptr != 0)
-				|| (value >= 0xff))
+				|| (value > 0xff))
 			usage_tos_exit (/* arg = */ opt, /* status = */ EXIT_FAILURE);
 		
-		opt_send_tos = (uint8_t) value;
+		opt_send_qos = (uint8_t) value;
 	}
 
 	return (0);
-} /* }}} int set_opt_send_tos */
+} /* }}} int set_opt_send_qos */
 
 static int read_options (int argc, char **argv) /* {{{ */
 {
@@ -332,7 +384,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:z:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:");
 
 		if (optchar == -1)
 			break;
@@ -399,8 +451,8 @@ static int read_options (int argc, char **argv) /* {{{ */
 				break;
 			}
 
-			case 'z':
-				set_opt_send_tos (optarg);
+			case 'Q':
+				set_opt_send_qos (optarg);
 				break;
 
 			case 'h':
@@ -912,10 +964,10 @@ int main (int argc, char **argv) /* {{{ */
 				opt_send_ttl, ping_get_error (ping));
 	}
 
-	if (ping_setopt (ping, PING_OPT_TOS, &opt_send_tos) != 0)
+	if (ping_setopt (ping, PING_OPT_TOS, &opt_send_qos) != 0)
 	{
 		fprintf (stderr, "Setting TOS to %i failed: %s\n",
-				opt_send_tos, ping_get_error (ping));
+				opt_send_qos, ping_get_error (ping));
 	}
 
 	{
