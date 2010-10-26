@@ -63,8 +63,17 @@ the source address assigned.
 Set the outgoing network device to be used. The value passed must be a
 char-pointer to a null-terminated string specifying an interface name
 (e.E<nbsp>g. C<eth0>). Please note that this might not be supported by all
-operating systems. In that case, B<ping_setopt> sets the error to C<operation
-not supported>.
+operating systems. In that case, B<ping_setopt> sets the error to
+C<operation not supported>.
+
+=item B<PING_OPT_TOS>
+
+Sets the I<Type of Service> flags that should be used when crafting ICMP and
+ICMPv6 packets. The memory pointed to by I<val> is interpreted as a C<uint8_t>.
+The byte is passed to L<setsockopt(2)> without modification, using the
+C<IP_TOS> (IPv4) or C<IPV6_TCLASS> (IPv6) option. It is the caller's
+responsibility to chose a valid bit combination. For details, read L<ip(7)> and
+L<ipv6(7)>.
 
 =back
 
