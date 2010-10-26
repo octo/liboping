@@ -956,21 +956,39 @@ static int ping_set_ttl (pinghost_t *ph, int ttl)
  * Using SOL_SOCKET / SO_PRIORITY might be a protocol independent way to
  * set this. See socket(7) for details.
  */
-static int ping_set_tos (pinghost_t *ph, uint8_t tos)
+static int ping_set_tos (pingobj_t *obj, pinghost_t *ph, uint8_t tos)
 {
-	int ret = -2;
+	int ret = EINVAL;
+	char errbuf[PING_ERRMSG_LEN];
 
 	if (ph->addrfamily == AF_INET)
 	{
 		dprintf ("Setting TP_TOS to %#04"PRIx8"\n", tos);
 		ret = setsockopt (ph->fd, IPPROTO_IP, IP_TOS,
 				&tos, sizeof (tos));
+		if (ret != 0)
+		{
+			ret = errno;
+			ping_set_error (obj, "ping_set_tos",
+					sstrerror (ret, errbuf, sizeof (errbuf)));
+			dprintf ("Setting TP_TOS failed: %s\n", errbuf);
+		}
 	}
 	else if (ph->addrfamily == AF_INET6)
 	{
-		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8"\n", tos);
+		/* IPV6_TCLASS requires an "int". */
+		int tmp = (int) tos;
+
+		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8" (%i)\n", tos, tmp);
 		ret = setsockopt (ph->fd, IPPROTO_IPV6, IPV6_TCLASS,
-				&tos, sizeof (tos));
+				&tmp, sizeof (tmp));
+		if (ret != 0)
+		{
+			ret = errno;
+			ping_set_error (obj, "ping_set_tos",
+					sstrerror (ret, errbuf, sizeof (errbuf)));
+			dprintf ("Setting IPV6_TCLASS failed: %s\n", errbuf);
+		}
 	}
 
 	return (ret);
@@ -1133,7 +1151,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 			obj->tos = *((uint8_t *) value);
 			for (ph = obj->head; ph != NULL; ph = ph->next)
-				ping_set_tos (ph, obj->tos);
+				ping_set_tos (obj, ph, obj->tos);
 			break;
 		}
 
@@ -1558,7 +1576,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	}
 
 	ping_set_ttl (ph, obj->ttl);
-	ping_set_tos (ph, obj->tos);
+	ping_set_tos (obj, ph, obj->tos);
 
 	return (0);
 } /* int ping_host_add */
