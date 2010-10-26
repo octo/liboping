@@ -952,6 +952,9 @@ static int ping_set_ttl (pinghost_t *ph, int ttl)
 
 /*
  * Set the TOS of a socket protocol independently.
+ *
+ * Using SOL_SOCKET / SO_PRIORITY might be a protocol independent way to
+ * set this. See socket(7) for details.
  */
 static int ping_set_tos (pinghost_t *ph, uint8_t tos)
 {
@@ -1489,23 +1492,41 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 		if (ph->addrfamily == AF_INET)
 		{
-			int opt = 1;
+			int opt;
 
+			/* Enable receiving the TOS field */
+			opt = 1;
+			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTOS,
+					&opt, sizeof (opt));
+
+			/* Enable receiving the TTL field */
+			opt = 1;
 			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTTL,
 					&opt, sizeof (opt));
 		}
-#if defined(IPPROTO_IPV6) && defined(IPV6_RECVHOPLIMIT)
+#if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_RECVTCLASS)
 		else if (ph->addrfamily == AF_INET6)
 		{
-			int opt = 1;
+			int opt;
 
+# if defined(IPV6_RECVHOPLIMIT)
+			/* For details see RFC 3542, section 6.3. */
+			opt = 1;
 			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
 					&opt, sizeof (opt));
+# endif /* IPV6_RECVHOPLIMIT */
+
+# if defined(IPV6_RECVTCLASS)
+			/* For details see RFC 3542, section 6.5. */
+			opt = 1;
+			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVTCLASS,
+					&opt, sizeof (opt));
+# endif /* IPV6_RECVTCLASS */
 		}
-#endif
+#endif /* IPV6_RECVHOPLIMIT || IPV6_RECVTCLASS */
 
 		break;
-	}
+	} /* for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next) */
 
 	freeaddrinfo (ai_list);
 
