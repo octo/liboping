@@ -653,7 +653,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 
 	recv_tos = 0;
 	buffer_len = sizeof (recv_tos);
-	ping_iterator_get_info (iter, PING_INFO_TOS,
+	ping_iterator_get_info (iter, PING_INFO_RECV_TOS,
 			&recv_tos, &buffer_len);
 
 	data_len = 0;

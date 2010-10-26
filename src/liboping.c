@@ -1738,7 +1738,7 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			ret = 0;
 			break;
 
-		case PING_INFO_TOS:
+		case PING_INFO_RECV_TOS:
 			ret = ENOMEM;
 			if (*buffer_len>sizeof(unsigned)) *buffer_len=sizeof(unsigned);
 			if (!*buffer_len) *buffer_len=1;

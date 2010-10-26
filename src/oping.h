@@ -85,7 +85,7 @@ pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter);
 #define PING_INFO_USERNAME  8
 #define PING_INFO_DROPPED   9
 #define PING_INFO_RECV_TTL 10
-#define PING_INFO_TOS      11
+#define PING_INFO_RECV_TOS 11
 int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 		void *buffer, size_t *buffer_len);
 
