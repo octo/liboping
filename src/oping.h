@@ -52,6 +52,7 @@ typedef struct pingobj pingobj_t;
 #define PING_OPT_DATA    0x08
 #define PING_OPT_SOURCE  0x10
 #define PING_OPT_DEVICE  0x20
+#define PING_OPT_TOS     0x40
 
 #define PING_DEF_TIMEOUT 1.0
 #define PING_DEF_TTL     255
@@ -84,6 +85,7 @@ pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter);
 #define PING_INFO_USERNAME  8
 #define PING_INFO_DROPPED   9
 #define PING_INFO_RECV_TTL 10
+#define PING_INFO_TOS      11
 int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 		void *buffer, size_t *buffer_len);
 

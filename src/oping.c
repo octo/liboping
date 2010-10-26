@@ -103,6 +103,7 @@ static char   *opt_device     = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
+static unsigned opt_send_tos  = 0;
 
 static int host_num = 0;
 
@@ -246,6 +247,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
 			"  -t ttl       time to live for each ICMP packet\n"
+			"  -z tos       Type-of-service/class-of-service for each ICMP packet\n"
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
@@ -263,7 +265,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:z:f:D:");
 
 		if (optchar == -1)
 			break;
@@ -326,6 +328,18 @@ static int read_options (int argc, char **argv) /* {{{ */
 					opt_send_ttl = new_send_ttl;
 				else
 					fprintf (stderr, "Ignoring invalid TTL argument: %s\n",
+							optarg);
+				break;
+			}
+
+			case 'z':
+			{
+				int new_send_tos;
+				new_send_tos = atoi (optarg);
+				if ((new_send_tos > 0) && (new_send_tos < 256))
+					opt_send_tos = new_send_tos;
+				else
+					fprintf (stderr, "Ignoring invalid TOS argument: %s\n",
 							optarg);
 				break;
 			}
@@ -617,6 +631,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	double          latency;
 	unsigned int    sequence;
 	int             recv_ttl;
+	unsigned	recv_tos;
 	size_t          buffer_len;
 	size_t          data_len;
 	ping_context_t *context;
@@ -635,6 +650,11 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	buffer_len = sizeof (recv_ttl);
 	ping_iterator_get_info (iter, PING_INFO_RECV_TTL,
 			&recv_ttl, &buffer_len);
+
+	recv_tos = 0;
+	buffer_len = sizeof (recv_tos);
+	ping_iterator_get_info (iter, PING_INFO_TOS,
+			&recv_tos, &buffer_len);
 
 	data_len = 0;
 	ping_iterator_get_info (iter, PING_INFO_DATA,
@@ -674,10 +694,10 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 					|| (latency > (average + stddev)))
 				color = OPING_YELLOW;
 
-			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
+			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i tos=%u "
 					"time=",
 					data_len, context->host, context->addr,
-					sequence, recv_ttl);
+					sequence, recv_ttl, recv_tos);
 			wattron (main_win, COLOR_PAIR(color));
 			HOST_PRINTF ("%.2f", latency);
 			wattroff (main_win, COLOR_PAIR(color));
@@ -686,11 +706,11 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		else
 		{
 #endif
-		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
+		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i tos=%u "
 				"time=%.2f ms\n",
 				data_len,
 				context->host, context->addr,
-				sequence, recv_ttl, latency);
+				sequence, recv_ttl, recv_tos, latency);
 #if USE_NCURSES
 		}
 #endif
@@ -831,6 +851,12 @@ int main (int argc, char **argv) /* {{{ */
 	{
 		fprintf (stderr, "Setting TTL to %i failed: %s\n",
 				opt_send_ttl, ping_get_error (ping));
+	}
+
+	if (ping_setopt (ping, PING_OPT_TOS, &opt_send_tos) != 0)
+	{
+		fprintf (stderr, "Setting TOS to %i failed: %s\n",
+				opt_send_tos, ping_get_error (ping));
 	}
 
 	{
