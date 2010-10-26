@@ -25,6 +25,8 @@
 # include <stdlib.h>
 # include <stdio.h>
 # include <string.h>
+# include <stdint.h>
+# include <inttypes.h>
 # include <errno.h>
 # include <assert.h>
 #else
@@ -631,7 +633,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	double          latency;
 	unsigned int    sequence;
 	int             recv_ttl;
-	unsigned	recv_tos;
+	uint8_t         recv_tos;
 	size_t          buffer_len;
 	size_t          data_len;
 	ping_context_t *context;
@@ -694,8 +696,8 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 					|| (latency > (average + stddev)))
 				color = OPING_YELLOW;
 
-			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i tos=%u "
-					"time=",
+			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i tos=0x%02"PRIx8
+					" time=",
 					data_len, context->host, context->addr,
 					sequence, recv_ttl, recv_tos);
 			wattron (main_win, COLOR_PAIR(color));
@@ -706,8 +708,8 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		else
 		{
 #endif
-		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i tos=%u "
-				"time=%.2f ms\n",
+		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i tos=0x%02"PRIx8
+				" time=%.2f ms\n",
 				data_len,
 				context->host, context->addr,
 				sequence, recv_ttl, recv_tos, latency);

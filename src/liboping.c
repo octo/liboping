@@ -513,7 +513,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			{
 				memcpy (&recv_tos, CMSG_DATA (cmsg),
 						sizeof (recv_tos));
-				dprintf ("TOSv4 = %#04"PRIx8";\n", recv_tos);
+				dprintf ("TOSv4 = 0x%02"PRIx8";\n", recv_tos);
 			} else
 			if (cmsg->cmsg_type == IP_TTL)
 			{
@@ -536,7 +536,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			{
 				memcpy (&recv_tos, CMSG_DATA (cmsg),
 						sizeof (recv_tos));
-				dprintf ("TOSv6 = %#04"PRIx8";\n", recv_tos);
+				dprintf ("TOSv6 = 0x%02"PRIx8";\n", recv_tos);
 			} else
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
