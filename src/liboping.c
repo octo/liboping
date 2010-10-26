@@ -532,7 +532,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			if (cmsg->cmsg_level != IPPROTO_IPV6)
 				continue;
 
-			if (cmsg->cmsg_type == IPV6_RECVTCLASS)
+			if (cmsg->cmsg_type == IPV6_TCLASS)
 			{
 				memcpy (&recv_tos, CMSG_DATA (cmsg),
 						sizeof (recv_tos));
