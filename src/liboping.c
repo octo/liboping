@@ -962,13 +962,13 @@ static int ping_set_tos (pinghost_t *ph, uint8_t tos)
 
 	if (ph->addrfamily == AF_INET)
 	{
-		dprintf ("Setting TP_TOS to %i\n", ttl);
+		dprintf ("Setting TP_TOS to %#04"PRIx8"\n", tos);
 		ret = setsockopt (ph->fd, IPPROTO_IP, IP_TOS,
 				&tos, sizeof (tos));
 	}
 	else if (ph->addrfamily == AF_INET6)
 	{
-		dprintf ("Setting IPV6_TCLASS to %i\n", ttl);
+		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8"\n", tos);
 		ret = setsockopt (ph->fd, IPPROTO_IPV6, IPV6_TCLASS,
 				&tos, sizeof (tos));
 	}
