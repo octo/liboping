@@ -117,7 +117,7 @@ struct pinghost
 	double                   latency;
 	uint32_t                 dropped;
 	int                      recv_ttl;
-	unsigned                 recv_tos;
+	uint8_t                  recv_tos;
 	char                    *data;
 
 	void                    *context;
@@ -130,7 +130,7 @@ struct pingobj
 	double                   timeout;
 	int                      ttl;
 	int                      addrfamily;
-	unsigned                 tos;
+	uint8_t                  tos;
 	char                    *data;
 
 	struct sockaddr         *srcaddr;
@@ -353,8 +353,8 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	}
 
 	if (ptr != NULL){
-		ptr->recv_ttl = ip_hdr->ip_ttl;
-		ptr->recv_tos = ip_hdr->ip_tos;
+		ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
+		ptr->recv_tos = (uint8_t) ip_hdr->ip_tos;
 	}
 	return (ptr);
 }
@@ -453,7 +453,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	struct timeval diff;
 	pinghost_t *host = NULL;
 	int recv_ttl;
-	unsigned recv_tos;
+	uint8_t recv_tos;
 	
 	/*
 	 * Set up the receive buffer..
@@ -499,7 +499,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
-	recv_tos = 0xffff;
+	recv_tos = 0xff;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
@@ -513,7 +513,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			{
 				memcpy (&recv_tos, CMSG_DATA (cmsg),
 						sizeof (recv_tos));
-				dprintf ("TOSv4 = %u;\n", recv_tos);
+				dprintf ("TOSv4 = %#04"PRIx8";\n", recv_tos);
 			} else
 			if (cmsg->cmsg_type == IP_TTL)
 			{
@@ -536,7 +536,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			{
 				memcpy (&recv_tos, CMSG_DATA (cmsg),
 						sizeof (recv_tos));
-				dprintf ("TOSv6 = %u;\n", recv_tos);
+				dprintf ("TOSv6 = %#04"PRIx8";\n", recv_tos);
 			} else
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
@@ -953,7 +953,7 @@ static int ping_set_ttl (pinghost_t *ph, int ttl)
 /*
  * Set the TOS of a socket protocol independently.
  */
-static int ping_set_tos (pinghost_t *ph, unsigned tos)
+static int ping_set_tos (pinghost_t *ph, uint8_t tos)
 {
 	int ret = -2;
 
@@ -1072,13 +1072,13 @@ pingobj_t *ping_construct (void)
 
 	if ((obj = (pingobj_t *) malloc (sizeof (pingobj_t))) == NULL)
 		return (NULL);
-	memset (obj, '\0', sizeof (pingobj_t));
+	memset (obj, 0, sizeof (pingobj_t));
 
 	obj->timeout    = PING_DEF_TIMEOUT;
 	obj->ttl        = PING_DEF_TTL;
 	obj->addrfamily = PING_DEF_AF;
 	obj->data       = strdup (PING_DEF_DATA);
-	obj->tos	= 0;
+	obj->tos        = 0;
 
 	return (obj);
 }
@@ -1124,13 +1124,16 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 	switch (option)
 	{
-		case PING_OPT_TOS:{
-			obj->tos=*(unsigned *)value;
+		case PING_OPT_TOS:
+		{
 			pinghost_t *ph;
+
+			obj->tos = *((uint8_t *) value);
 			for (ph = obj->head; ph != NULL; ph = ph->next)
 				ping_set_tos (ph, obj->tos);
 			break;
 		}
+
 		case PING_OPT_TIMEOUT:
 			obj->timeout = *((double *) value);
 			if (obj->timeout < 0.0)
