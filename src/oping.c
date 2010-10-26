@@ -52,6 +52,16 @@
 # endif
 #endif
 
+#if HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif
+#if HAVE_NETINET_IN_H
+# include <netinet/in.h>
+#endif
+#if HAVE_NETINET_IP_H
+# include <netinet/ip.h>
+#endif
+
 #if HAVE_NETDB_H
 # include <netdb.h> /* NI_MAXHOST */
 #endif
@@ -105,7 +115,7 @@ static char   *opt_device     = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
-static unsigned opt_send_tos  = 0;
+static uint8_t opt_send_tos   = 0;
 
 static int host_num = 0;
 
@@ -261,6 +271,61 @@ static void usage_exit (const char *name, int status) /* {{{ */
 	exit (status);
 } /* }}} void usage_exit */
 
+static void usage_tos_exit (const char *arg, int status) /* {{{ */
+{
+	if (arg != 0)
+		fprintf (stderr, "Invalid ToS argument: \"%s\"\n\n", arg);
+
+	fprintf (stderr, "Valid ToS arguments (option \"-z\") are:\n"
+			"\n"
+			"    lowdelay     (%#04x)    minimize delays\n"
+			"    throughput   (%#04x)    optimize throughput\n"
+			"    reliability  (%#04x)    optimize reliability\n"
+			"    mincost      (%#04x)    minimize cost\n"
+			"    0x00 - 0xff            specify manually\n"
+			"\n",
+			(unsigned int) IPTOS_LOWDELAY,
+			(unsigned int) IPTOS_THROUGHPUT,
+			(unsigned int) IPTOS_RELIABILITY,
+			(unsigned int) IPTOS_MINCOST);
+
+	exit (status);
+} /* }}} void usage_tos_exit */
+
+static int set_opt_send_tos (const char *opt) /* {{{ */
+{
+	if (opt == NULL)
+		return (EINVAL);
+
+	if (strcasecmp ("lowdelay", opt) == 0)
+		opt_send_tos = IPTOS_LOWDELAY;
+	else if (strcasecmp ("throughput", opt) == 0)
+		opt_send_tos = IPTOS_THROUGHPUT;
+	else if (strcasecmp ("reliability", opt) == 0)
+		opt_send_tos = IPTOS_RELIABILITY;
+	else if (strcasecmp ("mincost", opt) == 0)
+		opt_send_tos = IPTOS_MINCOST;
+	else if (strcasecmp ("help", opt) == 0)
+		usage_tos_exit (/* arg = */ NULL, /* status = */ EXIT_SUCCESS);
+	else
+	{
+		unsigned long value;
+		char *endptr;
+
+		errno = 0;
+		endptr = NULL;
+		value = strtoul (opt, &endptr, /* base = */ 0);
+		if ((errno != 0) || (endptr == opt)
+				|| (endptr == NULL) || (*endptr != 0)
+				|| (value >= 0xff))
+			usage_tos_exit (/* arg = */ opt, /* status = */ EXIT_FAILURE);
+		
+		opt_send_tos = (uint8_t) value;
+	}
+
+	return (0);
+} /* }}} int set_opt_send_tos */
+
 static int read_options (int argc, char **argv) /* {{{ */
 {
 	int optchar;
@@ -335,16 +400,8 @@ static int read_options (int argc, char **argv) /* {{{ */
 			}
 
 			case 'z':
-			{
-				int new_send_tos;
-				new_send_tos = atoi (optarg);
-				if ((new_send_tos > 0) && (new_send_tos < 256))
-					opt_send_tos = new_send_tos;
-				else
-					fprintf (stderr, "Ignoring invalid TOS argument: %s\n",
-							optarg);
+				set_opt_send_tos (optarg);
 				break;
-			}
 
 			case 'h':
 				usage_exit (argv[0], 0);
