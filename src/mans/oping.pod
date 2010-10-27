@@ -83,6 +83,10 @@ I<per-hop behaviors> (PHBs):
 
 =over 4
 
+=item B<be>
+
+Selects the I<Best Effort> behavior. This is the default behavior.
+
 =item B<ef>
 
 Selects the I<Expedited Forwarding> (EF) per-hop behavior, as defined in
@@ -97,6 +101,13 @@ must be a number betweenE<nbsp>1 throughE<nbsp>4 and I<p> must be a number
 betweenE<nbsp>1 throughE<nbsp>3, for example "af13", "af22" and "af41". In each
 class, the lower priority number takes precedence over the higher priority
 number.
+
+=item B<cs>I<n>
+
+Selects one of the eight I<Class Selector> PHBs. I<n> is a number
+betweenE<nbsp>0 throughE<nbsp>7. The class selectors have been defined to be
+compatible to the I<Precedence> field in the IPv4 header as defined in
+I<RFCE<nbsp>791>. Please note that "cs0" is synonymous to "be".
 
 =back
 
