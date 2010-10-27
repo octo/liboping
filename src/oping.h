@@ -57,7 +57,7 @@ typedef struct pingobj pingobj_t;
 #define PING_DEF_TIMEOUT 1.0
 #define PING_DEF_TTL     255
 #define PING_DEF_AF      AF_UNSPEC
-#define PING_DEF_DATA    "Florian Forster <octo@verplant.org> http://verplant.org/"
+#define PING_DEF_DATA    "liboping -- ICMP ping library <http://octo.it/liboping/>"
 
 /*
  * Method definitions
