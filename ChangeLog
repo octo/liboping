@@ -1,3 +1,13 @@
+2010-10-27, Version 1.5.0:
+	* src/liboping.c: The possibility to set the QoS byte of outgoing IPv4
+	  and IPv6 packets and read the byte from incoming packets has been
+	  added. Thanks to Vladimir Melnikov for his patch.
+	* oping, noping: Add the ability to configure the QoS field on the
+	  command line. If either the QoS field of outgoing or incoming
+	  packets is non-standard, the QoS byte of incoming packets will be
+	  printed.
+	* liboping: The library has been relicensed under the LGPL 2.1.
+
 2010-06-13, Version 1.4.0:
 	* noping: A new front-end to liboping, using the ncurses library, has
 	  been added. The new command line application displays ping
