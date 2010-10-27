@@ -141,6 +141,16 @@ decimal number (0-255), a hexadecimal number (0x00-0xff) or an octal number
 (00-0377) using the usual "0x" and "0" prefixes for hexadecimal and octal
 respectively.
 
+The printed lines will contain information about the QoS field of received
+packets if either a non-standard QoS setting was used on outgoing packets or if
+the QoS byte of incoming packets is not zero. In other words, the QoS
+information is omitted if both, the outgoing and the incoming QoS bytes are
+zero. The received byte is always interpreted as
+I<Differentiated Services Code Point> (DSCP) and
+I<Explicit Congestion Notification> (ECN), even if the deprecated
+I<Type of Service> (ToS) aliases were used to specify the bits of outgoing
+packets.
+
 =back
 
 =head1 COLORS
