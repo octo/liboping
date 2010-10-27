@@ -881,11 +881,16 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 					|| (latency > (average + stddev)))
 				color = OPING_YELLOW;
 
-			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i qos=%s"
-					" time=",
+			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 					data_len, context->host, context->addr,
 					sequence, recv_ttl,
 					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+			if ((recv_qos != 0) || (opt_send_qos != 0))
+			{
+				HOST_PRINTF ("qos=%s ",
+						format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+			}
+			HOST_PRINTF ("time=");
 			wattron (main_win, COLOR_PAIR(color));
 			HOST_PRINTF ("%.2f", latency);
 			wattroff (main_win, COLOR_PAIR(color));
@@ -894,13 +899,16 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		else
 		{
 #endif
-		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i qos=%s"
-				" time=%.2f ms\n",
+		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 				data_len,
 				context->host, context->addr,
-				sequence, recv_ttl,
-				format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)),
-			       	latency);
+				sequence, recv_ttl);
+		if ((recv_qos != 0) || (opt_send_qos != 0))
+		{
+			HOST_PRINTF ("qos=%s ",
+					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+		}
+		HOST_PRINTF ("time=%.2f ms\n", latency);
 #if USE_NCURSES
 		}
 #endif
