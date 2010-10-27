@@ -117,7 +117,7 @@ struct pinghost
 	double                   latency;
 	uint32_t                 dropped;
 	int                      recv_ttl;
-	uint8_t                  recv_tos;
+	uint8_t                  recv_qos;
 	char                    *data;
 
 	void                    *context;
@@ -130,7 +130,7 @@ struct pingobj
 	double                   timeout;
 	int                      ttl;
 	int                      addrfamily;
-	uint8_t                  tos;
+	uint8_t                  qos;
 	char                    *data;
 
 	struct sockaddr         *srcaddr;
@@ -354,7 +354,7 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 
 	if (ptr != NULL){
 		ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
-		ptr->recv_tos = (uint8_t) ip_hdr->ip_tos;
+		ptr->recv_qos = (uint8_t) ip_hdr->ip_tos;
 	}
 	return (ptr);
 }
@@ -453,7 +453,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	struct timeval diff;
 	pinghost_t *host = NULL;
 	int recv_ttl;
-	uint8_t recv_tos;
+	uint8_t recv_qos;
 	
 	/*
 	 * Set up the receive buffer..
@@ -499,7 +499,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
-	recv_tos = 0xff;
+	recv_qos = 0xff;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
@@ -511,9 +511,9 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 			if (cmsg->cmsg_type == IP_TOS)
 			{
-				memcpy (&recv_tos, CMSG_DATA (cmsg),
-						sizeof (recv_tos));
-				dprintf ("TOSv4 = 0x%02"PRIx8";\n", recv_tos);
+				memcpy (&recv_qos, CMSG_DATA (cmsg),
+						sizeof (recv_qos));
+				dprintf ("TOSv4 = 0x%02"PRIx8";\n", recv_qos);
 			} else
 			if (cmsg->cmsg_type == IP_TTL)
 			{
@@ -534,9 +534,9 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 			if (cmsg->cmsg_type == IPV6_TCLASS)
 			{
-				memcpy (&recv_tos, CMSG_DATA (cmsg),
-						sizeof (recv_tos));
-				dprintf ("TOSv6 = 0x%02"PRIx8";\n", recv_tos);
+				memcpy (&recv_qos, CMSG_DATA (cmsg),
+						sizeof (recv_qos));
+				dprintf ("TOSv6 = 0x%02"PRIx8";\n", recv_qos);
 			} else
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
@@ -596,8 +596,8 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	if (recv_ttl >= 0)
 		host->recv_ttl = recv_ttl;
-	if (recv_tos != 0xffff)
-		host->recv_tos = recv_tos;
+	if (recv_qos != 0xffff)
+		host->recv_qos = recv_qos;
 
 	host->latency  = ((double) diff.tv_usec) / 1000.0;
 	host->latency += ((double) diff.tv_sec)  * 1000.0;
@@ -956,20 +956,20 @@ static int ping_set_ttl (pinghost_t *ph, int ttl)
  * Using SOL_SOCKET / SO_PRIORITY might be a protocol independent way to
  * set this. See socket(7) for details.
  */
-static int ping_set_tos (pingobj_t *obj, pinghost_t *ph, uint8_t tos)
+static int ping_set_qos (pingobj_t *obj, pinghost_t *ph, uint8_t qos)
 {
 	int ret = EINVAL;
 	char errbuf[PING_ERRMSG_LEN];
 
 	if (ph->addrfamily == AF_INET)
 	{
-		dprintf ("Setting TP_TOS to %#04"PRIx8"\n", tos);
+		dprintf ("Setting TP_TOS to %#04"PRIx8"\n", qos);
 		ret = setsockopt (ph->fd, IPPROTO_IP, IP_TOS,
-				&tos, sizeof (tos));
+				&qos, sizeof (qos));
 		if (ret != 0)
 		{
 			ret = errno;
-			ping_set_error (obj, "ping_set_tos",
+			ping_set_error (obj, "ping_set_qos",
 					sstrerror (ret, errbuf, sizeof (errbuf)));
 			dprintf ("Setting TP_TOS failed: %s\n", errbuf);
 		}
@@ -977,15 +977,15 @@ static int ping_set_tos (pingobj_t *obj, pinghost_t *ph, uint8_t tos)
 	else if (ph->addrfamily == AF_INET6)
 	{
 		/* IPV6_TCLASS requires an "int". */
-		int tmp = (int) tos;
+		int tmp = (int) qos;
 
-		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8" (%i)\n", tos, tmp);
+		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8" (%i)\n", qos, tmp);
 		ret = setsockopt (ph->fd, IPPROTO_IPV6, IPV6_TCLASS,
 				&tmp, sizeof (tmp));
 		if (ret != 0)
 		{
 			ret = errno;
-			ping_set_error (obj, "ping_set_tos",
+			ping_set_error (obj, "ping_set_qos",
 					sstrerror (ret, errbuf, sizeof (errbuf)));
 			dprintf ("Setting IPV6_TCLASS failed: %s\n", errbuf);
 		}
@@ -1099,7 +1099,7 @@ pingobj_t *ping_construct (void)
 	obj->ttl        = PING_DEF_TTL;
 	obj->addrfamily = PING_DEF_AF;
 	obj->data       = strdup (PING_DEF_DATA);
-	obj->tos        = 0;
+	obj->qos        = 0;
 
 	return (obj);
 }
@@ -1145,13 +1145,13 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 	switch (option)
 	{
-		case PING_OPT_TOS:
+		case PING_OPT_QOS:
 		{
 			pinghost_t *ph;
 
-			obj->tos = *((uint8_t *) value);
+			obj->qos = *((uint8_t *) value);
 			for (ph = obj->head; ph != NULL; ph = ph->next)
-				ping_set_tos (obj, ph, obj->tos);
+				ping_set_qos (obj, ph, obj->qos);
 			break;
 		}
 
@@ -1576,7 +1576,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	}
 
 	ping_set_ttl (ph, obj->ttl);
-	ping_set_tos (obj, ph, obj->tos);
+	ping_set_qos (obj, ph, obj->qos);
 
 	return (0);
 } /* int ping_host_add */
@@ -1756,13 +1756,13 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			ret = 0;
 			break;
 
-		case PING_INFO_RECV_TOS:
+		case PING_INFO_RECV_QOS:
 			ret = ENOMEM;
 			if (*buffer_len>sizeof(unsigned)) *buffer_len=sizeof(unsigned);
 			if (!*buffer_len) *buffer_len=1;
 			if (orig_buffer_len < *buffer_len)
 				break;
-			memcpy(buffer,&iter->recv_tos,*buffer_len);
+			memcpy(buffer,&iter->recv_qos,*buffer_len);
 			ret = 0;
 			break;
 	}

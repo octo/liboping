@@ -786,7 +786,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 
 	recv_tos = 0;
 	buffer_len = sizeof (recv_tos);
-	ping_iterator_get_info (iter, PING_INFO_RECV_TOS,
+	ping_iterator_get_info (iter, PING_INFO_RECV_QOS,
 			&recv_tos, &buffer_len);
 
 	data_len = 0;
@@ -986,7 +986,7 @@ int main (int argc, char **argv) /* {{{ */
 				opt_send_ttl, ping_get_error (ping));
 	}
 
-	if (ping_setopt (ping, PING_OPT_TOS, &opt_send_qos) != 0)
+	if (ping_setopt (ping, PING_OPT_QOS, &opt_send_qos) != 0)
 	{
 		fprintf (stderr, "Setting TOS to %i failed: %s\n",
 				opt_send_qos, ping_get_error (ping));

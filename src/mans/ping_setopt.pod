@@ -66,14 +66,14 @@ char-pointer to a null-terminated string specifying an interface name
 operating systems. In that case, B<ping_setopt> sets the error to
 C<operation not supported>.
 
-=item B<PING_OPT_TOS>
+=item B<PING_OPT_QOS>
 
-Sets the I<Type of Service> flags that should be used when crafting ICMP and
+Sets the I<Quality of Service> flags that should be used when crafting ICMP and
 ICMPv6 packets. The memory pointed to by I<val> is interpreted as a C<uint8_t>.
 The byte is passed to L<setsockopt(2)> without modification, using the
 C<IP_TOS> (IPv4) or C<IPV6_TCLASS> (IPv6) option. It is the caller's
-responsibility to chose a valid bit combination. For details, read L<ip(7)> and
-L<ipv6(7)>.
+responsibility to chose a valid bit combination. For details, read the L<ip(7)>
+and L<ipv6(7)> manual pages, as well as I<RFCE<nbsp>2474>.
 
 =back
 
@@ -95,4 +95,4 @@ L<liboping(3)>
 liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
 Its homepage can be found at L<http://verplant.org/liboping/>.
 
-(c) 2005-2009 by Florian octo Forster.
+(c) 2005-2010 by Florian octo Forster.
