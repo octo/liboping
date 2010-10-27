@@ -281,10 +281,13 @@ static void usage_tos_exit (const char *arg, int status) /* {{{ */
 			"\n"
 			"  Differentiated Services (IPv4 and IPv6, RFC 2474)\n"
 			"\n"
+			"    be                     Best Effort (BE, default PHB).\n"
 			"    ef                     Expedited Forwarding (EF) PHB group (RFC 3246).\n"
 			"                           (low delay, low loss, low jitter)\n"
 			"    af[1-4][1-3]           Assured Forwarding (AF) PHB group (RFC 2597).\n"
 			"                           For example: \"af12\" (class 1, precedence 2)\n"
+			"    cs[0-7]                Class Selector (CS) PHB group (RFC 2474).\n"
+			"                           For example: \"cs1\" (priority traffic)\n"
 			"\n"
 			"  Type of Service (IPv4, RFC 1349, obsolete)\n"
 			"\n"
@@ -313,21 +316,16 @@ static int set_opt_send_qos (const char *opt) /* {{{ */
 
 	if (strcasecmp ("help", opt) == 0)
 		usage_tos_exit (/* arg = */ NULL, /* status = */ EXIT_SUCCESS);
-	/* Type of Service (RFC 1349) */
-	else if (strcasecmp ("lowdelay", opt) == 0)
-		opt_send_qos = IPTOS_LOWDELAY;
-	else if (strcasecmp ("throughput", opt) == 0)
-		opt_send_qos = IPTOS_THROUGHPUT;
-	else if (strcasecmp ("reliability", opt) == 0)
-		opt_send_qos = IPTOS_RELIABILITY;
-	else if (strcasecmp ("mincost", opt) == 0)
-		opt_send_qos = IPTOS_MINCOST;
 	/* DiffServ (RFC 2474): */
-	/* * Expedited Forwarding (EF, RFC 3246) */
+	/* - Best effort (BE) */
+	else if (strcasecmp ("be", opt) == 0)
+		opt_send_qos = 0;
+	/* - Expedited Forwarding (EF, RFC 3246) */
 	else if (strcasecmp ("ef", opt) == 0)
 		opt_send_qos = 0xB8; /* == 0x2E << 2 */
-	/*  Assured Forwarding (AF, RFC 2597) */
-	else if (strncasecmp ("af", opt, strlen ("af")) == 0)
+	/* - Assured Forwarding (AF, RFC 2597) */
+	else if ((strncasecmp ("af", opt, strlen ("af")) == 0)
+			&& (strlen (opt) == 4))
 	{
 		uint8_t dscp;
 		uint8_t class;
@@ -359,6 +357,30 @@ static int set_opt_send_qos (const char *opt) /* {{{ */
 		/* The lower two bits are used for Explicit Congestion Notification (ECN) */
 		opt_send_qos = dscp << 2;
 	}
+	/* - Class Selector (CS) */
+	else if ((strncasecmp ("cs", opt, strlen ("cs")) == 0)
+			&& (strlen (opt) == 3))
+	{
+		uint8_t class;
+
+		if ((opt[2] < '0') || (opt[2] > '7'))
+			usage_tos_exit (/* arg = */ opt, /* status = */ EXIT_FAILURE);
+
+		/* Not exactly legal by the C standard, but I don't know of any
+		 * system not supporting this hack. */
+		class = ((uint8_t) opt[2]) - ((uint8_t) '0');
+		opt_send_qos = class << 5;
+	}
+	/* Type of Service (RFC 1349) */
+	else if (strcasecmp ("lowdelay", opt) == 0)
+		opt_send_qos = IPTOS_LOWDELAY;
+	else if (strcasecmp ("throughput", opt) == 0)
+		opt_send_qos = IPTOS_THROUGHPUT;
+	else if (strcasecmp ("reliability", opt) == 0)
+		opt_send_qos = IPTOS_RELIABILITY;
+	else if (strcasecmp ("mincost", opt) == 0)
+		opt_send_qos = IPTOS_MINCOST;
+	/* Numeric value */
 	else
 	{
 		unsigned long value;
