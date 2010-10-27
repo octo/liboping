@@ -84,6 +84,14 @@ depends on the value that was used by the remote host when it sent the echo
 reply and has nothing to do with the B<PING_OPT_TTL> of L<ping_setopt(3)>. The
 buffer should be big enough to hold an integer value.
 
+=item B<PING_INFO_RECV_QOS>
+
+Returns the value of the I<Quality of Service> (QoS) byte of the incoming IPv4
+or IPv6 packet. This byte is not interpreted by I<liboping> at all and may be
+DSCPE<nbsp>/ ECN or precedenceE<nbsp>/ ToS depending on your network setup.
+Please see the appropriate RFCs for further information on values you can
+expect to receive. The buffer is expected to an C<uint8_t>.
+
 =back
 
 The I<buffer> argument is a pointer to an appropriately sized area of memory
