@@ -71,6 +71,86 @@ returned by L<geteuid(2)>) differ, the only argument allowed for this option is
 "-" (i.E<nbsp>e. standard input). This is meant to avoid security issues when
 I<oping> is installed with the SUID-bit.
 
+=item B<-Q> I<qos>
+
+Specify the I<Quality of Service> (QoS) for outgoing packets. This is a
+somewhat tricky option, since the meaning of the bits in the IPv4 header has
+been revised several times.
+
+The currently recommended method is I<Differentiated Services> which is used in
+IPv6 headers as well. There are shortcuts for 13E<nbsp>predefined
+I<per-hop behaviors> (PHBs):
+
+=over 4
+
+=item B<be>
+
+Selects the I<Best Effort> behavior. This is the default behavior.
+
+=item B<ef>
+
+Selects the I<Expedited Forwarding> (EF) per-hop behavior, as defined in
+I<RFCE<nbsp>3246>. This PHB is characterised by low delay, low loss and low
+jitter, i.e. high priority traffic.
+
+=item  B<af>I<c>I<p>
+
+Selects one of 12E<nbsp>differentiated services code points (DSCPs), which are
+organized in four I<classes> with three I<priorities> each. Therefore, I<c>
+must be a number betweenE<nbsp>1 throughE<nbsp>4 and I<p> must be a number
+betweenE<nbsp>1 throughE<nbsp>3, for example "af13", "af22" and "af41". In each
+class, the lower priority number takes precedence over the higher priority
+number.
+
+=item B<cs>I<n>
+
+Selects one of the eight I<Class Selector> PHBs. I<n> is a number
+betweenE<nbsp>0 throughE<nbsp>7. The class selectors have been defined to be
+compatible to the I<Precedence> field in the IPv4 header as defined in
+I<RFCE<nbsp>791>. Please note that "cs0" is synonymous to "be".
+
+=back
+
+The old definition of the same bits in the IPv4 header was as I<Type of
+Service> (ToS) field, specified in I<RFCE<nbsp>1349>. It defined four possible
+values which have appropriate aliases. Please note that this use of the bits is
+B<deprecated> and the meaning is limited to IPv4!
+
+=over 4
+
+=item B<lowdelay>
+
+Minimize delay
+
+=item B<throughput>
+
+Maximize throughput
+
+=item B<reliability>
+
+Maximize reliability
+
+=item B<mincost>
+
+Minimize monetary cost
+
+=back
+
+Alternatively, you can also specify the byte manually. You can use either a
+decimal number (0-255), a hexadecimal number (0x00-0xff) or an octal number
+(00-0377) using the usual "0x" and "0" prefixes for hexadecimal and octal
+respectively.
+
+The printed lines will contain information about the QoS field of received
+packets if either a non-standard QoS setting was used on outgoing packets or if
+the QoS byte of incoming packets is not zero. In other words, the QoS
+information is omitted if both, the outgoing and the incoming QoS bytes are
+zero. The received byte is always interpreted as
+I<Differentiated Services Code Point> (DSCP) and
+I<Explicit Congestion Notification> (ECN), even if the deprecated
+I<Type of Service> (ToS) aliases were used to specify the bits of outgoing
+packets.
+
 =back
 
 =head1 COLORS

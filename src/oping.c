@@ -25,6 +25,8 @@
 # include <stdlib.h>
 # include <stdio.h>
 # include <string.h>
+# include <stdint.h>
+# include <inttypes.h>
 # include <errno.h>
 # include <assert.h>
 #else
@@ -48,6 +50,16 @@
 # else
 #  include <time.h>
 # endif
+#endif
+
+#if HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif
+#if HAVE_NETINET_IN_H
+# include <netinet/in.h>
+#endif
+#if HAVE_NETINET_IP_H
+# include <netinet/ip.h>
 #endif
 
 #if HAVE_NETDB_H
@@ -103,6 +115,7 @@ static char   *opt_device     = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
+static uint8_t opt_send_qos   = 0;
 
 static int host_num = 0;
 
@@ -242,6 +255,8 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
 			"  -t ttl       time to live for each ICMP packet\n"
+			"  -Q qos       Quality of Service (QoS) of outgoing packets\n"
+			"               Use \"-Q help\" for a list of valid options.\n"
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
@@ -253,13 +268,194 @@ static void usage_exit (const char *name, int status) /* {{{ */
 	exit (status);
 } /* }}} void usage_exit */
 
+static void usage_qos_exit (const char *arg, int status) /* {{{ */
+{
+	if (arg != 0)
+		fprintf (stderr, "Invalid QoS argument: \"%s\"\n\n", arg);
+
+	fprintf (stderr, "Valid QoS arguments (option \"-Q\") are:\n"
+			"\n"
+			"  Differentiated Services (IPv4 and IPv6, RFC 2474)\n"
+			"\n"
+			"    be                     Best Effort (BE, default PHB).\n"
+			"    ef                     Expedited Forwarding (EF) PHB group (RFC 3246).\n"
+			"                           (low delay, low loss, low jitter)\n"
+			"    af[1-4][1-3]           Assured Forwarding (AF) PHB group (RFC 2597).\n"
+			"                           For example: \"af12\" (class 1, precedence 2)\n"
+			"    cs[0-7]                Class Selector (CS) PHB group (RFC 2474).\n"
+			"                           For example: \"cs1\" (priority traffic)\n"
+			"\n"
+			"  Type of Service (IPv4, RFC 1349, obsolete)\n"
+			"\n"
+			"    lowdelay     (%#04x)    minimize delay\n"
+			"    throughput   (%#04x)    maximize throughput\n"
+			"    reliability  (%#04x)    maximize reliability\n"
+			"    mincost      (%#04x)    minimize monetary cost\n"
+			"\n"
+			"  Specify manually\n"
+			"\n"
+			"    0x00 - 0xff            Hexadecimal numeric specification.\n"
+			"       0 -  255            Decimal numeric specification.\n"
+			"\n",
+			(unsigned int) IPTOS_LOWDELAY,
+			(unsigned int) IPTOS_THROUGHPUT,
+			(unsigned int) IPTOS_RELIABILITY,
+			(unsigned int) IPTOS_MINCOST);
+
+	exit (status);
+} /* }}} void usage_qos_exit */
+
+static int set_opt_send_qos (const char *opt) /* {{{ */
+{
+	if (opt == NULL)
+		return (EINVAL);
+
+	if (strcasecmp ("help", opt) == 0)
+		usage_qos_exit (/* arg = */ NULL, /* status = */ EXIT_SUCCESS);
+	/* DiffServ (RFC 2474): */
+	/* - Best effort (BE) */
+	else if (strcasecmp ("be", opt) == 0)
+		opt_send_qos = 0;
+	/* - Expedited Forwarding (EF, RFC 3246) */
+	else if (strcasecmp ("ef", opt) == 0)
+		opt_send_qos = 0xB8; /* == 0x2E << 2 */
+	/* - Assured Forwarding (AF, RFC 2597) */
+	else if ((strncasecmp ("af", opt, strlen ("af")) == 0)
+			&& (strlen (opt) == 4))
+	{
+		uint8_t dscp;
+		uint8_t class;
+		uint8_t prec;
+
+		/* There are four classes, AF1x, AF2x, AF3x, and AF4x. */
+		if (opt[2] == '1')
+			class = 1;
+		else if (opt[2] == '2')
+			class = 2;
+		else if (opt[2] == '3')
+			class = 3;
+		else if (opt[2] == '4')
+			class = 4;
+		else
+			usage_qos_exit (/* arg = */ opt, /* status = */ EXIT_SUCCESS);
+
+		/* In each class, there are three precedences, AFx1, AFx2, and AFx3 */
+		if (opt[3] == '1')
+			prec = 1;
+		else if (opt[3] == '2')
+			prec = 2;
+		else if (opt[3] == '3')
+			prec = 3;
+		else
+			usage_qos_exit (/* arg = */ opt, /* status = */ EXIT_SUCCESS);
+
+		dscp = (8 * class) + (2 * prec);
+		/* The lower two bits are used for Explicit Congestion Notification (ECN) */
+		opt_send_qos = dscp << 2;
+	}
+	/* - Class Selector (CS) */
+	else if ((strncasecmp ("cs", opt, strlen ("cs")) == 0)
+			&& (strlen (opt) == 3))
+	{
+		uint8_t class;
+
+		if ((opt[2] < '0') || (opt[2] > '7'))
+			usage_qos_exit (/* arg = */ opt, /* status = */ EXIT_FAILURE);
+
+		/* Not exactly legal by the C standard, but I don't know of any
+		 * system not supporting this hack. */
+		class = ((uint8_t) opt[2]) - ((uint8_t) '0');
+		opt_send_qos = class << 5;
+	}
+	/* Type of Service (RFC 1349) */
+	else if (strcasecmp ("lowdelay", opt) == 0)
+		opt_send_qos = IPTOS_LOWDELAY;
+	else if (strcasecmp ("throughput", opt) == 0)
+		opt_send_qos = IPTOS_THROUGHPUT;
+	else if (strcasecmp ("reliability", opt) == 0)
+		opt_send_qos = IPTOS_RELIABILITY;
+	else if (strcasecmp ("mincost", opt) == 0)
+		opt_send_qos = IPTOS_MINCOST;
+	/* Numeric value */
+	else
+	{
+		unsigned long value;
+		char *endptr;
+
+		errno = 0;
+		endptr = NULL;
+		value = strtoul (opt, &endptr, /* base = */ 0);
+		if ((errno != 0) || (endptr == opt)
+				|| (endptr == NULL) || (*endptr != 0)
+				|| (value > 0xff))
+			usage_qos_exit (/* arg = */ opt, /* status = */ EXIT_FAILURE);
+		
+		opt_send_qos = (uint8_t) value;
+	}
+
+	return (0);
+} /* }}} int set_opt_send_qos */
+
+static char *format_qos (uint8_t qos, char *buffer, size_t buffer_size) /* {{{ */
+{
+	uint8_t dscp;
+	uint8_t ecn;
+	char *dscp_str;
+	char *ecn_str;
+
+	dscp = qos >> 2;
+	ecn = qos & 0x03;
+
+	switch (dscp)
+	{
+		case 0x00: dscp_str = "be";  break;
+		case 0x2e: dscp_str = "ef";  break;
+		case 0x0a: dscp_str = "af11"; break;
+		case 0x0c: dscp_str = "af12"; break;
+		case 0x0e: dscp_str = "af13"; break;
+		case 0x12: dscp_str = "af21"; break;
+		case 0x14: dscp_str = "af22"; break;
+		case 0x16: dscp_str = "af23"; break;
+		case 0x1a: dscp_str = "af31"; break;
+		case 0x1c: dscp_str = "af32"; break;
+		case 0x1e: dscp_str = "af33"; break;
+		case 0x22: dscp_str = "af41"; break;
+		case 0x24: dscp_str = "af42"; break;
+		case 0x26: dscp_str = "af43"; break;
+		case 0x08: dscp_str = "cs1";  break;
+		case 0x10: dscp_str = "cs2";  break;
+		case 0x18: dscp_str = "cs3";  break;
+		case 0x20: dscp_str = "cs4";  break;
+		case 0x28: dscp_str = "cs5";  break;
+		case 0x30: dscp_str = "cs6";  break;
+		case 0x38: dscp_str = "cs7";  break;
+		default:   dscp_str = NULL;
+	}
+
+	switch (ecn)
+	{
+		case 0x01: ecn_str = ",ecn(1)"; break;
+		case 0x02: ecn_str = ",ecn(0)"; break;
+		case 0x03: ecn_str = ",ce"; break;
+		default:   ecn_str = "";
+	}
+
+	if (dscp_str == NULL)
+		snprintf (buffer, buffer_size, "0x%02x%s", dscp, ecn_str);
+	else
+		snprintf (buffer, buffer_size, "%s%s", dscp_str, ecn_str);
+	buffer[buffer_size - 1] = 0;
+
+	return (buffer);
+} /* }}} char *format_qos */
+
 static int read_options (int argc, char **argv) /* {{{ */
 {
 	int optchar;
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:");
 
 		if (optchar == -1)
 			break;
@@ -325,6 +521,10 @@ static int read_options (int argc, char **argv) /* {{{ */
 							optarg);
 				break;
 			}
+
+			case 'Q':
+				set_opt_send_qos (optarg);
+				break;
 
 			case 'h':
 				usage_exit (argv[0], 0);
@@ -613,6 +813,8 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	double          latency;
 	unsigned int    sequence;
 	int             recv_ttl;
+	uint8_t         recv_qos;
+	char            recv_qos_str[16];
 	size_t          buffer_len;
 	size_t          data_len;
 	ping_context_t *context;
@@ -631,6 +833,11 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	buffer_len = sizeof (recv_ttl);
 	ping_iterator_get_info (iter, PING_INFO_RECV_TTL,
 			&recv_ttl, &buffer_len);
+
+	recv_qos = 0;
+	buffer_len = sizeof (recv_qos);
+	ping_iterator_get_info (iter, PING_INFO_RECV_QOS,
+			&recv_qos, &buffer_len);
 
 	data_len = 0;
 	ping_iterator_get_info (iter, PING_INFO_DATA,
@@ -670,10 +877,16 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 					|| (latency > (average + stddev)))
 				color = OPING_YELLOW;
 
-			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
-					"time=",
+			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 					data_len, context->host, context->addr,
-					sequence, recv_ttl);
+					sequence, recv_ttl,
+					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+			if ((recv_qos != 0) || (opt_send_qos != 0))
+			{
+				HOST_PRINTF ("qos=%s ",
+						format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+			}
+			HOST_PRINTF ("time=");
 			wattron (main_win, COLOR_PAIR(color));
 			HOST_PRINTF ("%.2f", latency);
 			wattroff (main_win, COLOR_PAIR(color));
@@ -682,11 +895,16 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		else
 		{
 #endif
-		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i "
-				"time=%.2f ms\n",
+		HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 				data_len,
 				context->host, context->addr,
-				sequence, recv_ttl, latency);
+				sequence, recv_ttl);
+		if ((recv_qos != 0) || (opt_send_qos != 0))
+		{
+			HOST_PRINTF ("qos=%s ",
+					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+		}
+		HOST_PRINTF ("time=%.2f ms\n", latency);
 #if USE_NCURSES
 		}
 #endif
@@ -827,6 +1045,12 @@ int main (int argc, char **argv) /* {{{ */
 	{
 		fprintf (stderr, "Setting TTL to %i failed: %s\n",
 				opt_send_ttl, ping_get_error (ping));
+	}
+
+	if (ping_setopt (ping, PING_OPT_QOS, &opt_send_qos) != 0)
+	{
+		fprintf (stderr, "Setting TOS to %i failed: %s\n",
+				opt_send_qos, ping_get_error (ping));
 	}
 
 	{

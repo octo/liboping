@@ -117,6 +117,7 @@ struct pinghost
 	double                   latency;
 	uint32_t                 dropped;
 	int                      recv_ttl;
+	uint8_t                  recv_qos;
 	char                    *data;
 
 	void                    *context;
@@ -129,6 +130,7 @@ struct pingobj
 	double                   timeout;
 	int                      ttl;
 	int                      addrfamily;
+	uint8_t                  qos;
 	char                    *data;
 
 	struct sockaddr         *srcaddr;
@@ -350,9 +352,10 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 				ident, seq);
 	}
 
-	if (ptr != NULL)
-		ptr->recv_ttl = ip_hdr->ip_ttl;
-
+	if (ptr != NULL){
+		ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
+		ptr->recv_qos = (uint8_t) ip_hdr->ip_tos;
+	}
 	return (ptr);
 }
 
@@ -450,6 +453,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	struct timeval diff;
 	pinghost_t *host = NULL;
 	int recv_ttl;
+	uint8_t recv_qos;
 	
 	/*
 	 * Set up the receive buffer..
@@ -495,6 +499,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
+	recv_qos = 0xff;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
@@ -504,6 +509,12 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			if (cmsg->cmsg_level != IPPROTO_IP)
 				continue;
 
+			if (cmsg->cmsg_type == IP_TOS)
+			{
+				memcpy (&recv_qos, CMSG_DATA (cmsg),
+						sizeof (recv_qos));
+				dprintf ("TOSv4 = 0x%02"PRIx8";\n", recv_qos);
+			} else
 			if (cmsg->cmsg_type == IP_TTL)
 			{
 				memcpy (&recv_ttl, CMSG_DATA (cmsg),
@@ -521,6 +532,12 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			if (cmsg->cmsg_level != IPPROTO_IPV6)
 				continue;
 
+			if (cmsg->cmsg_type == IPV6_TCLASS)
+			{
+				memcpy (&recv_qos, CMSG_DATA (cmsg),
+						sizeof (recv_qos));
+				dprintf ("TOSv6 = 0x%02"PRIx8";\n", recv_qos);
+			} else
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
 				memcpy (&recv_ttl, CMSG_DATA (cmsg),
@@ -579,6 +596,8 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	if (recv_ttl >= 0)
 		host->recv_ttl = recv_ttl;
+	if (recv_qos != 0xffff)
+		host->recv_qos = recv_qos;
 
 	host->latency  = ((double) diff.tv_usec) / 1000.0;
 	host->latency += ((double) diff.tv_sec)  * 1000.0;
@@ -931,6 +950,50 @@ static int ping_set_ttl (pinghost_t *ph, int ttl)
 	return (ret);
 }
 
+/*
+ * Set the TOS of a socket protocol independently.
+ *
+ * Using SOL_SOCKET / SO_PRIORITY might be a protocol independent way to
+ * set this. See socket(7) for details.
+ */
+static int ping_set_qos (pingobj_t *obj, pinghost_t *ph, uint8_t qos)
+{
+	int ret = EINVAL;
+	char errbuf[PING_ERRMSG_LEN];
+
+	if (ph->addrfamily == AF_INET)
+	{
+		dprintf ("Setting TP_TOS to %#04"PRIx8"\n", qos);
+		ret = setsockopt (ph->fd, IPPROTO_IP, IP_TOS,
+				&qos, sizeof (qos));
+		if (ret != 0)
+		{
+			ret = errno;
+			ping_set_error (obj, "ping_set_qos",
+					sstrerror (ret, errbuf, sizeof (errbuf)));
+			dprintf ("Setting TP_TOS failed: %s\n", errbuf);
+		}
+	}
+	else if (ph->addrfamily == AF_INET6)
+	{
+		/* IPV6_TCLASS requires an "int". */
+		int tmp = (int) qos;
+
+		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8" (%i)\n", qos, tmp);
+		ret = setsockopt (ph->fd, IPPROTO_IPV6, IPV6_TCLASS,
+				&tmp, sizeof (tmp));
+		if (ret != 0)
+		{
+			ret = errno;
+			ping_set_error (obj, "ping_set_qos",
+					sstrerror (ret, errbuf, sizeof (errbuf)));
+			dprintf ("Setting IPV6_TCLASS failed: %s\n", errbuf);
+		}
+	}
+
+	return (ret);
+}
+
 static int ping_get_ident (void)
 {
 	int fd;
@@ -1030,12 +1093,13 @@ pingobj_t *ping_construct (void)
 
 	if ((obj = (pingobj_t *) malloc (sizeof (pingobj_t))) == NULL)
 		return (NULL);
-	memset (obj, '\0', sizeof (pingobj_t));
+	memset (obj, 0, sizeof (pingobj_t));
 
 	obj->timeout    = PING_DEF_TIMEOUT;
 	obj->ttl        = PING_DEF_TTL;
 	obj->addrfamily = PING_DEF_AF;
 	obj->data       = strdup (PING_DEF_DATA);
+	obj->qos        = 0;
 
 	return (obj);
 }
@@ -1081,6 +1145,16 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 	switch (option)
 	{
+		case PING_OPT_QOS:
+		{
+			pinghost_t *ph;
+
+			obj->qos = *((uint8_t *) value);
+			for (ph = obj->head; ph != NULL; ph = ph->next)
+				ping_set_qos (obj, ph, obj->qos);
+			break;
+		}
+
 		case PING_OPT_TIMEOUT:
 			obj->timeout = *((double *) value);
 			if (obj->timeout < 0.0)
@@ -1436,23 +1510,41 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 		if (ph->addrfamily == AF_INET)
 		{
-			int opt = 1;
+			int opt;
 
+			/* Enable receiving the TOS field */
+			opt = 1;
+			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTOS,
+					&opt, sizeof (opt));
+
+			/* Enable receiving the TTL field */
+			opt = 1;
 			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTTL,
 					&opt, sizeof (opt));
 		}
-#if defined(IPPROTO_IPV6) && defined(IPV6_RECVHOPLIMIT)
+#if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_RECVTCLASS)
 		else if (ph->addrfamily == AF_INET6)
 		{
-			int opt = 1;
+			int opt;
 
+# if defined(IPV6_RECVHOPLIMIT)
+			/* For details see RFC 3542, section 6.3. */
+			opt = 1;
 			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
 					&opt, sizeof (opt));
+# endif /* IPV6_RECVHOPLIMIT */
+
+# if defined(IPV6_RECVTCLASS)
+			/* For details see RFC 3542, section 6.5. */
+			opt = 1;
+			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVTCLASS,
+					&opt, sizeof (opt));
+# endif /* IPV6_RECVTCLASS */
 		}
-#endif
+#endif /* IPV6_RECVHOPLIMIT || IPV6_RECVTCLASS */
 
 		break;
-	}
+	} /* for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next) */
 
 	freeaddrinfo (ai_list);
 
@@ -1484,6 +1576,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	}
 
 	ping_set_ttl (ph, obj->ttl);
+	ping_set_qos (obj, ph, obj->qos);
 
 	return (0);
 } /* int ping_host_add */
@@ -1660,6 +1753,16 @@ int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 			if (orig_buffer_len < sizeof (int))
 				break;
 			*((int *) buffer) = iter->recv_ttl;
+			ret = 0;
+			break;
+
+		case PING_INFO_RECV_QOS:
+			ret = ENOMEM;
+			if (*buffer_len>sizeof(unsigned)) *buffer_len=sizeof(unsigned);
+			if (!*buffer_len) *buffer_len=1;
+			if (orig_buffer_len < *buffer_len)
+				break;
+			memcpy(buffer,&iter->recv_qos,*buffer_len);
 			ret = 0;
 			break;
 	}
