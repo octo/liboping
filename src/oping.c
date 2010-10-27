@@ -234,10 +234,6 @@ static int ping_initialize_contexts (pingobj_t *ping) /* {{{ */
 
 static void usage_exit (const char *name, int status) /* {{{ */
 {
-	int name_length;
-
-	name_length = (int) strlen (name);
-
 	fprintf (stderr, "Usage: %s [OPTIONS] "
 				"-f filename | host [host [host ...]]\n"
 
