@@ -93,6 +93,13 @@ Selects the I<Expedited Forwarding> (EF) per-hop behavior, as defined in
 I<RFCE<nbsp>3246>. This PHB is characterised by low delay, low loss and low
 jitter, i.e. high priority traffic.
 
+=item B<va>
+
+Selects the I<Voice Admitted> (VA) per-hop behavior, as defined in
+I<RFCE<nbsp>5865>. This traffic class is meant for I<Voice over IP> (VoIP)
+traffic which uses I<Call Admission Control> (CAC) for reserving network
+capacity.
+
 =item  B<af>I<c>I<p>
 
 Selects one of 12E<nbsp>differentiated services code points (DSCPs), which are

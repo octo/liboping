@@ -280,6 +280,8 @@ static void usage_qos_exit (const char *arg, int status) /* {{{ */
 			"    be                     Best Effort (BE, default PHB).\n"
 			"    ef                     Expedited Forwarding (EF) PHB group (RFC 3246).\n"
 			"                           (low delay, low loss, low jitter)\n"
+			"    va                     Voice Admit (VA) DSCP (RFC 5865).\n"
+			"                           (capacity-admitted traffic)\n"
 			"    af[1-4][1-3]           Assured Forwarding (AF) PHB group (RFC 2597).\n"
 			"                           For example: \"af12\" (class 1, precedence 2)\n"
 			"    cs[0-7]                Class Selector (CS) PHB group (RFC 2474).\n"
@@ -319,6 +321,9 @@ static int set_opt_send_qos (const char *opt) /* {{{ */
 	/* - Expedited Forwarding (EF, RFC 3246) */
 	else if (strcasecmp ("ef", opt) == 0)
 		opt_send_qos = 0xB8; /* == 0x2E << 2 */
+	/* - Voice Admit (VA, RFC 5865) */
+	else if (strcasecmp ("va", opt) == 0)
+		opt_send_qos = 0xB0; /* == 0x2D << 2 */
 	/* - Assured Forwarding (AF, RFC 2597) */
 	else if ((strncasecmp ("af", opt, strlen ("af")) == 0)
 			&& (strlen (opt) == 4))
@@ -410,6 +415,7 @@ static char *format_qos (uint8_t qos, char *buffer, size_t buffer_size) /* {{{ *
 	{
 		case 0x00: dscp_str = "be";  break;
 		case 0x2e: dscp_str = "ef";  break;
+		case 0x2d: dscp_str = "va";  break;
 		case 0x0a: dscp_str = "af11"; break;
 		case 0x0c: dscp_str = "af12"; break;
 		case 0x0e: dscp_str = "af13"; break;
