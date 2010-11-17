@@ -1,3 +1,8 @@
+2010-11-17, Version 1.5.1:
+	* oping, noping: Alias for the “Voice Admit” DSCP has been added.
+	* src/oping.c, src/liboping.c: Compiler warnings / errors have been
+	  fixed. Thanks to James Bromberger for reporting one of them.
+
 2010-10-27, Version 1.5.0:
 	* src/liboping.c: The possibility to set the QoS byte of outgoing IPv4
 	  and IPv6 packets and read the byte from incoming packets has been
