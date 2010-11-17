@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2010  Florian octo Forster <octo at verplant.org>
+ * Copyright (C) 2006-2010  Florian octo Forster <ff at octo.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -87,6 +87,11 @@
 
 #ifndef _POSIX_SAVED_IDS
 # define _POSIX_SAVED_IDS 0
+#endif
+
+/* Remove GNU specific __attribute__ settings when using another compiler */
+#if !__GNUC__
+# define __attribute__(x) /**/
 #endif
 
 typedef struct ping_context
