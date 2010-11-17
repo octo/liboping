@@ -499,7 +499,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
-	recv_qos = 0xff;
+	recv_qos = 0;
 	for (cmsg = CMSG_FIRSTHDR (&msghdr); /* {{{ */
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
@@ -596,8 +596,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	if (recv_ttl >= 0)
 		host->recv_ttl = recv_ttl;
-	if (recv_qos != 0xffff)
-		host->recv_qos = recv_qos;
+	host->recv_qos = recv_qos;
 
 	host->latency  = ((double) diff.tv_usec) / 1000.0;
 	host->latency += ((double) diff.tv_sec)  * 1000.0;
