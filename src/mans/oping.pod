@@ -66,10 +66,18 @@ Set the outgoing network device to use.
 Instead of specifying hostnames on the command line, read them from
 I<filename>. If I<filename> is B<->, read from C<STDIN>.
 
-If the real user ID (as returned by L<getuid(2)>) and the effective user ID (as
+If I<oping> is installed with the SetUID-bit, it will set the effective UID to
+the real UID before opening the file. In the special (but common) case that
+I<oping> is owned by the super-user (UIDE<nbsp>0), this means that privileges
+are temporarily dropped before opening the file, in order to prevent users from
+reading arbitrary files on the system.
+
+If your system doesn't provide I<saved set-user IDs> (this was an optional
+feature before POSIXE<nbsp>2001), the behavior is different because it is not
+possible to I<temporarily> drop privileges. The alternative behavior is: If the
+real user ID (as returned by L<getuid(2)>) and the effective user ID (as
 returned by L<geteuid(2)>) differ, the only argument allowed for this option is
-"-" (i.E<nbsp>e. standard input). This is meant to avoid security issues when
-I<oping> is installed with the SUID-bit.
+"-" (i.e. standard input).
 
 =item B<-Q> I<qos>
 
@@ -78,7 +86,7 @@ somewhat tricky option, since the meaning of the bits in the IPv4 header has
 been revised several times.
 
 The currently recommended method is I<Differentiated Services> which is used in
-IPv6 headers as well. There are shortcuts for 13E<nbsp>predefined
+IPv6 headers as well. There are shortcuts for various predefined
 I<per-hop behaviors> (PHBs):
 
 =over 4
@@ -182,7 +190,7 @@ L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
 
 =head1 AUTHOR
 
-liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
+liboping is written by Florian octo Forster E<lt>ff at octo.itE<gt>.
 Its homepage can be found at L<http://verplant.org/liboping/>.
 
 (c) 2005-2010 by Florian octo Forster.
