@@ -819,7 +819,7 @@ static int post_sleep_hook (__attribute__((unused)) pingobj_t *ping) /* {{{ */
 #endif
 
 static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
-		int index)
+		__attribute__((unused)) int index)
 {
 	double          latency;
 	unsigned int    sequence;
