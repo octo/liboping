@@ -35,6 +35,41 @@ Perl bindings
   “--without-perl-bindings”.
 
 
+Permissions
+━━━━━━━━━━━━━
+
+  On UNIX, special permissions are required to open raw sockets (raw(7)). If
+  you compile and install the “oping” and “noping” binaries as normal user
+  (which is strongly suggested), you won't be able to use the binaries as a
+  normal user, because you won't have the permission to open raw sockets.
+
+  Linux
+  ━━━━━
+  On Linux, the preferred method is to assign the required “capability” to the
+  binaries. This will allow the binary to open raw sockets, but doesn't give
+  any other permissions such as reading other users' files or shutting down the
+  system. The downside is that this mechanism is comparatively new: Assigning
+  capabilities to files is available since Linux 2.6.24.
+
+  To set the required capabilities, run (as user root):
+
+    # setcap cap_net_raw=ep /opt/oping/bin/oping
+    # setcap cap_net_raw=ep /opt/oping/bin/noping
+
+  Other UNIX
+  ━━━━━━━━━━
+  Capabilities are a nice but Linux-specific solution. To make “oping” and
+  “noping” available to unprivileged users on other UNIX systems, use the
+  traditional set-UID root solution. If your system supports “saved set-UIDs”
+  (basically all systems do), the applications will drop the privileges during
+  initialization and only regain them when actually opening the socket(s).
+  
+  To set the set-UID bit, run (as user root):
+
+    # chown root: /opt/oping/bin/{,n}oping
+    # chmod u+s   /opt/oping/bin/{,n}oping
+
+
 Licensing terms
 ━━━━━━━━━━━━━━━
 
