@@ -450,7 +450,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	 * reply. The right object will be returned by ping_receive_ipv*(). For
 	 * now, we can only rely on ph->fd and ph->addrfamily. */
 
-	struct timeval diff;
+	struct timeval diff, pkt_now = *now;
 	pinghost_t *host = NULL;
 	int recv_ttl;
 	uint8_t recv_qos;
@@ -504,6 +504,11 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
 	{
+#ifdef SO_TIMESTAMP
+		if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
+			memcpy(&pkt_now, CMSG_DATA(cmsg), sizeof(pkt_now));
+#endif /* SO_TIMESTAMP */
+
 		if (ph->addrfamily == AF_INET) /* {{{ */
 		{
 			if (cmsg->cmsg_level != IPPROTO_IP)
@@ -578,13 +583,13 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	}
 
 	dprintf ("rcvd: %12i.%06i\n",
-			(int) now->tv_sec,
-			(int) now->tv_usec);
+			(int) pkt_now.tv_sec,
+			(int) pkt_now.tv_usec);
 	dprintf ("sent: %12i.%06i\n",
 			(int) host->timer->tv_sec,
 			(int) host->timer->tv_usec);
 
-	if (ping_timeval_sub (now, host->timer, &diff) < 0)
+	if (ping_timeval_sub (&pkt_now, host->timer, &diff) < 0)
 	{
 		timerclear (host->timer);
 		return (-1);
@@ -1478,7 +1483,13 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			}
 		}
 #endif /* SO_BINDTODEVICE */
-
+#ifdef SO_TIMESTAMP
+		if (1)
+		{
+			int c = 1;
+			setsockopt(ph->fd, SOL_SOCKET, SO_TIMESTAMP, &c, sizeof(c));
+		}
+#endif /* SO_TIMESTAMP */
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));
 		memcpy (ph->addr, ai_ptr->ai_addr, ai_ptr->ai_addrlen);
