@@ -504,12 +504,14 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			cmsg != NULL;
 			cmsg = CMSG_NXTHDR (&msghdr, cmsg))
 	{
+		if (cmsg->cmsg_level == SOL_SOCKET)
+		{
 #ifdef SO_TIMESTAMP
-		if (cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type == SO_TIMESTAMP)
-			memcpy(&pkt_now, CMSG_DATA(cmsg), sizeof(pkt_now));
+			if (cmsg->cmsg_type == SO_TIMESTAMP)
+				memcpy (&pkt_now, CMSG_DATA (cmsg), sizeof (pkt_now));
 #endif /* SO_TIMESTAMP */
-
-		if (ph->addrfamily == AF_INET) /* {{{ */
+		}
+		else if (ph->addrfamily == AF_INET) /* {{{ */
 		{
 			if (cmsg->cmsg_level != IPPROTO_IP)
 				continue;
@@ -1473,7 +1475,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			{
 #if WITH_DEBUG
 				char errbuf[PING_ERRMSG_LEN];
-				dprintf ("setsockopt: %s\n",
+				dprintf ("setsockopt (SO_BINDTODEVICE): %s\n",
 						sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
 				ping_set_errno (obj, errno);
@@ -1484,11 +1486,27 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		}
 #endif /* SO_BINDTODEVICE */
 #ifdef SO_TIMESTAMP
-		if (1)
+		if (1) /* {{{ */
 		{
-			int c = 1;
-			setsockopt(ph->fd, SOL_SOCKET, SO_TIMESTAMP, &c, sizeof(c));
-		}
+			int status;
+			int opt = 1;
+
+			status = setsockopt (ph->fd,
+					SOL_SOCKET, SO_TIMESTAMP,
+					&opt, sizeof (opt));
+			if (status != 0)
+			{
+#if WITH_DEBUG
+				char errbuf[PING_ERRMSG_LEN];
+				dprintf ("setsockopt (SO_TIMESTAMP): %s\n",
+						sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+				ping_set_errno (obj, errno);
+				close (ph->fd);
+				ph->fd = -1;
+				continue;
+			}
+		} /* }}} if (1) */
 #endif /* SO_TIMESTAMP */
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));
