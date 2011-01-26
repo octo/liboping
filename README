@@ -63,7 +63,7 @@ Permissions
   traditional set-UID root solution. If your system supports “saved set-UIDs”
   (basically all systems do), the applications will drop the privileges during
   initialization and only regain them when actually opening the socket(s).
-  
+
   To set the set-UID bit, run (as user root):
 
     # chown root: /opt/oping/bin/{,n}oping
