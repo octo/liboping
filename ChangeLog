@@ -1,3 +1,7 @@
+2011-01-26, Version 1.6.0:
+	* liboping: Improve timing of received network packets using
+	  SO_TIMESTAMP if available. Thanks to Bruno Prémont for his patch.
+
 2010-11-17, Version 1.5.1:
 	* oping, noping: Alias for the “Voice Admit” DSCP has been added.
 	* src/oping.c, src/liboping.c: Compiler warnings / errors have been
