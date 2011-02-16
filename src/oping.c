@@ -273,6 +273,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 	exit (status);
 } /* }}} void usage_exit */
 
+__attribute__((noreturn))
 static void usage_qos_exit (const char *arg, int status) /* {{{ */
 {
 	if (arg != 0)
@@ -334,8 +335,8 @@ static int set_opt_send_qos (const char *opt) /* {{{ */
 			&& (strlen (opt) == 4))
 	{
 		uint8_t dscp;
-		uint8_t class;
-		uint8_t prec;
+		uint8_t class = 0;
+		uint8_t prec = 0;
 
 		/* There are four classes, AF1x, AF2x, AF3x, and AF4x. */
 		if (opt[2] == '1')
