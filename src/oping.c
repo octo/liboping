@@ -673,7 +673,7 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 			context->window = NULL;
 		}
 		context->window = newwin (/* height = */ 4,
-				/* width = */ 0,
+				/* width = */ width,
 				/* y = */ main_win_height + (4 * context->index),
 				/* x = */ 0);
 	}
@@ -726,7 +726,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 
 	main_win_height = height - (4 * host_num);
 	main_win = newwin (/* height = */ main_win_height,
-			/* width = */ 0,
+			/* width = */ width,
 			/* y = */ 0, /* x = */ 0);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
@@ -752,7 +752,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 			context->window = NULL;
 		}
 		context->window = newwin (/* height = */ 4,
-				/* width = */ 0,
+				/* width = */ width,
 				/* y = */ main_win_height + (4 * context->index),
 				/* x = */ 0);
 	}
