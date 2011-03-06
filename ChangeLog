@@ -1,3 +1,12 @@
+2011-03-06, Version 1.6.1:
+	* Build system: If "make install" is executed as root, the CAP_NET_RAW
+	  capability is added to the binary (on Linux) or the set-UID bit is
+	  set (other Unixes).
+	* src/oping.c: Fix compiler warnings which may abort the build. Thanks
+	  to James Bromberger for reporting the problem.
+	* noping: Compatibility with ncurses 5.8 has been fixed. Thanks to
+	  Gaetan Bisson for his patch.
+
 2011-01-26, Version 1.6.0:
 	* liboping: Improve timing of received network packets using
 	  SO_TIMESTAMP if available. Thanks to Bruno Prémont for his patch.
