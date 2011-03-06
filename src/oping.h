@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2010  Florian octo Forster <ff at octo.it>
+ * Copyright (C) 2006-2011  Florian octo Forster <ff at octo.it>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
