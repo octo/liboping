@@ -1429,7 +1429,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			snprintf (errmsg, PING_ERRMSG_LEN, "Unknown `ai_family': %i", ai_ptr->ai_family);
 			errmsg[PING_ERRMSG_LEN - 1] = '\0';
 
-			dprintf (errmsg);
+			dprintf ("%s", errmsg);
 			ping_set_error (obj, "getaddrinfo", errmsg);
 			continue;
 		}
