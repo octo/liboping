@@ -56,11 +56,11 @@ install-exec-hook:
 	@if test "x0" = "x$$UID"; then \
 		if test "xLinux" = "x`uname -s`"; then \
 			echo "Setting CAP_NET_RAW capability on binaries."; \
-			setcap cap_net_raw=ep $(DESTDIR)$(bindir)/oping; \
-			setcap cap_net_raw=ep $(DESTDIR)$(bindir)/noping; \
+			setcap cap_net_raw=ep $(DESTDIR)$(bindir)/oping || true; \
+			setcap cap_net_raw=ep $(DESTDIR)$(bindir)/noping || true; \
 		else \
 			echo "Setting set-UID bit on binaries."; \
-			chmod u+s $(DESTDIR)$(bindir)/oping; \
-			chmod u+s $(DESTDIR)$(bindir)/noping; \
+			chmod u+s $(DESTDIR)$(bindir)/oping || true; \
+			chmod u+s $(DESTDIR)$(bindir)/noping || true; \
 		fi; \
 	fi
