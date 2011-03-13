@@ -3,8 +3,6 @@ liboping (1.6.1+2.g207d51d-1) unstable; urgency=low
   * New upstream release.
     - Based on release 1.6.1 plus upstream Git commits up to 207d51d, which
       fix two build issues.
-  * debian/control:
-    - Build depend on libcap2-bin, required by build system.
 
  -- Sebastian Harl <tokkee@debian.org>  Sun, 13 Mar 2011 21:07:18 +0100
 
