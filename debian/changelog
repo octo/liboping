@@ -7,10 +7,11 @@ liboping (1.6.1+2.g207d51d-1) unstable; urgency=low
     - Do not install .la files in favor of the goal to remove those files (for
       details see <http://lists.debian.org/debian-devel/2009/08/
       msg00783.html>).
+    - Use 'dh_prep' rather than 'dh_clean -k'.
   * debian/control:
     - Updated standards-version to 3.9.1.
 
- -- Sebastian Harl <tokkee@debian.org>  Sun, 13 Mar 2011 22:19:52 +0100
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 13 Mar 2011 22:25:07 +0100
 
 liboping (1.4.0-1) unstable; urgency=low
 
