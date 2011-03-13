@@ -10,8 +10,10 @@ liboping (1.6.1+2.g207d51d-1) unstable; urgency=low
     - Use 'dh_prep' rather than 'dh_clean -k'.
   * debian/control:
     - Updated standards-version to 3.9.1.
+    - Depend on debhelper (>=7) rather than (>=5) -- this is required for
+      'dh_prep'.
 
- -- Sebastian Harl <tokkee@debian.org>  Sun, 13 Mar 2011 22:25:07 +0100
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 13 Mar 2011 22:27:08 +0100
 
 liboping (1.4.0-1) unstable; urgency=low
 
