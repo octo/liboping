@@ -190,7 +190,7 @@ L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
 
 =head1 AUTHOR
 
-liboping is written by Florian octo Forster E<lt>ff at octo.itE<gt>.
+liboping is written by Florian "octo" Forster E<lt>ff at octo.itE<gt>.
 Its homepage can be found at L<http://verplant.org/liboping/>.
 
-(c) 2005-2010 by Florian octo Forster.
+Copyright (c) 2005-2011 by Florian "octo" Forster.
