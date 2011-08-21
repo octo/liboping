@@ -1,120 +1,35 @@
 #!/usr/bin/make -f
-# debian/rules for liboping
-#
-# Written by Sebastian Harl <tokkee@debian.org>
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
 
-# These are used for cross-compiling and for saving the configure script
-# from having to guess our platform (since we know it already)
-DEB_HOST_GNU_TYPE   ?= $(shell dpkg-architecture -qDEB_HOST_GNU_TYPE)
-DEB_BUILD_GNU_TYPE  ?= $(shell dpkg-architecture -qDEB_BUILD_GNU_TYPE)
-
-CFLAGS = -Wall -g
-
-ifneq (,$(findstring noopt,$(DEB_BUILD_OPTIONS)))
-	CFLAGS += -O0
-else
-	CFLAGS += -O2
-endif
-
-# $srcver-$perlver-$debrev
 LIBPERL_VERSION := $(shell pm_ver=`perl -MExtUtils::MM -e \
 		'print MM->parse_version("bindings/perl/lib/Net/Oping.pm");'`; \
 	pkg_ver=`dpkg-parsechangelog | egrep '^Version:' | cut -d' ' -f2`; \
 	echo -n "$${pkg_ver%-*}-$$pm_ver-$${pkg_ver\#\#*-}")
 
-config.status: configure
-	dh_testdir
-	
-	for file in config.guess config.sub; do \
-		mv $$file $$file.upstream; \
-		ln -s /usr/share/misc/$$file .; \
-	done
-	
-	./configure \
-			--host=$(DEB_HOST_GNU_TYPE) \
-			--build=$(DEB_BUILD_GNU_TYPE) \
-			--prefix=/usr \
-			--mandir=\$${prefix}/share/man \
-			--with-perl-bindings="INSTALLDIRS=vendor" \
-			CFLAGS="$(CFLAGS)"
+dh_targets=binary binary-arch binary-indep build build-arch build-indep clean install
 
-build: build-arch build-indep
+$(dh_targets) %:
+	dh $@ --with autoreconf --parallel
 
-build-arch: build-stamp
+.PHONY: $(dh_targets)
 
-build-indep:
-# nothing to do here
+override_dh_autoreconf:
+	-mkdir -p m4
+	dh_autoreconf
 
-build-stamp:  config.status
-	dh_testdir
-	
-	$(MAKE) LD_RUN_PATH=""
+override_dh_auto_configure:
+	dh_auto_configure -- --with-perl-bindings="INSTALLDIRS=vendor"
+
+override_dh_auto_build:
+	dh_auto_build
 	chrpath --delete bindings/perl/blib/arch/auto/Net/Oping/Oping.so
-	
-	touch build-stamp
 
-clean:
-	dh_testdir
-	dh_testroot
-	rm -f build-stamp
-	
-	[ ! -f Makefile ] || $(MAKE) distclean
-	
-	for file in config.guess config.sub; do \
-		if [ -e $$file.upstream ]; then \
-			rm -f $$file; \
-			mv $$file.upstream $$file; \
-		fi \
-	done
-	
-	dh_clean
-	
-	# force a rebuild of the manpages
-	rm -f src/mans/*.3 src/mans/*.8
+override_dh_fixperms:
+	dh_fixperms
+	chmod u+s debian/oping/usr/bin/oping debian/oping/usr/bin/noping
 
-install: build
-	dh_testdir
-	dh_testroot
-	dh_prep
-	dh_installdirs
-	
-	$(MAKE) install DESTDIR=$(CURDIR)/debian/tmp
-	
-	# we do not want .la files in Debian
-	rm -f debian/tmp/usr/lib/liboping.la
-	
-	chmod u+s debian/tmp/usr/bin/oping debian/tmp/usr/bin/noping
-
-binary-indep:
-# nothing to do here
-
-binary-arch: build install
-	dh_testdir
-	dh_testroot
-	dh_installchangelogs -Nlibnet-oping-perl ChangeLog
-	dh_installchangelogs -plibnet-oping-perl bindings/perl/Changes
-	dh_installdocs -A debian/README.Debian AUTHORS
-	dh_installdocs -A -Nlibnet-oping-perl README
-	dh_installdocs -plibnet-oping-perl bindings/perl/README
-	dh_installman
-	dh_install --sourcedir=debian/tmp --fail-missing
-	dh_perl -plibnet-oping-perl
-	dh_link
-	dh_lintian
-	dh_strip
-	dh_compress
-	dh_fixperms -Xusr/bin/oping -Xusr/bin/noping
-	dh_makeshlibs
-	dh_installdeb
-	dh_shlibdeps -ldebian/liboping0/usr/lib/
+override_dh_gencontrol:
 	dh_gencontrol -Nlibnet-oping-perl
 	dh_gencontrol -plibnet-oping-perl -u-v$(LIBPERL_VERSION)
-	dh_md5sums
-	dh_builddeb
-
-binary: binary-indep binary-arch
-.PHONY: build clean binary-indep binary-arch binary install
-
