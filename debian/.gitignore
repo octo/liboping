@@ -1,0 +1,11 @@
+/*.debhelper
+/*.log
+/*.substvars
+/autoreconf.after
+/autoreconf.before
+/files
+/libnet-oping-perl/
+/liboping-dev/
+/liboping0/
+/oping/
+/tmp/
