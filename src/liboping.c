@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2010  Florian octo Forster <octo at verplant.org>
+ * Copyright (C) 2006-2011  Florian octo Forster <ff at octo.it>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -1429,7 +1429,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			snprintf (errmsg, PING_ERRMSG_LEN, "Unknown `ai_family': %i", ai_ptr->ai_family);
 			errmsg[PING_ERRMSG_LEN - 1] = '\0';
 
-			dprintf (errmsg);
+			dprintf ("%s", errmsg);
 			ping_set_error (obj, "getaddrinfo", errmsg);
 			continue;
 		}
