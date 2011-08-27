@@ -51,3 +51,16 @@ if BUILD_WITH_LIBRT
 noping_LDADD += -lrt
 endif
 endif # BUILD_WITH_LIBNCURSES
+
+install-exec-hook:
+	@if test "x0" = "x$$UID"; then \
+		if test "xLinux" = "x`uname -s`"; then \
+			echo "Setting CAP_NET_RAW capability on binaries."; \
+			setcap cap_net_raw=ep $(DESTDIR)$(bindir)/oping || true; \
+			setcap cap_net_raw=ep $(DESTDIR)$(bindir)/noping || true; \
+		else \
+			echo "Setting set-UID bit on binaries."; \
+			chmod u+s $(DESTDIR)$(bindir)/oping || true; \
+			chmod u+s $(DESTDIR)$(bindir)/noping || true; \
+		fi; \
+	fi

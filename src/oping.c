@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2010  Florian octo Forster <ff at octo.it>
+ * Copyright (C) 2006-2011  Florian octo Forster <ff at octo.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -273,6 +273,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 	exit (status);
 } /* }}} void usage_exit */
 
+__attribute__((noreturn))
 static void usage_qos_exit (const char *arg, int status) /* {{{ */
 {
 	if (arg != 0)
@@ -334,8 +335,8 @@ static int set_opt_send_qos (const char *opt) /* {{{ */
 			&& (strlen (opt) == 4))
 	{
 		uint8_t dscp;
-		uint8_t class;
-		uint8_t prec;
+		uint8_t class = 0;
+		uint8_t prec = 0;
 
 		/* There are four classes, AF1x, AF2x, AF3x, and AF4x. */
 		if (opt[2] == '1')
@@ -672,7 +673,7 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 			context->window = NULL;
 		}
 		context->window = newwin (/* height = */ 4,
-				/* width = */ 0,
+				/* width = */ width,
 				/* y = */ main_win_height + (4 * context->index),
 				/* x = */ 0);
 	}
@@ -725,7 +726,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 
 	main_win_height = height - (4 * host_num);
 	main_win = newwin (/* height = */ main_win_height,
-			/* width = */ 0,
+			/* width = */ width,
 			/* y = */ 0, /* x = */ 0);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
@@ -751,7 +752,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 			context->window = NULL;
 		}
 		context->window = newwin (/* height = */ 4,
-				/* width = */ 0,
+				/* width = */ width,
 				/* y = */ main_win_height + (4 * context->index),
 				/* x = */ 0);
 	}
