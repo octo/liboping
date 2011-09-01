@@ -1540,10 +1540,12 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		{
 			int opt;
 
+#ifdef IP_RECVTOS
 			/* Enable receiving the TOS field */
 			opt = 1;
 			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTOS,
 					&opt, sizeof (opt));
+#endif	/* IP_RECVTOS */
 
 			/* Enable receiving the TTL field */
 			opt = 1;
