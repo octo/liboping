@@ -951,9 +951,14 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #endif
 } /* }}} void update_host_hook */
 
+/* returns the number of significant failures: sum over hosts of
+   unreturned packets exceeding 50% of the number sent, rounding up. */
 static int post_loop_hook (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
+	/* failures to report: sum over hosts of number of failed
+	   returns above 50% */
+	int failure_count = 0;
 
 #if USE_NCURSES
 	endwin ();
@@ -972,6 +977,13 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 				context->host, context->req_sent, context->req_rcvd,
 				context_get_packet_loss (context),
 				context->latency_total);
+
+		{
+		  /* threshold for counting failed returns is 50%, rounding up */
+		  int threshold = (context->req_sent + 1) / 2;
+		  if (context->req_rcvd < threshold)
+		    failure_count += threshold - context->req_rcvd;
+		}
 
 		if (context->req_rcvd != 0)
 		{
@@ -992,7 +1004,7 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 		context_destroy (context);
 	}
 
-	return (0);
+	return (failure_count);
 } /* }}} int post_loop_hook */
 
 int main (int argc, char **argv) /* {{{ */
@@ -1281,11 +1293,14 @@ int main (int argc, char **argv) /* {{{ */
 			opt_count--;
 	} /* while (opt_count != 0) */
 
-	post_loop_hook (ping);
+	status = post_loop_hook (ping);
 
 	ping_destroy (ping);
 
-	return (0);
+	if (status)
+	  return (EXIT_FAILURE + status);
+	else
+	  return (EXIT_SUCCESS);
 } /* }}} int main */
 
 /* vim: set fdm=marker : */
