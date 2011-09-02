@@ -43,6 +43,14 @@ Permissions
   (which is strongly suggested), you won't be able to use the binaries as a
   normal user, because you won't have the permission to open raw sockets.
 
+  The “install” target will automatically try fix this, if it is run with UID~0
+  (as user root).  When on Linux, the capabilities described below will be
+  added. On other UNIXes the traditional Set-UID method (also described below)
+  is used instead. The build system will not abort if this fails, because there
+  are file systems which do not support either method. Also, the Debian
+  packaging system and possibly other scenarios only act as if they were
+  running as root.
+
   Linux
   ━━━━━
   On Linux, the preferred method is to assign the required “capability” to the
