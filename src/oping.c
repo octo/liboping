@@ -121,6 +121,7 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+static double  opt_exit_status_threshold = 1.0;
 
 static int host_num = 0;
 
@@ -265,6 +266,8 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
+			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
+			"               probes timed out. (default: never)\n"
 
 			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
 			"by Florian octo Forster <octo@verplant.org>\n"
@@ -467,7 +470,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:");
 
 		if (optchar == -1)
 			break;
@@ -537,6 +540,23 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case 'Q':
 				set_opt_send_qos (optarg);
 				break;
+
+                        case 'Z':
+			{
+				char *endptr = NULL;
+				double tmp;
+
+				errno = 0;
+				tmp = strtod (optarg, &endptr);
+				if ((errno != 0) || (endptr == NULL) || (*endptr != 0))
+					fprintf (stderr, "The \"-Z\" option requires a numeric argument.\n");
+				else if ((tmp >= 0.0) && (tmp <= 100.0))
+					opt_exit_status_threshold = tmp / 100.0;
+				else
+					fprintf (stderr, "The argument of the \"-Z\" option must be between 0 and 100.\n");
+
+				break;
+			}
 
 			case 'h':
 				usage_exit (argv[0], 0);
@@ -979,10 +999,10 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 				context->latency_total);
 
 		{
-		  /* threshold for counting failed returns is 50%, rounding up */
-		  int threshold = (context->req_sent + 1) / 2;
-		  if (context->req_rcvd < threshold)
-		    failure_count += threshold - context->req_rcvd;
+			double pct_failed = 1.0 - (((double) context->req_rcvd)
+					/ ((double) context->req_sent));
+			if (pct_failed > opt_exit_status_threshold)
+				failure_count++;
 		}
 
 		if (context->req_rcvd != 0)

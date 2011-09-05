@@ -166,6 +166,15 @@ I<Explicit Congestion Notification> (ECN), even if the deprecated
 I<Type of Service> (ToS) aliases were used to specify the bits of outgoing
 packets.
 
+=item B<-Z> I<percent>
+
+If any hosts have a drop rate higher than I<percent>, where I<percent> is a
+number between zero and 100 inclusively, exit with a non-zero exit status.
+Since it is not possible to have a higher drop rate than 100%, passing this
+limit will effectively disable the feature (the default). Setting the option to
+zero means that the exit status will only be zero if I<all> replies for I<all>
+hosts have been received.
+
 =back
 
 =head1 COLORS
