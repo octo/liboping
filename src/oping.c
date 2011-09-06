@@ -541,19 +541,20 @@ static int read_options (int argc, char **argv) /* {{{ */
 				set_opt_send_qos (optarg);
 				break;
 
-                        case 'Z':
+			case 'Z':
 			{
 				char *endptr = NULL;
 				double tmp;
 
 				errno = 0;
 				tmp = strtod (optarg, &endptr);
-				if ((errno != 0) || (endptr == NULL) || (*endptr != 0))
-					fprintf (stderr, "The \"-Z\" option requires a numeric argument.\n");
-				else if ((tmp >= 0.0) && (tmp <= 100.0))
-					opt_exit_status_threshold = tmp / 100.0;
+				if ((errno != 0) || (endptr == NULL) || (*endptr != 0) || (tmp < 0.0) || (tmp > 100.0))
+				{
+					fprintf (stderr, "Ignoring invalid -Z argument: %s\n", optarg);
+					fprintf (stderr, "The \"-Z\" option requires a numeric argument between 0 and 100.\n");
+				}
 				else
-					fprintf (stderr, "The argument of the \"-Z\" option must be between 0 and 100.\n");
+					opt_exit_status_threshold = tmp / 100.0;
 
 				break;
 			}
@@ -643,7 +644,7 @@ static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
 
 		average = context_get_average (ctx);
 		deviation = context_get_stddev (ctx);
-			
+
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
 				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
 				ctx->latency_min,
@@ -971,13 +972,11 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #endif
 } /* }}} void update_host_hook */
 
-/* returns the number of significant failures: sum over hosts of
-   unreturned packets exceeding 50% of the number sent, rounding up. */
+/* Returns the number of hosts which failed to return more than the
+	 fraction opt_exit_status_threshold of pings */
 static int post_loop_hook (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
-	/* failures to report: sum over hosts of number of failed
-	   returns above 50% */
 	int failure_count = 0;
 
 #if USE_NCURSES
@@ -1318,9 +1317,9 @@ int main (int argc, char **argv) /* {{{ */
 	ping_destroy (ping);
 
 	if (status)
-	  return (EXIT_FAILURE + status);
+		return (EXIT_FAILURE + status);
 	else
-	  return (EXIT_SUCCESS);
+		return (EXIT_SUCCESS);
 } /* }}} int main */
 
 /* vim: set fdm=marker : */
