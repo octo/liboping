@@ -972,8 +972,9 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #endif
 } /* }}} void update_host_hook */
 
-/* Returns the number of hosts which failed to return more than the
-	 fraction opt_exit_status_threshold of pings */
+/* Prints statistics for each host, cleans up the contexts and returns the
+ * number of hosts which failed to return more than the fraction
+ * opt_exit_status_threshold of pings. */
 static int post_loop_hook (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
@@ -1312,14 +1313,19 @@ int main (int argc, char **argv) /* {{{ */
 			opt_count--;
 	} /* while (opt_count != 0) */
 
+	/* Returns the number of failed hosts according to -Z. */
 	status = post_loop_hook (ping);
 
 	ping_destroy (ping);
 
-	if (status)
-		return (EXIT_FAILURE + status);
+	if (status == 0)
+		exit (EXIT_SUCCESS);
 	else
-		return (EXIT_SUCCESS);
+	{
+		if (status > 255)
+			status = 255;
+		exit (status);
+	}
 } /* }}} int main */
 
 /* vim: set fdm=marker : */

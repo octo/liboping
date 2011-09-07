@@ -175,6 +175,9 @@ limit will effectively disable the feature (the default). Setting the option to
 zero means that the exit status will only be zero if I<all> replies for I<all>
 hosts have been received.
 
+The exit status will indicate the number of hosts with more than I<percent>
+packets lost, up to a number of 255 failing hosts.
+
 =back
 
 =head1 COLORS
