@@ -1,0 +1,15 @@
+--- a/src/liboping.c
++++ b/src/liboping.c
+@@ -1540,10 +1540,12 @@
+ 		{
+ 			int opt;
+ 
++#ifdef IP_RECVTOS
+ 			/* Enable receiving the TOS field */
+ 			opt = 1;
+ 			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTOS,
+ 					&opt, sizeof (opt));
++#endif	/* IP_RECVTOS */
+ 
+ 			/* Enable receiving the TTL field */
+ 			opt = 1;

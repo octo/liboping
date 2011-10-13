@@ -10,8 +10,11 @@ liboping (1.6.1+2.g207d51d-2) unstable; urgency=low
     - Switched to '3.0 (quilt)' format.
   * debian/control:
     - Added Barak to uploaders.
+  * debian/patches:
+    - Added recvtos -- patch for #618729 (missing IP_RECVTOS on FreeBSD) as
+      separate patch.
 
- -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 15:36:35 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 15:38:23 +0200
 
 liboping (1.6.1+2.g207d51d-1.1) unstable; urgency=low
 
