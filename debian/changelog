@@ -15,8 +15,10 @@ liboping (1.6.1+2.g207d51d-2) unstable; urgency=low
       separate patch.
     - Added z-option -- upstream patch adding option -Z to enable non-zero
       exit codes in case a certain amount of replies were lost.
+  * debian/rules:
+    - Split target 'build' into 'build-arch' and 'build-indep'.
 
- -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 16:06:10 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 16:32:46 +0200
 
 liboping (1.6.1+2.g207d51d-1.1) unstable; urgency=low
 

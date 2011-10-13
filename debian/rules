@@ -41,7 +41,12 @@ config.status: configure
 			--with-perl-bindings="INSTALLDIRS=vendor" \
 			CFLAGS="$(CFLAGS)"
 
-build: build-stamp
+build: build-arch build-indep
+
+build-arch: build-stamp
+
+build-indep:
+# nothing to do here
 
 build-stamp:  config.status
 	dh_testdir
@@ -86,7 +91,7 @@ install: build
 	cp debian/oping.overrides debian/oping/usr/share/lintian/overrides/oping
 	
 binary-indep:
-	# nothing to do here
+# nothing to do here
 
 binary-arch: build install
 	dh_testdir
