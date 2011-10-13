@@ -8,8 +8,10 @@ liboping (1.6.1+2.g207d51d-2) unstable; urgency=low
   [ Sebastian Harl ]
   * debian/source/format:
     - Switched to '3.0 (quilt)' format.
+  * debian/control:
+    - Added Barak to uploaders.
 
- -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 15:34:15 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 15:36:35 +0200
 
 liboping (1.6.1+2.g207d51d-1.1) unstable; urgency=low
 
