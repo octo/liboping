@@ -1,3 +1,11 @@
+liboping (1.6.1+2.g207d51d-1.1) unstable; urgency=low
+
+  * Fix FTBS on kfreebsd due to IP_RECVTOS nonexistence (closes: #618729).
+  * Kill inappropriate rpath in built perl library, which presumably appeared
+    due to toolchain changes.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Mon, 19 Sep 2011 09:39:54 +0100
+
 liboping (1.6.1+2.g207d51d-1) unstable; urgency=low
 
   * New upstream release.

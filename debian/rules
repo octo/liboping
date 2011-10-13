@@ -47,6 +47,7 @@ build-stamp:  config.status
 	dh_testdir
 	
 	$(MAKE) LD_RUN_PATH=""
+	chrpath --delete bindings/perl/blib/arch/auto/Net/Oping/Oping.so
 	
 	touch build-stamp
 
