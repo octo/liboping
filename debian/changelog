@@ -3,8 +3,9 @@ liboping (1.6.1+2.g207d51d-2) unstable; urgency=low
   [ Barak A. Pearlmutter ]
   * debian/control:
     - Updated standards-version to 3.9.2; no changes.
+  * Simplified debian/liboping-dev.install, debian/oping.install.
 
- -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 15:25:40 +0200
+ -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 15:30:45 +0200
 
 liboping (1.6.1+2.g207d51d-1.1) unstable; urgency=low
 
