@@ -1,3 +1,9 @@
+From: Barak A. Pearlmutter <barak+git@cs.nuim.ie>
+Subject: guard use of IP_RECVTOS which is unavailable on kfreebsd
+Origin: upstream, http://git.verplant.org/?p=liboping.git;h=773dbf0
+Bug-Debian: http://bugs.debian.org/618729
+
+diff a/src/liboping.c b/src/liboping.c
 --- a/src/liboping.c
 +++ b/src/liboping.c
 @@ -1540,10 +1540,12 @@
