@@ -13,4 +13,3 @@ liboping-dev. This will also ensure - by means of the 'Build-Depends-Package'
 field in liboping's symbols file (see dpkg-shlibdeps(1) for details) - that
 the resulting binary package depends on the right version of liboping while
 not imposing the latest version on all packages.
-

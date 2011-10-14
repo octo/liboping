@@ -1,3 +1,2 @@
 oping: setuid-binary usr/bin/oping 4755 root/root
 oping: setuid-binary usr/bin/noping 4755 root/root
-

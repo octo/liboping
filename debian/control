@@ -59,4 +59,3 @@ Description: module for ICMP latency measurement
  "ping packets") and measuring the time that elapses until the reception of an
  ICMP ECHO_REPLY packet (also known as "pong"). It supports pinging multiple
  hosts in parallel using IPv4 or IPv6 transparently.
-
