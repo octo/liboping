@@ -32,4 +32,4 @@ override_dh_fixperms:
 
 override_dh_gencontrol:
 	dh_gencontrol -Nlibnet-oping-perl
-	dh_gencontrol -plibnet-oping-perl -u-v$(LIBPERL_VERSION)
+	dh_gencontrol -plibnet-oping-perl -- -v$(LIBPERL_VERSION)
