@@ -1,3 +1,19 @@
+liboping (1.6.1+2.g207d51d-3) unstable; urgency=low
+
+  * Update/modernize debian packaging info:
+    - Bump to dh 8.
+    - Use dh and override_* to dramatically shorten debian/rules.
+    - Use dh --parallel for multicore goodness.
+    - Use dh --with autoreconf to build derived files like ./configure.
+    - Use dh_xxx, e.g. dh_lintian, to reduce debian/rules boilerplate.
+    - Generalise debian/*.install files
+    - Single debian patch source option: when operative see git patches.
+    - Trim trailing whitespace.
+    - Convert officially depricated constructs to blessed replacements.
+  * git ignore debian build debris.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Sun, 16 Oct 2011 14:33:33 +0100
+
 liboping (1.6.1+2.g207d51d-2) unstable; urgency=low
 
   [ Barak A. Pearlmutter ]
