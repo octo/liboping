@@ -87,9 +87,7 @@ install: build
 	rm -f debian/tmp/usr/lib/liboping.la
 	
 	chmod u+s debian/tmp/usr/bin/oping debian/tmp/usr/bin/noping
-	mkdir -p debian/oping/usr/share/lintian/overrides/
-	cp debian/oping.overrides debian/oping/usr/share/lintian/overrides/oping
-	
+
 binary-indep:
 # nothing to do here
 
@@ -105,6 +103,7 @@ binary-arch: build install
 	dh_install --sourcedir=debian/tmp --fail-missing
 	dh_perl -plibnet-oping-perl
 	dh_link
+	dh_lintian
 	dh_strip
 	dh_compress
 	dh_fixperms -Xusr/bin/oping -Xusr/bin/noping
