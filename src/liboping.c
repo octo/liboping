@@ -17,6 +17,10 @@
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifdef __APPLE__
+#define __APPLE_USE_RFC_3542
+#endif
+
 #if HAVE_CONFIG_H
 # include <config.h>
 #endif
@@ -545,6 +549,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 						sizeof (recv_qos));
 				dprintf ("TOSv6 = 0x%02"PRIx8";\n", recv_qos);
 			} else
+#ifdef IPV6_HOPLIMIT
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
 				memcpy (&recv_ttl, CMSG_DATA (cmsg),
@@ -552,6 +557,25 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 				dprintf ("TTLv6 = %i;\n", recv_ttl);
 			}
 			else
+#endif
+#ifdef IPV6_UNICAST_HOPS
+			if (cmsg->cmsg_type == IPV6_UNICAST_HOPS)
+			{
+				memcpy (&recv_ttl, CMSG_DATA (cmsg),
+						sizeof (recv_ttl));
+				dprintf ("TTLv6 = %i;\n", recv_ttl);
+			}
+			else
+#endif
+#ifdef IPV6_MULTICAST_HOPS
+			if (cmsg->cmsg_type == IPV6_MULTICAST_HOPS)
+			{
+				memcpy (&recv_ttl, CMSG_DATA (cmsg),
+						sizeof (recv_ttl));
+				dprintf ("TTLv6 = %i;\n", recv_ttl);
+			}
+			else
+#endif
 			{
 				dprintf ("Not handling option %i.\n",
 						cmsg->cmsg_type);
