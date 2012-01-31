@@ -1,9 +1,11 @@
-2011-03-13, Version 1.6.2:
+2012-01-31, Version 1.6.2:
 	* Build system: Setting capabilities and the set-UID bit has been made
 	  more fault-tolerant, so that it will work with Debian's fakeroot(1)
 	  utility.
 	* src/liboping.c: Fixed a compiler warning about an non-static format
 	  string. Thanks to Brian Edwards for pointing this out.
+	* src/liboping.c: Fixed compilation under Mac OS X and Solaris. Thanks
+	  to Clayton O'Neill for his patch.
 
 2011-03-06, Version 1.6.1:
 	* Build system: If "make install" is executed as root, the CAP_NET_RAW
