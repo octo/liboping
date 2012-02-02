@@ -1,3 +1,9 @@
+liboping (1.6.2-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 02 Feb 2012 23:00:14 +0000
+
 liboping (1.6.1+2.g207d51d-3) unstable; urgency=low
 
   * Update/modernize debian packaging info:
