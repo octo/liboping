@@ -89,6 +89,10 @@
 # define _POSIX_SAVED_IDS 0
 #endif
 
+#ifndef IPTOS_MINCOST
+# define IPTOS_MINCOST 0x02
+#endif
+
 /* Remove GNU specific __attribute__ settings when using another compiler */
 #if !__GNUC__
 # define __attribute__(x) /**/
