@@ -664,6 +664,9 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
                         int index = 0;
 
                         ratio = latency / PING_DEF_TTL;
+                        if (ratio > 1) {
+                          ratio = 1;
+                        }
                         if (ratio > 2/3.0) {
                           color = OPING_RED_HIST;
                         }
@@ -674,8 +677,11 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
                         /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
                         index = index % (BARS_LEN-1);
                         /* HOST_PRINTF ("im%d-", index); */
-                        if (index < 0 || index >= BARS_LEN) {
+                        if (index < 0) {
                           index = 0; /* safety check */
+                        }
+                        if (index >= BARS_LEN) {
+                          index = BARS_LEN -1; /* safety check */
                         }
                         wattron (ctx->window, COLOR_PAIR(color));
                         mvwprintw (ctx->window,
