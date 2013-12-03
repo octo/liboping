@@ -665,23 +665,23 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 
                         ratio = latency / PING_DEF_TTL;
                         if (ratio > 1) {
-                          ratio = 1;
+                          ratio = 1.0;
                         }
-                        if (ratio > 2/3.0) {
-                          color = OPING_RED_HIST;
-                        }
-                        else if (ratio > 1/3.0) {
+                        index = (int) ((ratio * BARS_LEN * 3) -1); /* 3 colors */
+                        if (index >= BARS_LEN) {
                           color = OPING_YELLOW_HIST;
                         }
-                        index = (int) (ratio * BARS_LEN * 3); /* 3 colors */
+                        if (index >= 2*BARS_LEN) {
+                          color = OPING_RED_HIST;
+                        }
                         /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
-                        index = index % (BARS_LEN-1);
+                        index = index % BARS_LEN;
                         /* HOST_PRINTF ("im%d-", index); */
                         if (index < 0) {
                           index = 0; /* safety check */
                         }
                         if (index >= BARS_LEN) {
-                          index = BARS_LEN -1; /* safety check */
+                          index = BARS_LEN - 1; /* safety check */
                         }
                         wattron (ctx->window, COLOR_PAIR(color));
                         mvwprintw (ctx->window,
