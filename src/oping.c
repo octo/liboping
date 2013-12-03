@@ -610,6 +610,9 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 {
 	double latency = -1.0;
 	size_t buffer_len = sizeof (latency);
+        int maxx;
+        getmaxyx(ctx->window, maxx, maxx);
+
 	ping_iterator_get_info (iter, PING_INFO_LATENCY,
 			&latency, &buffer_len);
 
@@ -676,7 +679,8 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
                         }
                         wattron (ctx->window, COLOR_PAIR(color));
                         mvwprintw (ctx->window,
-                                   /* y = */ 3, /* x = */ 1 + sequence, 
+                                   /* y = */ 3,
+                                   /* x = */ (1 + sequence) % maxx,
                                    bars[index]);
 			wattroff (ctx->window, COLOR_PAIR(color));
 		}
@@ -687,7 +691,8 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
         else {
                 wattron (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
                 mvwprintw (ctx->window,
-                           /* y = */ 3, /* x = */ 1 + sequence, 
+                           /* y = */ 3,
+                           /* x = */ (1 + sequence) % maxx,
                            "!");
                 wattroff (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
         }
