@@ -85,6 +85,9 @@
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
 # define OPING_RED 3
+# define OPING_GREEN_HIST 4
+# define OPING_YELLOW_HIST 5
+# define OPING_RED_HIST 6
 #endif
 
 #include "oping.h"
@@ -653,16 +656,16 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	{
 		if (has_colors () == TRUE)
 		{
-			int color = OPING_GREEN;
+			int color = OPING_GREEN_HIST;
                         float ratio = 0;
                         int index = 0;
 
                         ratio = latency / PING_DEF_TTL;
                         if (ratio > 2/3.0) {
-                          color = OPING_RED;
+                          color = OPING_RED_HIST;
                         }
                         else if (ratio > 1/3.0) {
-                          color = OPING_YELLOW;
+                          color = OPING_YELLOW_HIST;
                         }
                         index = (int) (ratio * BARS_LEN * 3); /* 3 colors */
                         /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
@@ -778,6 +781,9 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
 		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
 		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
+		init_pair (OPING_GREEN_HIST,  COLOR_GREEN,  COLOR_BLACK);
+		init_pair (OPING_YELLOW_HIST, COLOR_YELLOW, COLOR_GREEN);
+		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
 	}
 
 	main_win_height = height - (5 * host_num);
