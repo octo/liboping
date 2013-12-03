@@ -46,7 +46,7 @@ bin_PROGRAMS += noping
 
 noping_SOURCES = oping.c
 noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1
-noping_LDADD = liboping.la -lm -lncurses
+noping_LDADD = liboping.la -lm -lncursesw
 if BUILD_WITH_LIBRT
 noping_LDADD += -lrt
 endif

@@ -74,9 +74,13 @@
 #include <sys/types.h>
 #endif
 
+#include <locale.h>
+
 #if USE_NCURSES
 # define NCURSES_OPAQUE 1
-# include <ncurses.h>
+/* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
+# define _X_OPEN_SOURCE_EXTENDED
+# include <ncursesw/ncurses.h>
 
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
@@ -84,6 +88,8 @@
 #endif
 
 #include "oping.h"
+
+const char *bars[BARS_LEN] = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
 
 #ifndef _POSIX_SAVED_IDS
 # define _POSIX_SAVED_IDS 0
@@ -879,30 +885,26 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		if (has_colors () == TRUE)
 		{
 			int color = OPING_GREEN;
-			double average = context_get_average (context);
-			double stddev = context_get_stddev (context);
+                        float ratio = 0;
+                        int index = 0;
 
-			if ((latency < (average - (2 * stddev)))
-					|| (latency > (average + (2 * stddev))))
-				color = OPING_RED;
-			else if ((latency < (average - stddev))
-					|| (latency > (average + stddev)))
-				color = OPING_YELLOW;
-
-			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
-					data_len, context->host, context->addr,
-					sequence, recv_ttl,
-					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
-			if ((recv_qos != 0) || (opt_send_qos != 0))
-			{
-				HOST_PRINTF ("qos=%s ",
-						format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
-			}
-			HOST_PRINTF ("time=");
-			wattron (main_win, COLOR_PAIR(color));
-			HOST_PRINTF ("%.2f", latency);
+                        ratio = ( latency - context->latency_min ) / ( context->latency_max - context->latency_min );
+                        if (ratio > 2/3.0) {
+                          color = OPING_RED;
+                        }
+                        else if (ratio > 1/3.0) {
+                          color = OPING_YELLOW;
+                        }
+                        index = (int) (ratio * BARS_LEN * 3); /* 3 colors */
+                        /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
+                        index = index % (BARS_LEN-1);
+                        /* HOST_PRINTF ("im%d-", index); */
+                        if (index < 0 || index >= BARS_LEN) {
+                          index = 0; /* safety check */
+                        }
+                        wattron (main_win, COLOR_PAIR(color));
+                        HOST_PRINTF (bars[index]);
 			wattroff (main_win, COLOR_PAIR(color));
-			HOST_PRINTF (" ms\n");
 		}
 		else
 		{
@@ -926,13 +928,9 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #if USE_NCURSES
 		if (has_colors () == TRUE)
 		{
-			HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u ",
-					context->host, context->addr,
-					sequence);
 			wattron (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
-			HOST_PRINTF ("timeout");
+			HOST_PRINTF ("!");
 			wattroff (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
-			HOST_PRINTF ("\n");
 		}
 		else
 		{
@@ -1026,6 +1024,7 @@ int main (int argc, char **argv) /* {{{ */
 	}
 #endif
 
+        setlocale(LC_ALL, "");
 	optind = read_options (argc, argv);
 
 #if !_POSIX_SAVED_IDS
