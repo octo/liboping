@@ -603,12 +603,23 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
-static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
+static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter) /* {{{ */
 {
+	double latency = -1.0;
+	size_t buffer_len = sizeof (latency);
+	ping_iterator_get_info (iter, PING_INFO_LATENCY,
+			&latency, &buffer_len);
+
+	unsigned int sequence = 0;
+	buffer_len = sizeof (sequence);
+	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
+			&sequence, &buffer_len);
+
+
 	if ((ctx == NULL) || (ctx->window == NULL))
 		return (EINVAL);
 
-	werase (ctx->window);
+	/* werase (ctx->window); */
 
 	box (ctx->window, 0, 0);
 	wattron (ctx->window, A_BOLD);
@@ -631,13 +642,52 @@ static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
 		deviation = context_get_stddev (ctx);
 			
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
+				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
 				ctx->latency_min,
 				average,
 				ctx->latency_max,
 				deviation);
 	}
 
+	if (latency > 0.0)
+	{
+		if (has_colors () == TRUE)
+		{
+			int color = OPING_GREEN;
+                        float ratio = 0;
+                        int index = 0;
+
+                        ratio = latency / PING_DEF_TTL;
+                        if (ratio > 2/3.0) {
+                          color = OPING_RED;
+                        }
+                        else if (ratio > 1/3.0) {
+                          color = OPING_YELLOW;
+                        }
+                        index = (int) (ratio * BARS_LEN * 3); /* 3 colors */
+                        /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
+                        index = index % (BARS_LEN-1);
+                        /* HOST_PRINTF ("im%d-", index); */
+                        if (index < 0 || index >= BARS_LEN) {
+                          index = 0; /* safety check */
+                        }
+                        wattron (ctx->window, COLOR_PAIR(color));
+                        mvwprintw (ctx->window,
+                                   /* y = */ 3, /* x = */ 1 + sequence, 
+                                   bars[index]);
+			wattroff (ctx->window, COLOR_PAIR(color));
+		}
+		else
+		{
+                }
+        }
+        else {
+                wattron (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
+                mvwprintw (ctx->window,
+                           /* y = */ 3, /* x = */ 1 + sequence, 
+                           "!");
+                wattroff (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
+        }
 	wrefresh (ctx->window);
 
 	return (0);
@@ -654,7 +704,7 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-	main_win_height = height - (4 * host_num);
+	main_win_height = height - (5 * host_num);
 	wresize (main_win, main_win_height, /* width = */ width);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
@@ -678,9 +728,9 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 4,
+		context->window = newwin (/* height = */ 5,
 				/* width = */ width,
-				/* y = */ main_win_height + (4 * context->index),
+				/* y = */ main_win_height + (5 * context->index),
 				/* x = */ 0);
 	}
 
@@ -730,7 +780,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
 	}
 
-	main_win_height = height - (4 * host_num);
+	main_win_height = height - (5 * host_num);
 	main_win = newwin (/* height = */ main_win_height,
 			/* width = */ width,
 			/* y = */ 0, /* x = */ 0);
@@ -757,9 +807,9 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 4,
+		context->window = newwin (/* height = */ 5,
 				/* width = */ width,
-				/* y = */ main_win_height + (4 * context->index),
+				/* y = */ main_win_height + (5 * context->index),
 				/* x = */ 0);
 	}
 
@@ -888,7 +938,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
                         float ratio = 0;
                         int index = 0;
 
-                        ratio = ( latency - context->latency_min ) / ( context->latency_max - context->latency_min );
+                        ratio = latency / PING_DEF_TTL;
                         if (ratio > 2/3.0) {
                           color = OPING_RED;
                         }
@@ -944,7 +994,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	}
 
 #if USE_NCURSES
-	update_stats_from_context (context);
+	update_stats_from_context (context, iter);
 	wrefresh (main_win);
 #endif
 } /* }}} void update_host_hook */
