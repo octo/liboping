@@ -645,7 +645,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 		deviation = context_get_stddev (ctx);
 			
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
+				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
 				ctx->latency_min,
 				average,
 				ctx->latency_max,
