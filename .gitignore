@@ -35,3 +35,4 @@ src/noping
 *.o
 *.tar.gz
 *.tar.bz2
+bindings/perl/MYMETA.yml
