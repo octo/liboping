@@ -686,9 +686,10 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
                         wattron (ctx->window, COLOR_PAIR(color));
                         mvwprintw (ctx->window,
                                    /* y = */ 3,
-                                   /* x = */ (1 + sequence) % maxx,
+                                   /* x = */ ( (sequence - 1) % (maxx - 4) ) + 2,
                                    bars[index]);
 			wattroff (ctx->window, COLOR_PAIR(color));
+                        wprintw (ctx->window, " ");
 		}
 		else
 		{
@@ -698,9 +699,10 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
                 wattron (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
                 mvwprintw (ctx->window,
                            /* y = */ 3,
-                           /* x = */ (1 + sequence) % maxx,
+                           /* x = */ ( (sequence - 1) % (maxx - 4) ) + 2,
                            "!");
                 wattroff (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
+                wprintw (ctx->window, " ");
         }
 	wrefresh (ctx->window);
 
