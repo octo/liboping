@@ -935,26 +935,30 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		if (has_colors () == TRUE)
 		{
 			int color = OPING_GREEN;
-                        float ratio = 0;
-                        int index = 0;
+			double average = context_get_average (context);
+			double stddev = context_get_stddev (context);
 
-                        ratio = latency / PING_DEF_TTL;
-                        if (ratio > 2/3.0) {
-                          color = OPING_RED;
-                        }
-                        else if (ratio > 1/3.0) {
-                          color = OPING_YELLOW;
-                        }
-                        index = (int) (ratio * BARS_LEN * 3); /* 3 colors */
-                        /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
-                        index = index % (BARS_LEN-1);
-                        /* HOST_PRINTF ("im%d-", index); */
-                        if (index < 0 || index >= BARS_LEN) {
-                          index = 0; /* safety check */
-                        }
-                        wattron (main_win, COLOR_PAIR(color));
-                        HOST_PRINTF (bars[index]);
+			if ((latency < (average - (2 * stddev)))
+					|| (latency > (average + (2 * stddev))))
+				color = OPING_RED;
+			else if ((latency < (average - stddev))
+					|| (latency > (average + stddev)))
+				color = OPING_YELLOW;
+
+			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
+					data_len, context->host, context->addr,
+					sequence, recv_ttl,
+					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+			if ((recv_qos != 0) || (opt_send_qos != 0))
+			{
+				HOST_PRINTF ("qos=%s ",
+						format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+			}
+			HOST_PRINTF ("time=");
+			wattron (main_win, COLOR_PAIR(color));
+			HOST_PRINTF ("%.2f", latency);
 			wattroff (main_win, COLOR_PAIR(color));
+			HOST_PRINTF (" ms\n");
 		}
 		else
 		{
@@ -978,9 +982,13 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #if USE_NCURSES
 		if (has_colors () == TRUE)
 		{
+			HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u ",
+					context->host, context->addr,
+					sequence);
 			wattron (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
-			HOST_PRINTF ("!");
+			HOST_PRINTF ("timeout");
 			wattroff (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
+			HOST_PRINTF ("\n");
 		}
 		else
 		{
