@@ -59,9 +59,6 @@ typedef struct pingobj pingobj_t;
 #define PING_DEF_AF      AF_UNSPEC
 #define PING_DEF_DATA    "liboping -- ICMP ping library <http://octo.it/liboping/>"
 
-#define BARS_LEN 8
-extern const char *bars[BARS_LEN];
-
 /*
  * Method definitions
  */

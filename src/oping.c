@@ -88,11 +88,19 @@
 # define OPING_GREEN_HIST 4
 # define OPING_YELLOW_HIST 5
 # define OPING_RED_HIST 6
+
+static char const * const hist_symbols[] = {
+	"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
+static size_t const hist_symbols_num = sizeof (hist_symbols)
+	/ sizeof (hist_symbols[0]);
+
+static int const hist_colors[] = {
+	OPING_GREEN_HIST, OPING_YELLOW_HIST, OPING_RED_HIST };
+static size_t const hist_colors_num = sizeof (hist_colors)
+	/ sizeof (hist_colors[0]);
 #endif
 
 #include "oping.h"
-
-const char *bars[BARS_LEN] = { "▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
 
 #ifndef _POSIX_SAVED_IDS
 # define _POSIX_SAVED_IDS 0
@@ -606,12 +614,62 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
+static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
+		double latency, unsigned int sequence)
+{
+	int color = OPING_RED;
+	char const *symbol = "!";
+
+	int x_max;
+	int x_pos;
+
+	x_max = getmaxx (ctx->window);
+	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
+
+	if (latency >= 0.0)
+	{
+		double ratio;
+		size_t intensity;
+		size_t index_colors;
+		size_t index_symbols;
+
+		ratio = latency / PING_DEF_TTL;
+		if (ratio > 1) {
+			ratio = 1.0;
+		}
+
+		intensity = (size_t) ((ratio * hist_symbols_num
+					* hist_colors_num) - 1);
+
+		index_colors = intensity / hist_symbols_num;
+		assert (index_colors < hist_colors_num);
+		color = hist_colors[index_colors];
+
+		index_symbols = intensity % hist_symbols_num;
+		symbol = hist_symbols[index_symbols];
+	}
+	else /* if (!(latency >= 0.0)) */
+		wattron (ctx->window, A_BOLD);
+
+	wattron (ctx->window, COLOR_PAIR(color));
+	mvwprintw (ctx->window,
+			/* y = */ 3,
+			/* x = */ x_pos,
+			symbol);
+	wattroff (ctx->window, COLOR_PAIR(color));
+
+	/* Use negation here to handle NaN correctly. */
+	if (!(latency >= 0.0))
+		wattroff (ctx->window, A_BOLD);
+
+	wprintw (ctx->window, " ");
+	return (0);
+} /* }}} int update_prettyping_graph */
+
 static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter) /* {{{ */
 {
 	double latency = -1.0;
 	size_t buffer_len = sizeof (latency);
-        int maxx;
-        getmaxyx(ctx->window, maxx, maxx);
 
 	ping_iterator_get_info (iter, PING_INFO_LATENCY,
 			&latency, &buffer_len);
@@ -655,55 +713,9 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 				deviation);
 	}
 
-	if (latency > 0.0)
-	{
-		if (has_colors () == TRUE)
-		{
-			int color = OPING_GREEN_HIST;
-                        float ratio = 0;
-                        int index = 0;
+	if (has_colors () == TRUE)
+		update_prettyping_graph (ctx, latency, sequence);
 
-                        ratio = latency / PING_DEF_TTL;
-                        if (ratio > 1) {
-                          ratio = 1.0;
-                        }
-                        index = (int) ((ratio * BARS_LEN * 3) -1); /* 3 colors */
-                        if (index >= BARS_LEN) {
-                          color = OPING_YELLOW_HIST;
-                        }
-                        if (index >= 2*BARS_LEN) {
-                          color = OPING_RED_HIST;
-                        }
-                        /* HOST_PRINTF ("%%r%f-ia%d-", ratio, index); */
-                        index = index % BARS_LEN;
-                        /* HOST_PRINTF ("im%d-", index); */
-                        if (index < 0) {
-                          index = 0; /* safety check */
-                        }
-                        if (index >= BARS_LEN) {
-                          index = BARS_LEN - 1; /* safety check */
-                        }
-                        wattron (ctx->window, COLOR_PAIR(color));
-                        mvwprintw (ctx->window,
-                                   /* y = */ 3,
-                                   /* x = */ ( (sequence - 1) % (maxx - 4) ) + 2,
-                                   bars[index]);
-			wattroff (ctx->window, COLOR_PAIR(color));
-                        wprintw (ctx->window, " ");
-		}
-		else
-		{
-                }
-        }
-        else {
-                wattron (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
-                mvwprintw (ctx->window,
-                           /* y = */ 3,
-                           /* x = */ ( (sequence - 1) % (maxx - 4) ) + 2,
-                           "!");
-                wattroff (ctx->window, COLOR_PAIR(OPING_RED) | A_BOLD);
-                wprintw (ctx->window, " ");
-        }
 	wrefresh (ctx->window);
 
 	return (0);
