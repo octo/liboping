@@ -82,6 +82,11 @@
 # define _X_OPEN_SOURCE_EXTENDED
 # include <ncursesw/ncurses.h>
 
+/* some evilness: ncurses knows how to detect unicode, but won't
+   expose it, yet there's this function that does what we want, so we
+   steal it away from it */
+extern int    _nc_unicode_locale(void);
+
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
 # define OPING_RED 3
@@ -89,15 +94,31 @@
 # define OPING_YELLOW_HIST 5
 # define OPING_RED_HIST 6
 
-static char const * const hist_symbols[] = {
+static char const * const hist_symbols_utf8[] = {
 	"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
-static size_t const hist_symbols_num = sizeof (hist_symbols)
-	/ sizeof (hist_symbols[0]);
+static size_t const hist_symbols_utf8_num = sizeof (hist_symbols_utf8)
+	/ sizeof (hist_symbols_utf8[0]);
 
-static int const hist_colors[] = {
+/* scancodes for 6 levels of horizontal bars, ncurses-specific */
+/* those are not the usual constants because those are not constant */
+static int const hist_symbols_acs[] = {
+	115, /* ACS_S9 "⎽" */
+	114, /* ACS_S7 "⎼" */
+	113, /* ACS_S5 "─" */
+	112, /* ACS_S3 "⎻" */
+	111  /* ACS_S1 "⎺" */
+};
+static size_t const hist_symbols_acs_num = sizeof (hist_symbols_acs)
+	/ sizeof (hist_symbols_acs[0]);
+
+/* use different colors without a background for scancodes */
+static int const hist_colors_utf8[] = {
 	OPING_GREEN_HIST, OPING_YELLOW_HIST, OPING_RED_HIST };
-static size_t const hist_colors_num = sizeof (hist_colors)
-	/ sizeof (hist_colors[0]);
+static int const hist_colors_acs[] = {
+	OPING_GREEN, OPING_YELLOW, OPING_RED };
+/* assuming that both arrays are the same size */
+static size_t const hist_colors_num = sizeof (hist_colors_utf8)
+	/ sizeof (hist_colors_utf8[0]);
 #endif
 
 #include "oping.h"
@@ -619,6 +640,9 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 {
 	int color = OPING_RED;
 	char const *symbol = "!";
+	int symbolc = '!';
+	size_t hist_symbols_num;
+	size_t index_symbols;
 
 	int x_max;
 	int x_pos;
@@ -626,12 +650,19 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 	x_max = getmaxx (ctx->window);
 	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
 
+	if (_nc_unicode_locale())
+	{
+		hist_symbols_num = hist_symbols_utf8_num;
+	}
+	else {
+		hist_symbols_num = hist_symbols_acs_num;
+	}
+
 	if (latency >= 0.0)
 	{
 		double ratio;
 		size_t intensity;
 		size_t index_colors;
-		size_t index_symbols;
 
 		ratio = latency / PING_DEF_TTL;
 		if (ratio > 1) {
@@ -643,19 +674,36 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 
 		index_colors = intensity / hist_symbols_num;
 		assert (index_colors < hist_colors_num);
-		color = hist_colors[index_colors];
 
 		index_symbols = intensity % hist_symbols_num;
-		symbol = hist_symbols[index_symbols];
-	}
+		if (_nc_unicode_locale())
+		{
+			color = hist_colors_utf8[index_colors];
+			symbol = hist_symbols_utf8[index_symbols];
+		}
+		else
+		{
+			color = hist_colors_acs[index_colors];
+			symbolc = hist_symbols_acs[index_symbols] | A_ALTCHARSET;
+		}
+        }
 	else /* if (!(latency >= 0.0)) */
 		wattron (ctx->window, A_BOLD);
 
 	wattron (ctx->window, COLOR_PAIR(color));
-	mvwprintw (ctx->window,
-			/* y = */ 3,
-			/* x = */ x_pos,
-			symbol);
+	if (_nc_unicode_locale())
+	{
+		mvwprintw (ctx->window,
+			   /* y = */ 3,
+			   /* x = */ x_pos,
+			   symbol);
+	}
+	else {
+		mvwaddch (ctx->window,
+			  /* y = */ 3,
+			  /* x = */ x_pos,
+			  symbolc);
+	}
 	wattroff (ctx->window, COLOR_PAIR(color));
 
 	/* Use negation here to handle NaN correctly. */
