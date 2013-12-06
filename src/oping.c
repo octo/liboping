@@ -159,6 +159,8 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+static int     opt_utf8_force = 0;
+static int     opt_utf8_disable = 0;
 
 static int host_num = 0;
 
@@ -505,7 +507,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:");
+		optchar = getopt (argc, argv, "46uUc:hi:I:t:Q:f:D:");
 
 		if (optchar == -1)
 			break;
@@ -515,6 +517,13 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case '4':
 			case '6':
 				opt_addrfamily = (optchar == '4') ? AF_INET : AF_INET6;
+				break;
+
+			case 'u':
+				opt_utf8_force = 1;
+				break;
+			case 'U':
+				opt_utf8_disable = 1;
 				break;
 
 			case 'c':
@@ -584,6 +593,9 @@ static int read_options (int argc, char **argv) /* {{{ */
 		}
 	}
 
+	if (opt_utf8_disable && opt_utf8_force)
+		fprintf (stderr, "Ignoring contradictory unicode flags\n");
+
 	return (optind);
 } /* }}} read_options */
 
@@ -637,7 +649,7 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 #if USE_NCURSES
 static int unicode_locale() /* {{{ */
 {
-	return _nc_unicode_locale();
+	return ( _nc_unicode_locale() || opt_utf8_force ) && !opt_utf8_disable;
 } /* }}} int unicode_locale */
 
 static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
