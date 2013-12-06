@@ -155,7 +155,9 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+#if USE_NCURSES
 static int     opt_utf8       = 0;
+#endif
 
 static int host_num = 0;
 
@@ -300,6 +302,9 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
+#if USE_NCURSES
+			"  -u / -U      force / disable UTF-8 output\n"
+#endif
 
 			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
 			"by Florian octo Forster <octo@verplant.org>\n"
@@ -502,7 +507,11 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46uUc:hi:I:t:Q:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:"
+#if USE_NCURSES
+				"uU"
+#endif
+				);
 
 		if (optchar == -1)
 			break;
@@ -512,13 +521,6 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case '4':
 			case '6':
 				opt_addrfamily = (optchar == '4') ? AF_INET : AF_INET6;
-				break;
-
-			case 'u':
-				opt_utf8 = 2;
-				break;
-			case 'U':
-				opt_utf8 = 1;
 				break;
 
 			case 'c':
@@ -579,6 +581,15 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case 'Q':
 				set_opt_send_qos (optarg);
 				break;
+
+#if USE_NCURSES
+			case 'u':
+				opt_utf8 = 2;
+				break;
+			case 'U':
+				opt_utf8 = 1;
+				break;
+#endif
 
 			case 'h':
 				usage_exit (argv[0], 0);
