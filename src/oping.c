@@ -635,6 +635,11 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
+static int unicode_locale() /* {{{ */
+{
+	return _nc_unicode_locale();
+} /* }}} int unicode_locale */
+
 static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		double latency, unsigned int sequence)
 {
@@ -650,7 +655,7 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 	x_max = getmaxx (ctx->window);
 	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
 
-	if (_nc_unicode_locale())
+	if (unicode_locale())
 	{
 		hist_symbols_num = hist_symbols_utf8_num;
 	}
@@ -676,7 +681,7 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		assert (index_colors < hist_colors_num);
 
 		index_symbols = intensity % hist_symbols_num;
-		if (_nc_unicode_locale())
+		if (unicode_locale())
 		{
 			color = hist_colors_utf8[index_colors];
 			symbol = hist_symbols_utf8[index_symbols];
@@ -691,7 +696,7 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		wattron (ctx->window, A_BOLD);
 
 	wattron (ctx->window, COLOR_PAIR(color));
-	if (_nc_unicode_locale())
+	if (unicode_locale())
 	{
 		mvwprintw (ctx->window,
 			   /* y = */ 3,
