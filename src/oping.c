@@ -75,17 +75,13 @@
 #endif
 
 #include <locale.h>
+#include <langinfo.h>
 
 #if USE_NCURSES
 # define NCURSES_OPAQUE 1
 /* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
 # define _X_OPEN_SOURCE_EXTENDED
 # include <ncursesw/ncurses.h>
-
-/* some evilness: ncurses knows how to detect unicode, but won't
-   expose it, yet there's this function that does what we want, so we
-   steal it away from it */
-extern int    _nc_unicode_locale(void);
 
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
@@ -159,8 +155,7 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
-static int     opt_utf8_force = 0;
-static int     opt_utf8_disable = 0;
+static int     opt_utf8       = 0;
 
 static int host_num = 0;
 
@@ -520,10 +515,10 @@ static int read_options (int argc, char **argv) /* {{{ */
 				break;
 
 			case 'u':
-				opt_utf8_force = 1;
+				opt_utf8 = 2;
 				break;
 			case 'U':
-				opt_utf8_disable = 1;
+				opt_utf8 = 1;
 				break;
 
 			case 'c':
@@ -593,9 +588,6 @@ static int read_options (int argc, char **argv) /* {{{ */
 		}
 	}
 
-	if (opt_utf8_disable && opt_utf8_force)
-		fprintf (stderr, "Ignoring contradictory unicode flags\n");
-
 	return (optind);
 } /* }}} read_options */
 
@@ -647,10 +639,18 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
-static int unicode_locale() /* {{{ */
+static _Bool has_utf8() /* {{{ */
 {
-	return ( _nc_unicode_locale() || opt_utf8_force ) && !opt_utf8_disable;
-} /* }}} int unicode_locale */
+	if (!opt_utf8)
+	{
+		/* Automatically determine */
+		if (strcasecmp ("UTF-8", nl_langinfo (CODESET)) == 0)
+			opt_utf8 = 2;
+		else
+			opt_utf8 = 1;
+	}
+	return ((_Bool) (opt_utf8 - 1));
+} /* }}} _Bool has_utf8 */
 
 static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		double latency, unsigned int sequence)
@@ -667,7 +667,7 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 	x_max = getmaxx (ctx->window);
 	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
 
-	if (unicode_locale())
+	if (has_utf8())
 	{
 		hist_symbols_num = hist_symbols_utf8_num;
 	}
@@ -693,7 +693,7 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		assert (index_colors < hist_colors_num);
 
 		index_symbols = intensity % hist_symbols_num;
-		if (unicode_locale())
+		if (has_utf8())
 		{
 			color = hist_colors_utf8[index_colors];
 			symbol = hist_symbols_utf8[index_symbols];
@@ -708,7 +708,7 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		wattron (ctx->window, A_BOLD);
 
 	wattron (ctx->window, COLOR_PAIR(color));
-	if (unicode_locale())
+	if (has_utf8())
 	{
 		mvwprintw (ctx->window,
 			   /* y = */ 3,
