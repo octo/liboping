@@ -8,12 +8,8 @@ LIBPERL_VERSION := $(shell \
  pkg_ver=$$(dpkg-parsechangelog | egrep '^Version:' | cut -d' ' -f2); \
  echo -n "$${pkg_ver%-*}-$${pm_ver}-$${pkg_ver\#\#*-}")
 
-dh_targets=binary binary-arch binary-indep build build-arch build-indep clean install
-
-$(dh_targets) %:
+%:
 	dh $@ --with autoreconf --parallel
-
-.PHONY: $(dh_targets)
 
 override_dh_autoreconf:
 	-mkdir -p m4
