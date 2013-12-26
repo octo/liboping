@@ -1,0 +1,34 @@
+Revision history for Perl extension Net::Oping.
+
+1.21  Thu Oct  1 14:28:25 2009
+	- Fix an off-by-one error in `_ping_iterator_get_hostname' which caused
+	  the trailing null-byte to be included in the strings that are the
+	  keys of the hash returned by Net::Oping::ping. Thanks to Fredrik
+	  Soderblom for reporting this issue and providing the patch.
+
+1.20  Sat Jul 18 14:57:32 2009
+	- The `device' method has been added.
+
+1.10  Sun Mar 15 13:49:56 2009
+	- The build system has been improved.
+	- The `ttl', `get_recv_ttl', and `get_dropped' methods have been added
+	  to support new features in liboping 1.0.0 and 1.1.0.
+
+1.02  Tue Feb 17 08:52:25 2009
+	- Fix a memory leak in _ping_iterator_get_hostname() [fixes RT#37066]
+	  Thanks to "Iceberg" for reporting this issue and providing the patch.
+
+1.01  Sun Jan 27 16:08:03 2008
+	- Have `Makefile.PL' exit if the header file <oping.h> cannot be found
+	  _before_ a Makefile is generated. This is done because
+	  `ExtUtils::MakeMaker' doesn't check whether libraries exist and this
+	  seems to be the standard way of dealing with this. A (hopefully)
+	  informative message is written to STDERR in this case.
+
+1.00  Sat Jan 26 13:52:11 2008
+	- The module has been renamed from `Oping' to `Net::Oping'.
+	- The XS code has been simplified and a high-level interface has been
+	  created in Perl.
+
+0.01  Wed Oct 24 01:32:19 2007
+	- original version; created by h2xs 1.23.

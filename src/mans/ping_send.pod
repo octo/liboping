@@ -1,0 +1,42 @@
+=head1 NAME
+
+ping_send - Send ICMP echo requests to all associated hosts and wait for ICMP echo responses to arrive
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  int ping_send (pingobj_t *obj);
+
+=head1 DESCRIPTION
+
+The B<ping_send> method is the actual workhorse of this library. It crafts ICMP
+packets for the hosts associated with I<obj> and sends them via the
+corresponding sockets. It then waits for echo responses and receives them,
+writing latency information for each host. The method returns after all echo
+replies have been read or the timeout (set with L<ping_setopt(3)>) is reached.
+
+After this function returns you will most likely iterate over all hosts using
+L<ping_iterator_get(3)> and ping_iterator_next (described in the same manual
+page) and call L<ping_iterator_get_info(3)> on each host.
+
+=head1 RETURN VALUE
+
+B<ping_send> returns the number of echo replies received or a value less than
+zero if an error occurred. Use L<ping_get_error(3)> to receive an error message.
+
+=head1 SEE ALSO
+
+L<ping_construct(3)>,
+L<ping_setopt(3)>,
+L<ping_iterator_get(3)>,
+L<ping_iterator_get_info(3)>,
+L<ping_get_error(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

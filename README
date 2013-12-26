@@ -1,0 +1,97 @@
+ liboping – Library to ping IPv4 and IPv6 hosts in parallel
+════════════════════════════════════════════════════════════
+http://verplant.org/liboping/
+
+About
+━━━━━
+
+  liboping was inspired by ping, libping and fping: It differs from these
+  existing solutions in that it can “ping” multiple hosts in parallel using
+  IPv4 or IPv6 transparently. Other design principles were an object oriented
+  interface, simplicity and extensibility.
+
+  On top of liboping two command line applications have been built. “oping” is
+  a drop-in replacement for ping(1) with very similar output. “noping” is an
+  ncurses-based application which displays statistics while pinging and
+  highlights aberrant round-trip times.
+
+
+Features
+━━━━━━━━
+
+  • Support for multiple hosts.
+
+  • Support for IPv4 and IPv6.
+
+  • Object oriented interface.
+
+
+Perl bindings
+━━━━━━━━━━━━━
+
+  Included in the source package of liboping are bindings for Perl. The code
+  resides in the bindings/ subdirectory and is compiled and installed by
+  default. To disable building the Perl bindings, call “configure” with
+  “--without-perl-bindings”.
+
+
+Permissions
+━━━━━━━━━━━━━
+
+  On UNIX, special permissions are required to open raw sockets (raw(7)). If
+  you compile and install the “oping” and “noping” binaries as normal user
+  (which is strongly suggested), you won't be able to use the binaries as a
+  normal user, because you won't have the permission to open raw sockets.
+
+  The “install” target will automatically try fix this, if it is run with UID~0
+  (as user root).  When on Linux, the capabilities described below will be
+  added. On other UNIXes the traditional Set-UID method (also described below)
+  is used instead. The build system will not abort if this fails, because there
+  are file systems which do not support either method. Also, the Debian
+  packaging system and possibly other scenarios only act as if they were
+  running as root.
+
+  Linux
+  ━━━━━
+  On Linux, the preferred method is to assign the required “capability” to the
+  binaries. This will allow the binary to open raw sockets, but doesn't give
+  any other permissions such as reading other users' files or shutting down the
+  system. The downside is that this mechanism is comparatively new: Assigning
+  capabilities to files is available since Linux 2.6.24.
+
+  To set the required capabilities, run (as user root):
+
+    # setcap cap_net_raw=ep /opt/oping/bin/oping
+    # setcap cap_net_raw=ep /opt/oping/bin/noping
+
+  Other UNIX
+  ━━━━━━━━━━
+  Capabilities are a nice but Linux-specific solution. To make “oping” and
+  “noping” available to unprivileged users on other UNIX systems, use the
+  traditional set-UID root solution. If your system supports “saved set-UIDs”
+  (basically all systems do), the applications will drop the privileges during
+  initialization and only regain them when actually opening the socket(s).
+
+  To set the set-UID bit, run (as user root):
+
+    # chown root: /opt/oping/bin/{,n}oping
+    # chmod u+s   /opt/oping/bin/{,n}oping
+
+
+Licensing terms
+━━━━━━━━━━━━━━━
+
+  liboping is licensed under the “GNU Lesser General Public License” (LGPL),
+  version 2.1 or later. The exact licensing terms can be found in the file
+  “COPYING” included in the source distribution of liboping.
+
+  The “oping” and “noping” utilities included in this package are licensed
+  under the “GNU General Public License” (GPL), version 2. The full licensing
+  terms can be found online at <http://www.gnu.org/licenses/gpl-2.0.html>.
+
+
+Author
+━━━━━━
+
+  Florian “octo” Forster <ff at octo.it>
+

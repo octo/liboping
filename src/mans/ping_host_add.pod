@@ -1,0 +1,52 @@
+=head1 NAME
+
+ping_host_add - Add a host to a liboping object
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  int ping_host_add    (pingobj_t *obj, const char *host);
+  int ping_host_remove (pingobj_t *obj, const char *host);
+
+=head1 DESCRIPTION
+
+The B<ping_host_add> method tries to resolve the I<host> argument, open a
+socket and associate everything with the liboping object I<obj>.
+
+The I<obj> argument is a pointer to an liboping object, as returned by
+L<ping_construct(3)>.
+
+The I<host> parameter is a '\0' terminated string which is interpreted as a
+hostname or an IP address. Depending on the address family setting, set with
+L<ping_setopt(3)>, the hostname is resolved to an IPv4 or IPv6 address.
+
+The B<ping_host_remove> method looks for I<host> within I<obj> and remove it if
+found. It will close the socket and deallocate the memory, too.
+
+The names passed to B<ping_host_add> and B<ping_host_remove> must match. This
+name can be queried using L<ping_iterator_get_info(3)>.
+
+=head1 RETURN VALUE
+
+If B<ping_host_add> succeeds it returns zero. If an error occurs a value less
+than zero is returned and the last error is saved internally. You can receive
+the error message using L<ping_get_error(3)>.
+
+B<ping_host_remove> returns zero upon success and less than zero if it failed.
+Currently the only reason for failure is that the host isn't found, but this is
+subject to change. Use L<ping_get_error(3)> to receive the error message.
+
+=head1 SEE ALSO
+
+L<ping_construct(3)>,
+L<ping_setopt(3)>,
+L<ping_get_error(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

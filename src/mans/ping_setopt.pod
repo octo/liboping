@@ -1,0 +1,98 @@
+=head1 NAME
+
+ping_setopt - Set options for a liboping object
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  int ping_setopt (pingobj_t *obj, int opt, void *val);
+
+=head1 DESCRIPTION
+
+The B<ping_setopt> method sets options that apply to all hosts associated with
+the object I<obj> and hosts that are yet to be added to the object.
+
+The I<obj> argument is a pointer to an I<liboping> object, as returned by
+L<ping_construct(3)>.
+
+The I<opt> argument specifies the option to set. Use one of the following
+constants. You can check if the required constant is supported by the library
+at compile time using C<#ifdef>. It is recommended to check for desired
+features using the C<OPING_VERSION> define.
+
+=over 4
+
+=item B<PING_OPT_TIMEOUT>
+
+The time to wait for a "echo reply" to be received; in seconds. In this case
+the memory pointed to by I<val> is interpreted as a double value and must be
+greater than zero. The default is B<PING_DEF_TIMEOUT>.
+
+=item B<PING_OPT_TTL>
+
+The value written into the time-to-live (= TTL) field of generated ICMP
+packets. The memory pointed to by I<val> is interpreted as an integer. Valid
+values are 1 through 255. Default is B<PING_DEF_TTL>.
+
+=item B<PING_OPT_AF>
+
+The address family to use. The memory pointed to by I<val> is interpreted as an
+integer and must be either B<AF_UNSPEC>, B<AF_INET>, or B<AF_INET6>. This
+option only affects hosts that are being added B<after> this option has been
+set. Default is B<PING_DEF_AF>. If you change this option, and a source address
+is set (see B<PING_OPT_SOURCE>) that setting will be reset.
+
+=item B<PING_OPT_DATA>
+
+Set the data to send. The value passed must be a char-pointer to a
+null-terminated string. By default a 56 byte long string is used so that the
+packet size of an ICMPv4 packet is exactly 64 bytes. That's the behavior of the
+L<ping(1)> command.
+
+=item B<PING_OPT_SOURCE>
+
+Set the source address to use. The value passed must be a char-pointer to a
+null-terminated string specifying either a numerical network address or
+network hostname. This option will ignore the address family setting (as
+set with B<PING_OPT_AF>) and will set the object's address family according to
+the source address assigned.
+
+=item B<PING_OPT_DEVICE>
+
+Set the outgoing network device to be used. The value passed must be a
+char-pointer to a null-terminated string specifying an interface name
+(e.E<nbsp>g. C<eth0>). Please note that this might not be supported by all
+operating systems. In that case, B<ping_setopt> sets the error to
+C<operation not supported>.
+
+=item B<PING_OPT_QOS>
+
+Sets the I<Quality of Service> flags that should be used when crafting ICMP and
+ICMPv6 packets. The memory pointed to by I<val> is interpreted as a C<uint8_t>.
+The byte is passed to L<setsockopt(2)> without modification, using the
+C<IP_TOS> (IPv4) or C<IPV6_TCLASS> (IPv6) option. It is the caller's
+responsibility to chose a valid bit combination. For details, read the L<ip(7)>
+and L<ipv6(7)> manual pages, as well as I<RFCE<nbsp>2474>.
+
+=back
+
+The I<val> argument is a pointer to the new value. It must not be NULL. It is
+dereferenced depending on the value of the I<opt> argument, see above. The
+memory pointed to by I<val> is not changed.
+
+=head1 RETURN VALUE
+
+B<ping_setopt> returns zero upon success or less than zero upon failure.
+
+=head1 SEE ALSO
+
+L<ping_construct(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

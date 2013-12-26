@@ -1,0 +1,196 @@
+=head1 NAME
+
+oping - send ICMP ECHO_REQUEST to network hosts
+
+=head1 SYNOPSIS
+
+B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] I<host> [I<host> [I<host> ...]]
+
+B<oping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] B<-f> I<filename>
+
+B<noping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] I<host> [I<host> [I<host> ...]]
+
+B<noping> [B<-4> | B<-6>] [B<-c> I<count>] [B<-i> I<interval>] B<-f> I<filename>
+
+=head1 DESCRIPTION
+
+B<oping> uses ICMPv4 or ICMPv6 ECHO_REQUEST packets to measure a hosts
+reachability and the network latency. In contrast to the original L<ping(8)>
+utility B<oping> can send ICMP packets to multiple hosts in parallel and wait
+for all ECHO_RESPONSE packets to arrive. In contrast to the B<fping> utility
+(URL is listed in L<"SEE ALSO">) B<oping> can use both, IPv4 and IPv6
+transparently and side by side.
+
+B<noping> is an ncurses-based front-end to I<liboping> which displays ping
+statistics online and highlights aberrant round-trip times if the terminal
+supports colors.
+
+=head1 OPTIONS
+
+=over 4
+
+=item B<-4>
+
+Force the use of IPv4. 
+
+=item B<-6>
+
+Force the use of IPv6.
+
+=item B<-c> I<count>
+
+Send (and receive) I<count> ICMP packets, then stop and exit.
+
+=item B<-i> I<interval>
+
+Send one ICMP packet (per host) each I<interval> seconds. This can be a
+floating-point number to specify sub-second precision.
+
+=item B<-t> I<ttl>
+
+Set the IP Time to Live to I<ttl>. This must be a number between (and
+including) 1E<nbsp>andE<nbsp>255. If omitted, the value B<64> is used.
+
+=item B<-I> I<address>
+
+Set the source address to use. You may either specify an IP number or a
+hostname. You B<cannot> pass the interface name, as you can with GNU's
+L<ping(8)> - use the B<-D> option for that purpose.
+
+=item B<-D> I<interface name>
+
+Set the outgoing network device to use.
+
+=item B<-f> I<filename>
+
+Instead of specifying hostnames on the command line, read them from
+I<filename>. If I<filename> is B<->, read from C<STDIN>.
+
+If I<oping> is installed with the SetUID-bit, it will set the effective UID to
+the real UID before opening the file. In the special (but common) case that
+I<oping> is owned by the super-user (UIDE<nbsp>0), this means that privileges
+are temporarily dropped before opening the file, in order to prevent users from
+reading arbitrary files on the system.
+
+If your system doesn't provide I<saved set-user IDs> (this was an optional
+feature before POSIXE<nbsp>2001), the behavior is different because it is not
+possible to I<temporarily> drop privileges. The alternative behavior is: If the
+real user ID (as returned by L<getuid(2)>) and the effective user ID (as
+returned by L<geteuid(2)>) differ, the only argument allowed for this option is
+"-" (i.e. standard input).
+
+=item B<-Q> I<qos>
+
+Specify the I<Quality of Service> (QoS) for outgoing packets. This is a
+somewhat tricky option, since the meaning of the bits in the IPv4 header has
+been revised several times.
+
+The currently recommended method is I<Differentiated Services> which is used in
+IPv6 headers as well. There are shortcuts for various predefined
+I<per-hop behaviors> (PHBs):
+
+=over 4
+
+=item B<be>
+
+Selects the I<Best Effort> behavior. This is the default behavior.
+
+=item B<ef>
+
+Selects the I<Expedited Forwarding> (EF) per-hop behavior, as defined in
+I<RFCE<nbsp>3246>. This PHB is characterised by low delay, low loss and low
+jitter, i.e. high priority traffic.
+
+=item B<va>
+
+Selects the I<Voice Admitted> (VA) per-hop behavior, as defined in
+I<RFCE<nbsp>5865>. This traffic class is meant for I<Voice over IP> (VoIP)
+traffic which uses I<Call Admission Control> (CAC) for reserving network
+capacity.
+
+=item  B<af>I<c>I<p>
+
+Selects one of 12E<nbsp>differentiated services code points (DSCPs), which are
+organized in four I<classes> with three I<priorities> each. Therefore, I<c>
+must be a number betweenE<nbsp>1 throughE<nbsp>4 and I<p> must be a number
+betweenE<nbsp>1 throughE<nbsp>3, for example "af13", "af22" and "af41". In each
+class, the lower priority number takes precedence over the higher priority
+number.
+
+=item B<cs>I<n>
+
+Selects one of the eight I<Class Selector> PHBs. I<n> is a number
+betweenE<nbsp>0 throughE<nbsp>7. The class selectors have been defined to be
+compatible to the I<Precedence> field in the IPv4 header as defined in
+I<RFCE<nbsp>791>. Please note that "cs0" is synonymous to "be".
+
+=back
+
+The old definition of the same bits in the IPv4 header was as I<Type of
+Service> (ToS) field, specified in I<RFCE<nbsp>1349>. It defined four possible
+values which have appropriate aliases. Please note that this use of the bits is
+B<deprecated> and the meaning is limited to IPv4!
+
+=over 4
+
+=item B<lowdelay>
+
+Minimize delay
+
+=item B<throughput>
+
+Maximize throughput
+
+=item B<reliability>
+
+Maximize reliability
+
+=item B<mincost>
+
+Minimize monetary cost
+
+=back
+
+Alternatively, you can also specify the byte manually. You can use either a
+decimal number (0-255), a hexadecimal number (0x00-0xff) or an octal number
+(00-0377) using the usual "0x" and "0" prefixes for hexadecimal and octal
+respectively.
+
+The printed lines will contain information about the QoS field of received
+packets if either a non-standard QoS setting was used on outgoing packets or if
+the QoS byte of incoming packets is not zero. In other words, the QoS
+information is omitted if both, the outgoing and the incoming QoS bytes are
+zero. The received byte is always interpreted as
+I<Differentiated Services Code Point> (DSCP) and
+I<Explicit Congestion Notification> (ECN), even if the deprecated
+I<Type of Service> (ToS) aliases were used to specify the bits of outgoing
+packets.
+
+=back
+
+=head1 COLORS
+
+If supported by the terminal, I<noping> will highlight the round-trip times
+(RTT) using the colors green, yellow and red. Green signals RTTs that are in
+the "expected" range, yellow marks moderately unusual times and times that
+differ a lot from the expected value are printed in red.
+
+The information used to categorize round-trip times is the I<average>
+round-trip time and the I<standard deviation>. RTTs that differ from the
+average by less than the standard deviation are considered to be "normal" and
+are printed in green. Times that differ from the average more than the standard
+deviation but less than twice the standard deviation are considered "moderately
+unusual" and are printed in yellow. Times differing more than twice the
+standard deviation from the average are considered to be "unusual" and are
+printed in red.
+
+=head1 SEE ALSO
+
+L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>ff at octo.itE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

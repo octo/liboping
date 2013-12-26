@@ -1,0 +1,41 @@
+Net::Oping
+==========
+
+  ICMP latency measurement module using the oping library.
+
+DESCRIPTION
+
+  This Perl module is a high-level interface to the oping library. Its purpose
+  it to send "ICMP ECHO_REQUEST" packets (also known as "ping") to a host and
+  measure the time that elapses until the reception of an "ICMP ECHO_REPLY"
+  packet (also known as "pong"). If no such packet is received after a certain
+  timeout the host is considered to be unreachable.
+
+  The used "oping" library supports "ping"ing multiple hosts in parallel and
+  works with IPv4 and IPv6 transparently. Other advanced features that are
+  provided by the underlying library, such as setting the data sent or
+  configuring the time of live (TTL) are not yet supported by this interface.
+
+INSTALLATION
+
+  This module is compiled and installed in the standard Perl way:
+
+    perl Makefile.PL
+    make
+    make test
+    make install
+
+DEPENDENCIES
+
+  This module requires the "oping" library to be installed. The library is
+  available at <http://verplant.org/liboping/>.
+
+COPYRIGHT AND LICENSE
+
+  Copyright (C) 2007 by Olivier Fredj <ofredj at proxad.net>
+
+  Copyright (C) 2008,2009 by Florian Forster <octo at verplant.org>
+
+  This library is free software; you can redistribute it and/or modify it
+  under the same terms as Perl itself, either Perl version 5.8.7 or, at your
+  option, any later version of Perl 5 you may have available.

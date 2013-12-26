@@ -1,0 +1,30 @@
+=head1 NAME
+
+ping_get_error - Return the last error message
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  const char *ping_get_error (pingobj_t *obj);
+
+=head1 DESCRIPTION
+
+The B<ping_get_error> method returns an error message indicating the last error
+encountered. B<This method is not thread safe whatsoever.>
+
+=head1 RETURN VALUE
+
+A C<const> string representing the last error or an empty string if no error
+was encountered yet.
+
+=head1 SEE ALSO
+
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

@@ -1,0 +1,86 @@
+=head1 NAME
+
+liboping - Library to send ICMPv4/ICMPv6 echo packets to multiple hosts
+
+=head1 DESCRIPTION
+
+This is an overview of liboping, a C library to send ICMP ECHO_REQUEST packets
+to remote hosts and measure the time it takes for replies to be received. This
+method, often simply called "ping", is a common way to measure network latency
+and/or host reachability.
+
+The goals of this library are to provide the above functionality in a platform
+and protocol independent manner. The interface is simple, object oriented and
+(hopefully) ANSI-C compliant.
+
+=head1 GENERAL USAGE
+
+There are two main types that are used by applications. Both are "opaque
+types", meaning they are structures that are B<not> completely defined in the
+header file, so you cannot access the structures' members. You don't need to,
+don't do it. These structures are subject to change without notice.
+
+=over 4
+
+=item C<pingobj_t>
+
+A ping-object. You can set specific options for this object, add and remove
+hosts to/from it and send ICMP packets to all associated hosts. This is often
+called a "handle".
+
+=item C<pingobj_iter_t>
+
+An iterator over the hosts associated with a C<pingobj_t> object. This iterator
+can be used to query more information about a host, for example the hostname,
+the measured latency or the current ICMP sequence.
+
+=back
+
+Upon startup you usually create one or more C<pingobj_t> objects and add hosts
+to it using the C<ping_host_add> method (see below). You periodically send
+"echo requests" using the C<ping_send> method, iterate over all hosts using
+C<ping_iterator_get> and C<ping_iterator_next>. For each host you call
+C<ping_iterator_get_info> to read the current latency and do something with it.
+
+If an error occurs you can use C<ping_get_error> so get information on what
+failed.
+
+=head1 LINKING WITH LIBOPING
+
+Depending on you platform you don't need any extra libraries (e.g. GNU/Linux)
+or C<libsocket> (using C<-lsocket>) if the C<socket> function is not in the
+C-library. The latter is the case for the Solaris operating system.
+
+=head1 SYMBOL NAMES
+
+All "official" function or method names are prefixed with "ping_". Don't use
+any other functions or methods. Although no such functions should exist.
+
+=head1 THREAD SAFETY
+
+liboping has been designed to be as thread safe a possible. However, this has
+not been tested and may need some additional work. Use at your own risk and
+please report back any problems or success messages. Thank you :)
+
+=head1 SEE ALSO
+
+L<ping_construct(3)>,
+L<ping_setopt(3)>,
+L<ping_host_add(3)>,
+L<ping_send(3)>,
+L<ping_get_error(3)>,
+L<ping_iterator_get(3)>,
+L<ping_iterator_get_info(3)>,
+L<ping_iterator_get_context(3)>
+
+=head1 LICENSE
+
+liboping is licensed under the GPLv2. No other version of the license is
+applicable.
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

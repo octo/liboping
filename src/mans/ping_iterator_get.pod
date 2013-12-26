@@ -1,0 +1,50 @@
+=head1 NAME
+
+ping_iterator_get, ping_iterator_next - Iterate over all hosts of a liboping object
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  pingobj_iter_t *ping_iterator_get (pingobj_t *obj);
+  pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter)
+
+=head1 DESCRIPTION
+
+These two functions can be used to iterate over all hosts associated with a
+liboping object. You can use these methods as follows:
+
+  pingobj_iter_t *iter;
+
+  for (iter = ping_iterator_get (obj);
+       iter != NULL;
+       iter = ping_iterator_next (iter))
+  {
+    ...;
+  }
+
+To get usable information from an iterator object (which is also an opaque data
+type, just like the liboping object itself) use L<ping_iterator_get_info(3)> and
+L<ping_iterator_get_context(3)>.
+
+=head1 RETURN VALUE
+
+The B<ping_iterator_get> returns an iterator for I<obj> or NULL if no host is
+associated with I<obj>.
+
+The B<ping_iterator_next> returns an iterator for the host following I<iter> or
+NULL if the last host has been reached.
+
+=head1 SEE ALSO
+
+L<ping_host_add(3)>,
+L<ping_iterator_get_info(3)>,
+L<ping_iterator_get_context(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

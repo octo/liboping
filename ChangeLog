@@ -1,0 +1,195 @@
+2012-01-31, Version 1.6.2:
+	* Build system: Setting capabilities and the set-UID bit has been made
+	  more fault-tolerant, so that it will work with Debian's fakeroot(1)
+	  utility.
+	* src/liboping.c: Fixed a compiler warning about an non-static format
+	  string. Thanks to Brian Edwards for pointing this out.
+	* src/liboping.c: Fixed compilation under Mac OS X and Solaris. Thanks
+	  to Clayton O'Neill for his patch.
+
+2011-03-06, Version 1.6.1:
+	* Build system: If "make install" is executed as root, the CAP_NET_RAW
+	  capability is added to the binary (on Linux) or the set-UID bit is
+	  set (other Unixes).
+	* src/oping.c: Fix compiler warnings which may abort the build. Thanks
+	  to James Bromberger for reporting the problem.
+	* noping: Compatibility with ncurses 5.8 has been fixed. Thanks to
+	  Gaetan Bisson for his patch.
+
+2011-01-26, Version 1.6.0:
+	* liboping: Improve timing of received network packets using
+	  SO_TIMESTAMP if available. Thanks to Bruno Prémont for his patch.
+
+2010-11-17, Version 1.5.1:
+	* oping, noping: Alias for the “Voice Admit” DSCP has been added.
+	* src/oping.c, src/liboping.c: Compiler warnings / errors have been
+	  fixed. Thanks to James Bromberger for reporting one of them.
+
+2010-10-27, Version 1.5.0:
+	* src/liboping.c: The possibility to set the QoS byte of outgoing IPv4
+	  and IPv6 packets and read the byte from incoming packets has been
+	  added. Thanks to Vladimir Melnikov for his patch.
+	* oping, noping: Add the ability to configure the QoS field on the
+	  command line. If either the QoS field of outgoing or incoming
+	  packets is non-standard, the QoS byte of incoming packets will be
+	  printed.
+	* liboping: The library has been relicensed under the LGPL 2.1.
+
+2010-06-13, Version 1.4.0:
+	* noping: A new front-end to liboping, using the ncurses library, has
+	  been added. The new command line application displays ping
+	  statistics online and highlights aberrant round-trip times.
+
+2009-12-20, Version 1.3.4:
+	* src/liboping.c: When one file descriptor was in an error state, the
+	  select(2) loop would run indefinitely. Error handling has been
+	  improved so the loop ends gracefully now in this case.
+	* src/liboping.c: Drop privileges before reading files if supported by
+	  the system. This way files are opened using the user's original
+	  privileges when using the “-f” option.
+	* Net::Oping: An off-by-one error has been fixed in the Perl bindings.
+	  Thanks to Fredrik Soderblom for his patch.
+
+2009-09-29, Version 1.3.3:
+	* oping: Disable the “-f” option if the real and effective user IDs
+	  don't match. If that is the case the program is probably running
+	  SetUID and should not read foreign files. Unfortunately, dropping
+	  privileges before reading the file is not possible, because they are
+	  required for opening raw sockets.
+
+	  Reading from STDIN using “-f -” is still possible.
+
+	  Thanks to Steve Kemp for reporting this issue as Debian bug #548684.
+
+2009-07-27, Version 1.3.2:
+	* src/oping.h: Remove `HAVE_*_H' macros for system headers. Those
+	  macros should not be used in system wide installed header files.
+	  Thanks to Sebastian for fixing this.
+
+2009-07-20, Version 1.3.1
+	* src/liboping.c: Fix too eager argument validation that prevented the
+	  library to work as documented. Thanks to Sebastian for catching this
+	  bug.
+
+2009-07-18, Version 1.3.0
+	* oping: Documentation and messages have been improved.
+	* oping: Support for the `-D' command line option has been added.
+	  Using this new option, the outgoing network device can be set.
+	  Thanks to Sebastian Harl for the patch.
+	* src/liboping.c: The value of the `received TTL' information after
+	  missing packets has been corrected.
+	* src/liboping.c: A bug when matching received packets to configured
+	  hosts has been fixed. This regression was introduced after 1.0, we
+	  believe. Thanks to Sebastian Harl for noticing and fixing this bug.
+	* src/liboping.c: Support for the `PING_OPT_DEVICE' option has been
+	  added. This option can be used to set the outgoing network device.
+	  Thanks to Sebastian for his patch.
+
+2009-07-15, Version 1.2.0
+	* `oping': Implement the `-f' command line option to read hostnames
+	  from a file (or STDIN).
+	* src/liboping.c: No longer export `sstrerror'.
+
+2009-04-05, Version 1.1.2
+	* liboping.c: A NULL-pointer dereference has been fixed in the IPv4
+	  code. This led to a segmentation fault when an ICMPv4 paket could
+	  not be associated with any host. This usually happened when one or
+	  more hosts were unreachable for some time. Thanks to Tomasz Pala for
+	  discovering the problem and finding a way to reproduce it.
+
+2009-03-23, Version 1.1.1
+	* liboping.c: Use libxnet when available. The `normal' version of
+	  `recvmsg' does not provide the `auxiliary data' on some or all
+	  versions of Solaris.
+
+2009-03-15, Version 1.1.0
+	* liboping.c: Eliminate the use of `strerror' and use `strerror_r'
+	  instead, removing the (hopefully) last thread-unsafe function.
+	* liboping.c: Provide the TTL of received IP packets.
+	* oping.c: Allow setting of the TTL using the `-t' command line
+	  option.
+
+2009-02-17, Version 1.0.0
+	* oping.h: Provide the OPING_VERSION to easily determine the library's
+	  version at compile time.
+	* liboping.c: Fixed an off-by-one error in `ping_iterator_get_info':
+	  When determining the buffer size to hold the hostname, the function
+	  would return one byte too little.
+	* liboping.c: Fix an incorrect assertion in `ping_timeval_add'. Thanks
+	  to Alex Brooks for reporting the issue.
+	* liboping.c: Make sure `EAI_SYSTEM' is defined at compile time.
+	  Although specified by POSIX, Cygwin apparently doesn't have it.
+	* liboping.c: Add compatibility code for AIX. Thanks to Doug
+	  MacEachern for the patch.
+	* liboping.c: Store and possibly return the host name as provided by
+	  the user.
+	* liboping.c: The number of timed out packets is now counted and can
+	  be retrieved with `ping_iterator_get_info'.
+	* Perl bindings: The Net::Oping Perl package has been added to
+	  bindings/ and is built along with liboping.
+
+2007-03-27, Version 0.3.5
+	* liboping.c: Close the filedescriptor in `ping_free', not
+	  `ping_host_remove'. Thanks to Esteban Sanchez for submitting this
+	  patch.
+	* oping.h: Include <sys/types.h> so that `size_t' is defined. Thanks
+	  to Alex Brooks for pointing this out.
+	* oping.h: Use `extern "C"' when being used with C++. Thanks to Alex
+	  Brooks for pointing this out.
+
+2006-12-01, Version 0.3.4
+	* Fixes a bug in `ping_host_remove': Due to an incorrect hostname
+	  checking the wrong host would be removed.
+
+2006-07-16, Version 0.3.3
+	* `sendto(2)' now catches `EHOSTUNREACH' and `ENETUNREACH' if they're
+	  defined.
+
+2006-07-13, Version 0.3.2
+	* `oping' now drops root privileges as soon as possible.
+	* `liboping' now contains an `soname' and a version.
+
+2006-07-09, Version 0.3.1
+	* Removed `libltdl' from the distribution since it's not used.
+	* More nonsense has been removed from the build system. Thanks to
+	  Sebastian Harl for pointing it out :)
+
+2006-07-09, Version 0.3.0
+	* The ability to set the source address from which the packets
+	  originate has been added to the library and the oping application.
+
+2006-07-16, Version 0.2.3
+	* `sendto(2)' now catches `EHOSTUNREACH' and `ENETUNREACH' if they're
+	  defined.
+
+2006-06-05, Version 0.2.2
+	* The `oping' application didn't exit if no hosts could be resolved.
+	  This release fixes it's behavior.
+
+2006-06-01, Version 0.2.1
+	* Fix the behavior for non GNU-Linux systems. liboping tried to
+	  `bind(2)' to the raw-socket it uses to send ICMP packets. Apparently
+	  (decided by majority vote ;) this is not the right thing to do.
+	  GNU/Linux never complained about it, but works find without the bind.
+	  Other operating systems don't work at all with the bind.
+	* Build fixes for non-GNU/Linux platforms: Mac OS X doesn't define
+	  `size_t' as `unsigned int' and therefore needs casting and FreeBSD
+	  needs to have `sys/types.h' included before `netinet/*.h'
+
+2006-05-29, Version 0.2.0
+	* It's now possible to set the data to be send to the remote host and
+	  to get the data received from the host.
+	* The `oping' binary now calculates the standard deviation. Also, it
+	  displays the number of byes that were received and other output
+	  changes.
+	* Hosts are now returned in the same order as they were added by
+	  `ping_host_add'. This is not guaranteed, but makes `oping' prettier.
+
+2006-05-12, Version 0.1.1
+	* A bug in the library has been fixed: When the sequence got higher
+	  than 2^16 the counter in the packets wrapped around, but the
+	  internal counter didn't, causing the library to ignore all further
+	  ICMP packets. This affected both, ICMPv4 and ICMPv6.
+
+2006-05-08, Version 0.1.0
+	* Initial release.

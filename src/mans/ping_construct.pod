@@ -1,0 +1,38 @@
+=head1 NAME
+
+ping_construct - Constructor for the liboping class
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  pingobj_t *ping_construct (void);
+  void       ping_destroy   (pingobj_t *obj);
+
+=head1 DESCRIPTION
+
+The B<ping_construct> constructor allocates the memory necessary for a
+liboping object, initializes that memory and returns a pointer to it.
+
+The B<ping_destroy> iterates over all hosts associated with the liboping object
+I<obj>, closes the sockets, removes the hosts and frees I<obj>'s memory.
+
+=head1 RETURN VALUE
+
+The B<ping_construct> constructor returns a pointer to the allocated memory or NULL if no memory could be allocated.
+
+=head1 SEE ALSO
+
+L<ping_setopt(3)>,
+L<ping_send(3)>,
+L<ping_host_add(3)>,
+L<ping_get_error(3)>,
+L<ping_iterator_get(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.

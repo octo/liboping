@@ -1,0 +1,45 @@
+=head1 NAME
+
+ping_iterator_get_context, ping_iterator_set_context - Store host-dependent data
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  void *ping_iterator_get_context (pingobj_iter_t *iter);
+  void  ping_iterator_set_context (pingobj_iter_t *iter, void *context);
+
+=head1 DESCRIPTION
+
+B<ping_iterator_set_context> can be used to store host-specific data within the
+liboping structures. This data can be received again by calling
+B<ping_iterator_get_context>. The data itself is never touched by liboping. If
+you call ping_host_remove (see L<ping_host_add(3)>) or ping_destroy (see
+L<ping_construct(3)>) and the context is not NULL liboping will assume you know
+what you're doing and simply ignore the fact this might be a memory leak.
+
+The I<iter> argument is an iterator object as returned by
+L<ping_iterator_get(3)> and ping_iterator_next.
+
+The I<context> argument of B<ping_iterator_set_context> is a pointer to
+anything and may be NULL.
+
+=head1 RETURN VALUE
+
+B<ping_iterator_get_context> returns the same pointer previously passed to
+B<ping_iterator_set_context> or NULL if B<ping_iterator_set_context> has never
+been called before.
+
+=head1 SEE ALSO
+
+L<ping_iterator_get(3)>,
+L<ping_construct(3)>,
+L<ping_host_add(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>octo at verplant.orgE<gt>.
+Its homepage can be found at L<http://verplant.org/liboping/>.
+
+Copyright (c) 2005-2011 by Florian "octo" Forster.
