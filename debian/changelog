@@ -7,8 +7,9 @@ liboping (1.6.2-2) unstable; urgency=low
   * stop installing docs COPYING, INSTALL, NEWS, replicated upstream changelog
   * print rpath before deleting it (when none, can remove chrpath removal code)
   * enable multiarch support
+  * add quilt patch with prettyping support (closes: #731207)
 
- -- Barak A. Pearlmutter <bap@debian.org>  Thu, 26 Dec 2013 15:47:06 +0100
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 26 Dec 2013 16:58:42 +0100
 
 liboping (1.6.2-1) unstable; urgency=low
 
