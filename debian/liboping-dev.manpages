@@ -1,0 +1,8 @@
+src/mans/liboping.3
+src/mans/ping_construct.3
+src/mans/ping_get_error.3
+src/mans/ping_host_add.3
+src/mans/ping_iterator_get.3
+src/mans/ping_iterator_get_context.3
+src/mans/ping_iterator_get_info.3
+src/mans/ping_send.3
