@@ -1,4 +1,4 @@
 usr/include
-usr/lib/liboping.a
-usr/lib/liboping.so
+usr/lib/*/liboping.a
+usr/lib/*/liboping.so
 usr/share/man/man3/*.3

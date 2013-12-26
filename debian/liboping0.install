@@ -1,1 +1,1 @@
-usr/lib/liboping.so.*
+usr/lib/*/liboping.so.*
