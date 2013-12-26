@@ -1,0 +1,374 @@
+From: =?utf-8?q?Antoine_Beaupr=C3=A9?= <anarcat@koumbit.org>
+Date: Fri, 6 Dec 2013 00:00:00 +0000
+Subject: prettyping
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+Content-Transfer-Encoding: 8bit
+
+Code so noping can use unicode and ncurses to draw graphs and look very pretty.
+See: http://bugs.debian.org/731207
+See: http://anarcat.koumbit.org/2013-12-03-announcing-prettier-noping
+See: git://src.anarc.at/liboping (branch prettyping)
+
+Written by Antoine Beaupré <anarcat@koumbit.org>
+and Florian Forster <octo@verplant.org>.
+
+This patch is liboping-1.6.2..prettyping, aka 148ff55b..65e6e0f3
+ported to apply cleanly to the z-option patch.
+---
+ configure.ac       |   6 +-
+ src/Makefile.am    |   2 +-
+ src/mans/oping.pod |   5 ++
+ src/oping.c        | 186 +++++++++++++++++++++++++++++++++++++++++++++++++----
+ 4 files changed, 184 insertions(+), 15 deletions(-)
+
+diff --git a/configure.ac b/configure.ac
+index de0a8b0..6eb4b4b 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -48,7 +48,7 @@ LT_INIT([dlopen])
+ # Checks for header files.
+ AC_HEADER_STDC
+ AC_HEADER_TIME
+-AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
++AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h locale.h langinfo.h])
+ 
+ # This sucks, but what can I do..?
+ AC_CHECK_HEADERS(netinet/in_systm.h, [], [],
+@@ -186,10 +186,10 @@ AC_CHECK_FUNCS(nanosleep, [],
+ AM_CONDITIONAL(BUILD_WITH_LIBRT, test "x$nanosleep_needs_rt" = "xyes")
+ 
+ with_ncurses="yes"
+-AC_CHECK_HEADERS(ncurses.h, [with_ncurses="yes"], [with_ncurses="no"])
++AC_CHECK_HEADERS(ncursesw/ncurses.h, [with_ncurses="yes"], [with_ncurses="no"])
+ if test "x$with_ncurses" = "xyes"
+ then
+-	AC_CHECK_LIB(ncurses, mvwprintw, [with_ncurses="yes"], [with_ncurses="no"])
++	AC_CHECK_LIB(ncursesw, mvwprintw, [with_ncurses="yes"], [with_ncurses="no"])
+ fi
+ AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" = "xyes")
+ 
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 1326783..c266883 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -46,7 +46,7 @@ bin_PROGRAMS += noping
+ 
+ noping_SOURCES = oping.c
+ noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1
+-noping_LDADD = liboping.la -lm -lncurses
++noping_LDADD = liboping.la -lm -lncursesw
+ if BUILD_WITH_LIBRT
+ noping_LDADD += -lrt
+ endif
+diff --git a/src/mans/oping.pod b/src/mans/oping.pod
+index 8b8c644..3bdfc5b 100644
+--- a/src/mans/oping.pod
++++ b/src/mans/oping.pod
+@@ -178,6 +178,11 @@ hosts have been received.
+ The exit status will indicate the number of hosts with more than I<percent>
+ packets lost, up to a number of 255 failing hosts.
+ 
++=item B<-u>|B<-U>
++
++I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
++neither is given, the codeset is automatically determined from the locale.
++
+ =back
+ 
+ =head1 COLORS
+diff --git a/src/oping.c b/src/oping.c
+index 762a3ea..0354d11 100644
+--- a/src/oping.c
++++ b/src/oping.c
+@@ -74,13 +74,47 @@
+ #include <sys/types.h>
+ #endif
+ 
++#include <locale.h>
++#include <langinfo.h>
++
+ #if USE_NCURSES
+ # define NCURSES_OPAQUE 1
+-# include <ncurses.h>
++/* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
++# define _X_OPEN_SOURCE_EXTENDED
++# include <ncursesw/ncurses.h>
+ 
+ # define OPING_GREEN 1
+ # define OPING_YELLOW 2
+ # define OPING_RED 3
++# define OPING_GREEN_HIST 4
++# define OPING_YELLOW_HIST 5
++# define OPING_RED_HIST 6
++
++static char const * const hist_symbols_utf8[] = {
++	"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
++static size_t const hist_symbols_utf8_num = sizeof (hist_symbols_utf8)
++	/ sizeof (hist_symbols_utf8[0]);
++
++/* scancodes for 6 levels of horizontal bars, ncurses-specific */
++/* those are not the usual constants because those are not constant */
++static int const hist_symbols_acs[] = {
++	115, /* ACS_S9 "⎽" */
++	114, /* ACS_S7 "⎼" */
++	113, /* ACS_S5 "─" */
++	112, /* ACS_S3 "⎻" */
++	111  /* ACS_S1 "⎺" */
++};
++static size_t const hist_symbols_acs_num = sizeof (hist_symbols_acs)
++	/ sizeof (hist_symbols_acs[0]);
++
++/* use different colors without a background for scancodes */
++static int const hist_colors_utf8[] = {
++	OPING_GREEN_HIST, OPING_YELLOW_HIST, OPING_RED_HIST };
++static int const hist_colors_acs[] = {
++	OPING_GREEN, OPING_YELLOW, OPING_RED };
++/* assuming that both arrays are the same size */
++static size_t const hist_colors_num = sizeof (hist_colors_utf8)
++	/ sizeof (hist_colors_utf8[0]);
+ #endif
+ 
+ #include "oping.h"
+@@ -122,6 +156,9 @@ static int     opt_count      = -1;
+ static int     opt_send_ttl   = 64;
+ static uint8_t opt_send_qos   = 0;
+ static double  opt_exit_status_threshold = 1.0;
++#if USE_NCURSES
++static int     opt_utf8       = 0;
++#endif
+ 
+ static int host_num = 0;
+ 
+@@ -268,6 +305,9 @@ static void usage_exit (const char *name, int status) /* {{{ */
+ 			"  -f filename  filename to read hosts from\n"
+ 			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
+ 			"               probes timed out. (default: never)\n"
++#if USE_NCURSES
++			"  -u / -U      force / disable UTF-8 output\n"
++#endif
+ 
+ 			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
+ 			"by Florian octo Forster <octo@verplant.org>\n"
+@@ -470,7 +510,11 @@ static int read_options (int argc, char **argv) /* {{{ */
+ 
+ 	while (1)
+ 	{
+-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:");
++		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:"
++#if USE_NCURSES
++				"uU"
++#endif
++				);
+ 
+ 		if (optchar == -1)
+ 			break;
+@@ -559,6 +603,15 @@ static int read_options (int argc, char **argv) /* {{{ */
+ 				break;
+ 			}
+ 
++#if USE_NCURSES
++			case 'u':
++				opt_utf8 = 2;
++				break;
++			case 'U':
++				opt_utf8 = 1;
++				break;
++#endif
++
+ 			case 'h':
+ 				usage_exit (argv[0], 0);
+ 				break;
+@@ -618,12 +671,116 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
+ } /* }}} void time_calc */
+ 
+ #if USE_NCURSES
+-static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
++static _Bool has_utf8() /* {{{ */
++{
++	if (!opt_utf8)
++	{
++		/* Automatically determine */
++		if (strcasecmp ("UTF-8", nl_langinfo (CODESET)) == 0)
++			opt_utf8 = 2;
++		else
++			opt_utf8 = 1;
++	}
++	return ((_Bool) (opt_utf8 - 1));
++} /* }}} _Bool has_utf8 */
++
++static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
++		double latency, unsigned int sequence)
+ {
++	int color = OPING_RED;
++	char const *symbol = "!";
++	int symbolc = '!';
++	size_t hist_symbols_num;
++	size_t index_symbols;
++
++	int x_max;
++	int x_pos;
++
++	x_max = getmaxx (ctx->window);
++	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
++
++	if (has_utf8())
++	{
++		hist_symbols_num = hist_symbols_utf8_num;
++	}
++	else {
++		hist_symbols_num = hist_symbols_acs_num;
++	}
++
++	if (latency >= 0.0)
++	{
++		double ratio;
++		size_t intensity;
++		size_t index_colors;
++
++		ratio = latency / PING_DEF_TTL;
++		if (ratio > 1) {
++			ratio = 1.0;
++		}
++
++		intensity = (size_t) ((ratio * hist_symbols_num
++					* hist_colors_num) - 1);
++
++		index_colors = intensity / hist_symbols_num;
++		assert (index_colors < hist_colors_num);
++
++		index_symbols = intensity % hist_symbols_num;
++		if (has_utf8())
++		{
++			color = hist_colors_utf8[index_colors];
++			symbol = hist_symbols_utf8[index_symbols];
++		}
++		else
++		{
++			color = hist_colors_acs[index_colors];
++			symbolc = hist_symbols_acs[index_symbols] | A_ALTCHARSET;
++		}
++        }
++	else /* if (!(latency >= 0.0)) */
++		wattron (ctx->window, A_BOLD);
++
++	wattron (ctx->window, COLOR_PAIR(color));
++	if (has_utf8())
++	{
++		mvwprintw (ctx->window,
++			   /* y = */ 3,
++			   /* x = */ x_pos,
++			   symbol);
++	}
++	else {
++		mvwaddch (ctx->window,
++			  /* y = */ 3,
++			  /* x = */ x_pos,
++			  symbolc);
++	}
++	wattroff (ctx->window, COLOR_PAIR(color));
++
++	/* Use negation here to handle NaN correctly. */
++	if (!(latency >= 0.0))
++		wattroff (ctx->window, A_BOLD);
++
++	wprintw (ctx->window, " ");
++	return (0);
++} /* }}} int update_prettyping_graph */
++
++static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter) /* {{{ */
++{
++	double latency = -1.0;
++	size_t buffer_len = sizeof (latency);
++
++	ping_iterator_get_info (iter, PING_INFO_LATENCY,
++			&latency, &buffer_len);
++
++	unsigned int sequence = 0;
++	buffer_len = sizeof (sequence);
++	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
++			&sequence, &buffer_len);
++
++
+ 	if ((ctx == NULL) || (ctx->window == NULL))
+ 		return (EINVAL);
+ 
+-	werase (ctx->window);
++	/* werase (ctx->window); */
+ 
+ 	box (ctx->window, 0, 0);
+ 	wattron (ctx->window, A_BOLD);
+@@ -653,6 +810,9 @@ static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
+ 				deviation);
+ 	}
+ 
++	if (has_colors () == TRUE)
++		update_prettyping_graph (ctx, latency, sequence);
++
+ 	wrefresh (ctx->window);
+ 
+ 	return (0);
+@@ -669,7 +829,7 @@ static int on_resize (pingobj_t *ping) /* {{{ */
+ 	if ((height < 1) || (width < 1))
+ 		return (EINVAL);
+ 
+-	main_win_height = height - (4 * host_num);
++	main_win_height = height - (5 * host_num);
+ 	wresize (main_win, main_win_height, /* width = */ width);
+ 	/* Allow scrolling */
+ 	scrollok (main_win, TRUE);
+@@ -693,9 +853,9 @@ static int on_resize (pingobj_t *ping) /* {{{ */
+ 			delwin (context->window);
+ 			context->window = NULL;
+ 		}
+-		context->window = newwin (/* height = */ 4,
++		context->window = newwin (/* height = */ 5,
+ 				/* width = */ width,
+-				/* y = */ main_win_height + (4 * context->index),
++				/* y = */ main_win_height + (5 * context->index),
+ 				/* x = */ 0);
+ 	}
+ 
+@@ -743,9 +903,12 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
+ 		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
+ 		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
+ 		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
++		init_pair (OPING_GREEN_HIST,  COLOR_GREEN,  COLOR_BLACK);
++		init_pair (OPING_YELLOW_HIST, COLOR_YELLOW, COLOR_GREEN);
++		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
+ 	}
+ 
+-	main_win_height = height - (4 * host_num);
++	main_win_height = height - (5 * host_num);
+ 	main_win = newwin (/* height = */ main_win_height,
+ 			/* width = */ width,
+ 			/* y = */ 0, /* x = */ 0);
+@@ -772,9 +935,9 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
+ 			delwin (context->window);
+ 			context->window = NULL;
+ 		}
+-		context->window = newwin (/* height = */ 4,
++		context->window = newwin (/* height = */ 5,
+ 				/* width = */ width,
+-				/* y = */ main_win_height + (4 * context->index),
++				/* y = */ main_win_height + (5 * context->index),
+ 				/* x = */ 0);
+ 	}
+ 
+@@ -967,7 +1130,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
+ 	}
+ 
+ #if USE_NCURSES
+-	update_stats_from_context (context);
++	update_stats_from_context (context, iter);
+ 	wrefresh (main_win);
+ #endif
+ } /* }}} void update_host_hook */
+@@ -1058,6 +1221,7 @@ int main (int argc, char **argv) /* {{{ */
+ 	}
+ #endif
+ 
++        setlocale(LC_ALL, "");
+ 	optind = read_options (argc, argv);
+ 
+ #if !_POSIX_SAVED_IDS
