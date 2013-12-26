@@ -1,10 +1,23 @@
-Description: allow non-zero exit status if some ping fails
-Forwarded: yes
-Author: Barak A. Pearlmutter <barak+git@cs.nuim.ie>, Florian Forster <octo@verplant.org>
-Applied-Upstream: https://github.com/octo/liboping/commit/9631429
-Last-Update: 2011-09-06
+From: "Barak A. Pearlmutter" <bap@debian.org>
+Date: Tue, 6 Sep 2011 00:00:00 +0000
+Subject: z-option
+
+Allow non-zero exit status if some ping fails.
+(Patch has been forwarded upstream.)
+See https://github.com/octo/liboping/commit/9631429
+
+Authors:
+ Barak A. Pearlmutter <bap@debian.org>
+ Florian Forster <octo@verplant.org>
 
 diff a/src/mans/oping.pod b/src/mans/oping.pod
+---
+ src/mans/oping.pod | 12 ++++++++++++
+ src/oping.c        | 50 +++++++++++++++++++++++++++++++++++++++++++++-----
+ 2 files changed, 57 insertions(+), 5 deletions(-)
+
+diff --git a/src/mans/oping.pod b/src/mans/oping.pod
+index 56712fd..8b8c644 100644
 --- a/src/mans/oping.pod
 +++ b/src/mans/oping.pod
 @@ -166,6 +166,18 @@ I<Explicit Congestion Notification> (ECN), even if the deprecated
@@ -26,7 +39,8 @@ diff a/src/mans/oping.pod b/src/mans/oping.pod
  =back
  
  =head1 COLORS
-diff a/src/oping.c b/src/oping.c
+diff --git a/src/oping.c b/src/oping.c
+index 79d7569..762a3ea 100644
 --- a/src/oping.c
 +++ b/src/oping.c
 @@ -121,6 +121,7 @@ static char   *opt_filename   = NULL;
