@@ -1,10 +1,14 @@
 liboping (1.6.2-2) unstable; urgency=low
 
-  * Remove phony target declartion from debian/rules (closes: #720008)
+  * remove phony target declarations from debian/rules (closes: #720008)
   * dh 9
   * bump standards version
+  * remove unused/uninformative debian/ files: *.dirs, liboping.docs, README
+  * stop installing docs COPYING, INSTALL, NEWS, replicated upstream changelog
+  * print rpath before deleting it (when none, can remove chrpath removal code)
+  * enable multiarch support
 
- -- Barak A. Pearlmutter <bap@debian.org>  Mon, 09 Dec 2013 22:01:54 +0000
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 26 Dec 2013 15:47:06 +0100
 
 liboping (1.6.2-1) unstable; urgency=low
 
