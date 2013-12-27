@@ -7,7 +7,7 @@ Build-Depends: debhelper (>= 9),
 	dh-autoreconf,
 	chrpath,
 	perl, perl-modules,
-	libncurses5-dev
+	libncursesw5-dev
 Standards-Version: 3.9.5
 Homepage: http://verplant.org/liboping/
 Vcs-Git: git://git.tokkee.org/pkg-liboping.git
