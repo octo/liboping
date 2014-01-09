@@ -192,6 +192,7 @@ typedef struct ping_context
 } ping_context_t;
 
 static double  opt_interval   = 1.0;
+static double  opt_timeout    = PING_DEF_TIMEOUT;
 static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
 static char   *opt_device     = NULL;
@@ -430,6 +431,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -4|-6        force the use of IPv4 or IPv6\n"
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
+			"  -w timeout   time to wait for replies, in seconds\n"
 			"  -t ttl       time to live for each ICMP packet\n"
 			"  -Q qos       Quality of Service (QoS) of outgoing packets\n"
 			"               Use \"-Q help\" for a list of valid options.\n"
@@ -645,7 +647,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:w:"
 #if USE_NCURSES
 				"uUg:"
 #endif
@@ -697,6 +699,22 @@ static int read_options (int argc, char **argv) /* {{{ */
 						opt_interval = new_interval;
 				}
 				break;
+
+			case 'w':
+			{
+				char *endp;
+				double t = strtod(optarg, &endp);
+				if(optarg[0] != '\0' && *endp == '\0')
+				{
+					opt_timeout = t;
+				}
+				else{
+					fprintf (stderr, "Ignoring invalid timeout: %s\n",
+							optarg);
+				}
+
+				break;
+			}
 
 			case 'I':
 				{
@@ -1713,6 +1731,12 @@ int main (int argc, char **argv) /* {{{ */
 		ts_int.tv_nsec = (long) (temp_nsec * 1000000000L);
 
 		/* printf ("ts_int = %i.%09li\n", (int) ts_int.tv_sec, ts_int.tv_nsec); */
+	}
+
+	if (ping_setopt (ping, PING_OPT_TIMEOUT, (void*)(&opt_timeout)) != 0)
+	{
+		fprintf (stderr, "Setting timeout failed: %s\n",
+				ping_get_error (ping));
 	}
 
 	if (opt_addrfamily != PING_DEF_AF)
