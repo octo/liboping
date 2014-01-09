@@ -195,6 +195,7 @@ static double  opt_interval   = 1.0;
 static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
 static char   *opt_device     = NULL;
+static char   *opt_mark       = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
@@ -435,6 +436,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"               Use \"-Q help\" for a list of valid options.\n"
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
+			"  -m mark      mark to set on outgoing packets\n"
 			"  -f filename  filename to read hosts from\n"
 #if USE_NCURSES
 			"  -u / -U      force / disable UTF-8 output\n"
@@ -645,7 +647,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:m:"
 #if USE_NCURSES
 				"uUg:"
 #endif
@@ -708,6 +710,10 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 			case 'D':
 				opt_device = optarg;
+				break;
+
+			case 'm':
+				opt_mark = optarg;
 				break;
 
 			case 't':
@@ -1733,6 +1739,23 @@ int main (int argc, char **argv) /* {{{ */
 		{
 			fprintf (stderr, "Setting device failed: %s\n",
 					ping_get_error (ping));
+		}
+	}
+
+	if(opt_mark != NULL)
+	{
+		char *endp;
+		int mark = strtoul(opt_mark, &endp, 0);
+		if(opt_mark[0] != '\0' && *endp == '\0')
+		{
+			if(ping_setopt(ping, PING_OPT_MARK, (void*)(&mark)) != 0)
+			{
+				fprintf (stderr, "Setting mark failed: %s\n",
+					ping_get_error (ping));
+			}
+		}
+		else{
+			fprintf(stderr, "Ignoring invalid mark: %s\n", optarg);
 		}
 	}
 
