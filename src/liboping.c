@@ -142,6 +142,9 @@ struct pingobj
 
 	char                    *device;
 
+	char                    set_mark;
+	int                     mark;
+
 	char                     errmsg[PING_ERRMSG_LEN];
 
 	pinghost_t              *head;
@@ -1322,6 +1325,19 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 		} /* case PING_OPT_DEVICE */
 		break;
 
+		case PING_OPT_MARK:
+		{
+#ifdef SO_MARK
+			obj->mark     = *(int*)(value);
+			obj->set_mark = 1;
+#else /* SO_MARK */
+			ping_set_errno (obj, ENOTSUP);
+			ret = -1;
+#endif /* !SO_MARK */
+			
+		} /* case PING_OPT_MARK */
+		break;
+
 		default:
 			ret = -2;
 	} /* switch (option) */
@@ -1508,6 +1524,23 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			}
 		}
 #endif /* SO_BINDTODEVICE */
+#ifdef SO_MARK
+		if(obj->set_mark)
+		{
+			if(setsockopt(ph->fd, SOL_SOCKET, SO_MARK, &(obj->mark), sizeof(obj->mark)) != 0)
+			{
+#if WITH_DEBUG
+				char errbuf[PING_ERRMSG_LEN];
+				dprintf ("setsockopt (SO_MARK): %s\n",
+						sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+				ping_set_errno (obj, errno);
+				close (ph->fd);
+				ph->fd = -1;
+				continue;
+			}
+		}
+#endif
 #ifdef SO_TIMESTAMP
 		if (1) /* {{{ */
 		{
