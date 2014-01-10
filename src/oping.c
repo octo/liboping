@@ -81,7 +81,12 @@
 # define NCURSES_OPAQUE 1
 /* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
 # define _X_OPEN_SOURCE_EXTENDED
-# include <ncursesw/ncurses.h>
+
+# if HAVE_NCURSESW_NCURSES_H
+#  include <ncursesw/ncurses.h>
+# elif HAVE_NCURSES_H
+#  include <ncurses.h>
+# endif
 
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
@@ -652,6 +657,7 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 #if USE_NCURSES
 static _Bool has_utf8() /* {{{ */
 {
+# if HAVE_NCURSESW_NCURSES_H
 	if (!opt_utf8)
 	{
 		/* Automatically determine */
@@ -661,6 +667,9 @@ static _Bool has_utf8() /* {{{ */
 			opt_utf8 = 1;
 	}
 	return ((_Bool) (opt_utf8 - 1));
+# else
+	return (0);
+# endif
 } /* }}} _Bool has_utf8 */
 
 static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
