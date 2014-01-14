@@ -1,3 +1,9 @@
+liboping (1.6.2-4) unstable; urgency=low
+
+  * always rebuild man pages (closes: 733341)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 14 Jan 2014 13:44:56 +0000
+
 liboping (1.6.2-3) unstable; urgency=medium
 
   * prettyping patch requires swizzling build dependency from libncurses
