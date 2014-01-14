@@ -19,6 +19,7 @@ override_dh_auto_configure:
 	dh_auto_configure -- --with-perl-bindings="INSTALLDIRS=vendor"
 
 override_dh_auto_build:
+	-rm --verbose src/mans/*.[1-8] # always rebuild man pages
 	dh_auto_build
 	-chrpath --list bindings/perl/blib/arch/auto/Net/Oping/Oping.so
 	chrpath --delete bindings/perl/blib/arch/auto/Net/Oping/Oping.so
