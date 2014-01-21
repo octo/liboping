@@ -48,7 +48,7 @@ LT_INIT([dlopen])
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME
-AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h])
+AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h locale.h langinfo.h])
 
 # This sucks, but what can I do..?
 AC_CHECK_HEADERS(netinet/in_systm.h, [], [],
@@ -185,11 +185,25 @@ AC_CHECK_FUNCS(nanosleep, [],
 		AC_MSG_ERROR(cannot find nanosleep)))
 AM_CONDITIONAL(BUILD_WITH_LIBRT, test "x$nanosleep_needs_rt" = "xyes")
 
-with_ncurses="yes"
-AC_CHECK_HEADERS(ncurses.h, [with_ncurses="yes"], [with_ncurses="no"])
+with_ncurses="no"
+AC_CHECK_HEADERS(ncursesw/ncurses.h ncurses.h, [with_ncurses="yes"], [])
 if test "x$with_ncurses" = "xyes"
 then
-	AC_CHECK_LIB(ncurses, mvwprintw, [with_ncurses="yes"], [with_ncurses="no"])
+	have_ncursesw="no"
+	have_ncurses="no"
+	NCURSES_LIB=""
+
+	AC_CHECK_LIB(ncursesw, mvwprintw, [have_ncursesw="yes"], [have_ncursesw="no"])
+	AC_CHECK_LIB(ncurses, mvwprintw, [have_ncurses="yes"], [have_ncurses="no"])
+
+	if test "x$have_ncursesw" = "xyes"; then
+		NCURSES_LIB="-lncursesw"
+	else if test "x$have_ncurses" = "xyes"; then
+		NCURSES_LIB="-lncurses"
+	else
+		with_ncurses="no"
+	fi; fi
+	AC_SUBST(NCURSES_LIB)
 fi
 AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" = "xyes")
 
