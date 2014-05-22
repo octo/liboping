@@ -637,6 +637,9 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	return (0);
 }
 
+/* Blocks until a packet was received from all hosts or the timeout is reached.
+ * When interrupted, (-EINTR) is returned. On error, -1 is returned. On
+ * success, returns zero. */
 static int ping_receive_all (pingobj_t *obj)
 {
 	fd_set read_fds;
@@ -726,7 +729,8 @@ static int ping_receive_all (pingobj_t *obj)
 		if ((status == -1) && (errno == EINTR))
 		{
 			dprintf ("select was interrupted by signal..\n");
-			continue;
+			ping_set_errno (obj, EINTR);
+			return (-EINTR);
 		}
 		else if (status < 0)
 		{
@@ -764,7 +768,7 @@ static int ping_receive_all (pingobj_t *obj)
 	} /* while (1) */
 	
 	return (ret);
-}
+} /* int ping_receive_all */
 
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Sending functions:                                                        *
@@ -1328,18 +1332,13 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 int ping_send (pingobj_t *obj)
 {
-	int ret;
-
 	if (obj == NULL)
 		return (-1);
 
 	if (ping_send_all (obj) < 0)
 		return (-1);
 
-	if ((ret = ping_receive_all (obj)) < 0)
-		return (-2);
-
-	return (ret);
+	return (ping_receive_all (obj));
 }
 
 static pinghost_t *ping_host_search (pinghost_t *ph, const char *host)

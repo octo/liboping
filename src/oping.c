@@ -89,6 +89,10 @@
 # define _POSIX_SAVED_IDS 0
 #endif
 
+#ifndef IPTOS_MINCOST
+# define IPTOS_MINCOST 0x02
+#endif
+
 /* Remove GNU specific __attribute__ settings when using another compiler */
 #if !__GNUC__
 # define __attribute__(x) /**/
@@ -1230,7 +1234,12 @@ int main (int argc, char **argv) /* {{{ */
 			return (1);
 		}
 
-		if (ping_send (ping) < 0)
+		status = ping_send (ping);
+		if (status == -EINTR)
+		{
+			continue;
+		}
+		else if (status < 0)
 		{
 			fprintf (stderr, "ping_send failed: %s\n",
 					ping_get_error (ping));
@@ -1263,14 +1272,13 @@ int main (int argc, char **argv) /* {{{ */
 		/* printf ("Sleeping for %i.%09li seconds\n", (int) ts_wait.tv_sec, ts_wait.tv_nsec); */
 		while ((status = nanosleep (&ts_wait, &ts_wait)) != 0)
 		{
-			if (errno != EINTR)
+			if (errno == EINTR)
+			{
+				continue;
+			}
+			else
 			{
 				perror ("nanosleep");
-				break;
-			}
-			else if (opt_count == 0)
-			{
-				/* sigint */
 				break;
 			}
 		}
