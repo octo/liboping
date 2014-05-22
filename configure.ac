@@ -45,6 +45,9 @@ AC_ARG_VAR(PERL, [Perl interpreter command])
 # configure libtool
 LT_INIT([dlopen])
 
+# pkg-config interface
+PKG_INSTALLDIR
+
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME

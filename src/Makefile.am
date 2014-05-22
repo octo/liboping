@@ -33,6 +33,24 @@ if BUILD_WITH_LIBXNET
 liboping_la_LIBADD += -lxnet
 endif
 
+oping.pc:
+	echo 'prefix=$(prefix)'			>  $@
+	echo 'exec_prefix=$(exec_prefix)'	>> $@
+	echo 'includedir=$(includedir)'		>> $@
+	echo 'libdir=$(libdir)'			>> $@
+	echo					>> $@
+	echo 'Name: $(PACKAGE_TARNAME)'		>> $@
+	echo 'Description: $(PACKAGE_NAME)'	>> $@
+	echo 'URL: $(PACKAGE_URL)'		>> $@
+	echo 'Version: $(PACKAGE_VERSION)'	>> $@
+	echo 'Cflags: -I${includedir}'		>> $@
+	echo 'Libs: -L${libdir} -loping'	>> $@
+	echo 'Libs.private: $(AM_LDFLAGS) $(LIBS) $(liboping_la_LIBADD)'	>> $@
+
+pkgconfig_DATA = oping.pc
+
+MOSTLYCLEANFILES = $(pkgconfig_DATA)
+
 bin_PROGRAMS = oping
 
 oping_SOURCES = oping.c
