@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([liboping],[1.6.2])
+AC_INIT([liboping],[1.6.2],[ff@octo.it],,[http://github.com/octo/liboping/])
 AC_CONFIG_SRCDIR([src/liboping.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
