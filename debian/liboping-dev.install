@@ -2,3 +2,4 @@ usr/include
 usr/lib/*/liboping.a
 usr/lib/*/liboping.so
 usr/share/man/man3/*.3
+usr/lib/*/pkgconfig/*.pc
