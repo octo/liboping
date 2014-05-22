@@ -1,3 +1,10 @@
+liboping (1.6.2-5) unstable; urgency=medium
+
+  * merge upstream mods
+  * enable "pkg-config oping"
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 22 May 2014 23:19:13 +0100
+
 liboping (1.6.2-4) unstable; urgency=low
 
   * always rebuild man pages (closes: 733341)
