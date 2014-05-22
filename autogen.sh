@@ -1,8 +1,6 @@
 #!/bin/sh
 
-libtoolize
-aclocal -I m4
-autoheader
-automake --add-missing
-autoconf
+set -e
+
+autoreconf --warnings=all --install
 echo "autoconfiguration done, to build: ./configure ; make"
