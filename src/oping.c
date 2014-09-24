@@ -678,8 +678,6 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 	int color = OPING_RED;
 	char const *symbol = "!";
 	int symbolc = '!';
-	size_t hist_symbols_num;
-	size_t index_symbols;
 
 	int x_max;
 	int x_pos;
@@ -687,32 +685,39 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 	x_max = getmaxx (ctx->window);
 	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
 
-	if (has_utf8())
-	{
-		hist_symbols_num = hist_symbols_utf8_num;
-	}
-	else {
-		hist_symbols_num = hist_symbols_acs_num;
-	}
-
 	if (latency >= 0.0)
 	{
 		double ratio;
-		size_t intensity;
-		size_t index_colors;
 
-		ratio = latency / PING_DEF_TTL;
+		size_t symbols_num = hist_symbols_acs_num;
+		size_t colors_num = 1;
+
+		size_t index_symbols;
+		size_t index_colors;
+		size_t intensity;
+
+		/* latency is in milliseconds, opt_interval is in seconds. */
+		ratio = (latency * 0.001) / opt_interval;
 		if (ratio > 1) {
 			ratio = 1.0;
 		}
 
-		intensity = (size_t) ((ratio * hist_symbols_num
-					* hist_colors_num) - 1);
+		if (has_utf8 ())
+			symbols_num = hist_symbols_utf8_num;
 
-		index_colors = intensity / hist_symbols_num;
-		assert (index_colors < hist_colors_num);
+		if (has_colors () == TRUE)
+			colors_num = hist_colors_num;
 
-		index_symbols = intensity % hist_symbols_num;
+		intensity = (size_t) (ratio * ((double) (symbols_num * colors_num)));
+		if (intensity >= (symbols_num * colors_num))
+			intensity = (symbols_num * colors_num) - 1;
+
+		index_symbols = intensity % symbols_num;
+		assert (index_symbols < symbols_num);
+
+		index_colors = intensity / symbols_num;
+		assert (index_colors < colors_num);
+
 		if (has_utf8())
 		{
 			color = hist_colors_utf8[index_colors];
@@ -723,25 +728,20 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 			color = hist_colors_acs[index_colors];
 			symbolc = hist_symbols_acs[index_symbols] | A_ALTCHARSET;
 		}
-        }
+	}
 	else /* if (!(latency >= 0.0)) */
 		wattron (ctx->window, A_BOLD);
 
-	wattron (ctx->window, COLOR_PAIR(color));
+	if (has_colors () == TRUE)
+		wattron (ctx->window, COLOR_PAIR(color));
+
 	if (has_utf8())
-	{
-		mvwprintw (ctx->window,
-			   /* y = */ 3,
-			   /* x = */ x_pos,
-			   symbol);
-	}
-	else {
-		mvwaddch (ctx->window,
-			  /* y = */ 3,
-			  /* x = */ x_pos,
-			  symbolc);
-	}
-	wattroff (ctx->window, COLOR_PAIR(color));
+		mvwprintw (ctx->window, /* y = */ 3, /* x = */ x_pos, symbol);
+	else
+		mvwaddch (ctx->window, /* y = */ 3, /* x = */ x_pos, symbolc);
+
+	if (has_colors () == TRUE)
+		wattroff (ctx->window, COLOR_PAIR(color));
 
 	/* Use negation here to handle NaN correctly. */
 	if (!(latency >= 0.0))
@@ -798,8 +798,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 				deviation);
 	}
 
-	if (has_colors () == TRUE)
-		update_prettyping_graph (ctx, latency, sequence);
+	update_prettyping_graph (ctx, latency, sequence);
 
 	wrefresh (ctx->window);
 
