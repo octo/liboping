@@ -74,13 +74,52 @@
 #include <sys/types.h>
 #endif
 
+#include <locale.h>
+#include <langinfo.h>
+
 #if USE_NCURSES
 # define NCURSES_OPAQUE 1
-# include <ncurses.h>
+/* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
+# define _X_OPEN_SOURCE_EXTENDED
+
+# if HAVE_NCURSESW_NCURSES_H
+#  include <ncursesw/ncurses.h>
+# elif HAVE_NCURSES_H
+#  include <ncurses.h>
+# endif
 
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
 # define OPING_RED 3
+# define OPING_GREEN_HIST 4
+# define OPING_YELLOW_HIST 5
+# define OPING_RED_HIST 6
+
+static char const * const hist_symbols_utf8[] = {
+	"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
+static size_t const hist_symbols_utf8_num = sizeof (hist_symbols_utf8)
+	/ sizeof (hist_symbols_utf8[0]);
+
+/* scancodes for 6 levels of horizontal bars, ncurses-specific */
+/* those are not the usual constants because those are not constant */
+static int const hist_symbols_acs[] = {
+	115, /* ACS_S9 "⎽" */
+	114, /* ACS_S7 "⎼" */
+	113, /* ACS_S5 "─" */
+	112, /* ACS_S3 "⎻" */
+	111  /* ACS_S1 "⎺" */
+};
+static size_t const hist_symbols_acs_num = sizeof (hist_symbols_acs)
+	/ sizeof (hist_symbols_acs[0]);
+
+/* use different colors without a background for scancodes */
+static int const hist_colors_utf8[] = {
+	OPING_GREEN_HIST, OPING_YELLOW_HIST, OPING_RED_HIST };
+static int const hist_colors_acs[] = {
+	OPING_GREEN, OPING_YELLOW, OPING_RED };
+/* assuming that both arrays are the same size */
+static size_t const hist_colors_num = sizeof (hist_colors_utf8)
+	/ sizeof (hist_colors_utf8[0]);
 #endif
 
 #include "oping.h"
@@ -125,6 +164,9 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+#if USE_NCURSES
+static int     opt_utf8       = 0;
+#endif
 
 static int host_num = 0;
 
@@ -269,6 +311,9 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
 			"  -f filename  filename to read hosts from\n"
+#if USE_NCURSES
+			"  -u / -U      force / disable UTF-8 output\n"
+#endif
 
 			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
 			"by Florian octo Forster <octo@verplant.org>\n"
@@ -471,7 +516,11 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:"
+#if USE_NCURSES
+				"uU"
+#endif
+				);
 
 		if (optchar == -1)
 			break;
@@ -542,6 +591,15 @@ static int read_options (int argc, char **argv) /* {{{ */
 				set_opt_send_qos (optarg);
 				break;
 
+#if USE_NCURSES
+			case 'u':
+				opt_utf8 = 2;
+				break;
+			case 'U':
+				opt_utf8 = 1;
+				break;
+#endif
+
 			case 'h':
 				usage_exit (argv[0], 0);
 				break;
@@ -601,12 +659,120 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
-static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
+static _Bool has_utf8() /* {{{ */
 {
+# if HAVE_NCURSESW_NCURSES_H
+	if (!opt_utf8)
+	{
+		/* Automatically determine */
+		if (strcasecmp ("UTF-8", nl_langinfo (CODESET)) == 0)
+			opt_utf8 = 2;
+		else
+			opt_utf8 = 1;
+	}
+	return ((_Bool) (opt_utf8 - 1));
+# else
+	return (0);
+# endif
+} /* }}} _Bool has_utf8 */
+
+static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
+		double latency, unsigned int sequence)
+{
+	int color = OPING_RED;
+	char const *symbol = "!";
+	int symbolc = '!';
+
+	int x_max;
+	int x_pos;
+
+	x_max = getmaxx (ctx->window);
+	x_pos = ((sequence - 1) % (x_max - 4)) + 2;
+
+	if (latency >= 0.0)
+	{
+		double ratio;
+
+		size_t symbols_num = hist_symbols_acs_num;
+		size_t colors_num = 1;
+
+		size_t index_symbols;
+		size_t index_colors;
+		size_t intensity;
+
+		/* latency is in milliseconds, opt_interval is in seconds. */
+		ratio = (latency * 0.001) / opt_interval;
+		if (ratio > 1) {
+			ratio = 1.0;
+		}
+
+		if (has_utf8 ())
+			symbols_num = hist_symbols_utf8_num;
+
+		if (has_colors () == TRUE)
+			colors_num = hist_colors_num;
+
+		intensity = (size_t) (ratio * ((double) (symbols_num * colors_num)));
+		if (intensity >= (symbols_num * colors_num))
+			intensity = (symbols_num * colors_num) - 1;
+
+		index_symbols = intensity % symbols_num;
+		assert (index_symbols < symbols_num);
+
+		index_colors = intensity / symbols_num;
+		assert (index_colors < colors_num);
+
+		if (has_utf8())
+		{
+			color = hist_colors_utf8[index_colors];
+			symbol = hist_symbols_utf8[index_symbols];
+		}
+		else
+		{
+			color = hist_colors_acs[index_colors];
+			symbolc = hist_symbols_acs[index_symbols] | A_ALTCHARSET;
+		}
+	}
+	else /* if (!(latency >= 0.0)) */
+		wattron (ctx->window, A_BOLD);
+
+	if (has_colors () == TRUE)
+		wattron (ctx->window, COLOR_PAIR(color));
+
+	if (has_utf8())
+		mvwprintw (ctx->window, /* y = */ 3, /* x = */ x_pos, symbol);
+	else
+		mvwaddch (ctx->window, /* y = */ 3, /* x = */ x_pos, symbolc);
+
+	if (has_colors () == TRUE)
+		wattroff (ctx->window, COLOR_PAIR(color));
+
+	/* Use negation here to handle NaN correctly. */
+	if (!(latency >= 0.0))
+		wattroff (ctx->window, A_BOLD);
+
+	wprintw (ctx->window, " ");
+	return (0);
+} /* }}} int update_prettyping_graph */
+
+static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter) /* {{{ */
+{
+	double latency = -1.0;
+	size_t buffer_len = sizeof (latency);
+
+	ping_iterator_get_info (iter, PING_INFO_LATENCY,
+			&latency, &buffer_len);
+
+	unsigned int sequence = 0;
+	buffer_len = sizeof (sequence);
+	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
+			&sequence, &buffer_len);
+
+
 	if ((ctx == NULL) || (ctx->window == NULL))
 		return (EINVAL);
 
-	werase (ctx->window);
+	/* werase (ctx->window); */
 
 	box (ctx->window, 0, 0);
 	wattron (ctx->window, A_BOLD);
@@ -636,6 +802,8 @@ static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
 				deviation);
 	}
 
+	update_prettyping_graph (ctx, latency, sequence);
+
 	wrefresh (ctx->window);
 
 	return (0);
@@ -652,7 +820,7 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-	main_win_height = height - (4 * host_num);
+	main_win_height = height - (5 * host_num);
 	wresize (main_win, main_win_height, /* width = */ width);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
@@ -676,9 +844,9 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 4,
+		context->window = newwin (/* height = */ 5,
 				/* width = */ width,
-				/* y = */ main_win_height + (4 * context->index),
+				/* y = */ main_win_height + (5 * context->index),
 				/* x = */ 0);
 	}
 
@@ -726,9 +894,12 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
 		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
 		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
+		init_pair (OPING_GREEN_HIST,  COLOR_GREEN,  COLOR_BLACK);
+		init_pair (OPING_YELLOW_HIST, COLOR_YELLOW, COLOR_GREEN);
+		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
 	}
 
-	main_win_height = height - (4 * host_num);
+	main_win_height = height - (5 * host_num);
 	main_win = newwin (/* height = */ main_win_height,
 			/* width = */ width,
 			/* y = */ 0, /* x = */ 0);
@@ -755,9 +926,9 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 4,
+		context->window = newwin (/* height = */ 5,
 				/* width = */ width,
-				/* y = */ main_win_height + (4 * context->index),
+				/* y = */ main_win_height + (5 * context->index),
 				/* x = */ 0);
 	}
 
@@ -950,7 +1121,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	}
 
 #if USE_NCURSES
-	update_stats_from_context (context);
+	update_stats_from_context (context, iter);
 	wrefresh (main_win);
 #endif
 } /* }}} void update_host_hook */
@@ -1030,6 +1201,7 @@ int main (int argc, char **argv) /* {{{ */
 	}
 #endif
 
+        setlocale(LC_ALL, "");
 	optind = read_options (argc, argv);
 
 #if !_POSIX_SAVED_IDS
