@@ -1,0 +1,12 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+includedir=@includedir@
+libdir=@libdir@
+
+Name: @PACKAGE_NAME@
+Description: C/C++ library to generate ICMP ECHO_REQUESTs
+URL: @PACKAGE_URL@
+Version: @PACKAGE_VERSION@
+Cflags: -I${includedir}
+Libs: -L${libdir} -loping
+Libs.private: @LIBOPING_PC_LIBS_PRIVATE@

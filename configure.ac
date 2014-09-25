@@ -48,6 +48,12 @@ LT_INIT([dlopen])
 # pkg-config interface
 PKG_INSTALLDIR
 
+AC_ARG_WITH(pkgconfigdir,
+	    AC_HELP_STRING([--with-pkgconfigdir], [Use the specified pkgconfig dir (default is libdir/pkgconfig)]),
+	    [pkgconfigdir="${withval}"],
+	    [pkgconfigdir='${libdir}/pkgconfig'])
+AC_SUBST([pkgconfigdir])
+
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME
@@ -164,12 +170,16 @@ AC_TYPE_UINT16_T
 AC_TYPE_UINT32_T
 AC_TYPE_UINT8_T
 
+LIBOPING_PC_LIBS_PRIVATE=''
+
 socket_needs_socket="no"
 AC_CHECK_FUNCS(socket, [],
 	AC_CHECK_LIB(socket, socket,
 		[socket_needs_socket="yes"],
 		AC_MSG_ERROR(cannot find socket)))
-AM_CONDITIONAL(BUILD_WITH_LIBSOCKET, test "x$socket_needs_socket" = "xyes")
+if test "x$socket_needs_socket" = "xyes"; then
+	LIBOPING_PC_LIBS_PRIVATE="${LIBOPING_PC_LIBS_PRIVATE} -lsocket"
+fi
 
 # Under Solaris, the `xnet' library provides `recvmsg' which complies with the
 # X/Open CAE Specification.
@@ -179,7 +189,11 @@ if test "x$with_libxnet" = "xyes"
 then
 	CPPFLAGS="$CPPFLAGS -D_XPG4_2 -D__EXTENSIONS__"
 fi
-AM_CONDITIONAL(BUILD_WITH_LIBXNET, test "x$with_libxnet" = "xyes")
+if test "x$with_libxnet" = "xyes"; then
+	LIBOPING_PC_LIBS_PRIVATE="${LIBOPING_PC_LIBS_PRIVATE} -lxnet"
+fi
+
+AC_SUBST(LIBOPING_PC_LIBS_PRIVATE)
 
 nanosleep_needs_rt="no"
 AC_CHECK_FUNCS(nanosleep, [],
@@ -253,5 +267,5 @@ AC_FUNC_MALLOC
 AC_FUNC_STRERROR_R
 AC_CHECK_FUNCS([gettimeofday memset modf select socket sqrt strcasecmp strdup strerror strncasecmp strtoul])
 
-AC_CONFIG_FILES([Makefile src/Makefile src/mans/Makefile bindings/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile src/liboping.pc src/mans/Makefile bindings/Makefile])
 AC_OUTPUT
