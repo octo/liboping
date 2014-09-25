@@ -28,6 +28,7 @@ src/mans/*.3
 src/mans/*.8
 src/oping
 src/noping
+src/oping.pc
 *.bs
 *.la
 *.lo
