@@ -164,6 +164,7 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+static double  opt_exit_status_threshold = 1.0;
 #if USE_NCURSES
 static int     opt_utf8       = 0;
 #endif
@@ -314,6 +315,8 @@ static void usage_exit (const char *name, int status) /* {{{ */
 #if USE_NCURSES
 			"  -u / -U      force / disable UTF-8 output\n"
 #endif
+			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
+			"               probes timed out. (default: never)\n"
 
 			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
 			"by Florian octo Forster <octo@verplant.org>\n"
@@ -516,7 +519,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:"
 #if USE_NCURSES
 				"uU"
 #endif
@@ -599,6 +602,24 @@ static int read_options (int argc, char **argv) /* {{{ */
 				opt_utf8 = 1;
 				break;
 #endif
+
+			case 'Z':
+			{
+				char *endptr = NULL;
+				double tmp;
+
+				errno = 0;
+				tmp = strtod (optarg, &endptr);
+				if ((errno != 0) || (endptr == NULL) || (*endptr != 0) || (tmp < 0.0) || (tmp > 100.0))
+				{
+					fprintf (stderr, "Ignoring invalid -Z argument: %s\n", optarg);
+					fprintf (stderr, "The \"-Z\" option requires a numeric argument between 0 and 100.\n");
+				}
+				else
+					opt_exit_status_threshold = tmp / 100.0;
+
+				break;
+			}
 
 			case 'h':
 				usage_exit (argv[0], 0);
@@ -793,7 +814,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 
 		average = context_get_average (ctx);
 		deviation = context_get_stddev (ctx);
-			
+
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
 				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
 				ctx->latency_min,
@@ -1126,9 +1147,13 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #endif
 } /* }}} void update_host_hook */
 
+/* Prints statistics for each host, cleans up the contexts and returns the
+ * number of hosts which failed to return more than the fraction
+ * opt_exit_status_threshold of pings. */
 static int post_loop_hook (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
+	int failure_count = 0;
 
 #if USE_NCURSES
 	endwin ();
@@ -1147,6 +1172,13 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 				context->host, context->req_sent, context->req_rcvd,
 				context_get_packet_loss (context),
 				context->latency_total);
+
+		{
+			double pct_failed = 1.0 - (((double) context->req_rcvd)
+					/ ((double) context->req_sent));
+			if (pct_failed > opt_exit_status_threshold)
+				failure_count++;
+		}
 
 		if (context->req_rcvd != 0)
 		{
@@ -1167,7 +1199,7 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 		context_destroy (context);
 	}
 
-	return (0);
+	return (failure_count);
 } /* }}} int post_loop_hook */
 
 int main (int argc, char **argv) /* {{{ */
@@ -1461,11 +1493,19 @@ int main (int argc, char **argv) /* {{{ */
 			opt_count--;
 	} /* while (opt_count != 0) */
 
-	post_loop_hook (ping);
+	/* Returns the number of failed hosts according to -Z. */
+	status = post_loop_hook (ping);
 
 	ping_destroy (ping);
 
-	return (0);
+	if (status == 0)
+		exit (EXIT_SUCCESS);
+	else
+	{
+		if (status > 255)
+			status = 255;
+		exit (status);
+	}
 } /* }}} int main */
 
 /* vim: set fdm=marker : */

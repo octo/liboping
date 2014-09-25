@@ -171,6 +171,18 @@ packets.
 I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
 neither is given, the codeset is automatically determined from the locale.
 
+=item B<-Z> I<percent>
+
+If any hosts have a drop rate higher than I<percent>, where I<percent> is a
+number between zero and 100 inclusively, exit with a non-zero exit status.
+Since it is not possible to have a higher drop rate than 100%, passing this
+limit will effectively disable the feature (the default). Setting the option to
+zero means that the exit status will only be zero if I<all> replies for I<all>
+hosts have been received.
+
+The exit status will indicate the number of hosts with more than I<percent>
+packets lost, up to a number of 255 failing hosts.
+
 =back
 
 =head1 COLORS
