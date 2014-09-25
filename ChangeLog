@@ -1,3 +1,14 @@
+2014-09-25, Version 1.7.0:
+	* oping, noping: The new -Z option allows the exit status to indicate
+	  the number of failing hosts. Thanks to Barak Pearlmutter for the
+	  patch.
+	* noping: The ability to print a "prettyping" style graph has been
+	  added. Thanks to Antoine Beaupré for his work!
+	* src/liboping.c: Build fixes for Solaris have been fixed. Thanks
+	  Scott Severtson for the fix!
+	* Build system: Creation and installation of a pkg-config file has
+	  been added. Thanks to Barak Pearlmutter for the patch.
+
 2012-01-31, Version 1.6.2:
 	* Build system: Setting capabilities and the set-UID bit has been made
 	  more fault-tolerant, so that it will work with Debian's fakeroot(1)

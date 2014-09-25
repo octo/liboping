@@ -1,7 +1,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.65])
-AC_INIT([liboping],[1.6.2],[ff@octo.it],,[http://github.com/octo/liboping/])
+AC_INIT([liboping],[1.7.0],[ff@octo.it],,[http://github.com/octo/liboping/])
 AC_CONFIG_SRCDIR([src/liboping.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -20,7 +20,7 @@ AC_SUBST(LIBOPING_PATCH)
 
 # ABI version
 LIBOPING_CURRENT=2
-LIBOPING_REVISION=9
+LIBOPING_REVISION=10
 LIBOPING_AGE=2
 AC_SUBST(LIBOPING_CURRENT)
 AC_SUBST(LIBOPING_REVISION)
