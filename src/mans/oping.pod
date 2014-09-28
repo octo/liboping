@@ -171,6 +171,26 @@ packets.
 I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
 neither is given, the codeset is automatically determined from the locale.
 
+=item B<-P> I<percent>
+
+Configures the latency percentile to report. I<percent> must be a number
+between zero and 100, exclusively in both cases. In general, defaults to B<95>.
+If B<-c> is given and a number less than 20, this would be the same as the
+maximum. In this case the default is chosen so that it excludes the maximum,
+e.g. if B<-cE<nbsp>5> is given, the default is I<80>.
+
+The calculated percentile has roughly millisecond precision. If precision is of
+importance, read on for a more detailed explanation. In order to calculate the
+percentile without keeping all replies in memory, I<oping> divides the
+I<interval> (the B<-i> option) in 1000 "buckets". Each bucket counts the number
+of packets received in the represented time. That means that the precision
+decreases if the interval is increased, because each bucket represents a larger
+(fraction of the) response time. The code looks for the first bucket
+representing at least I<percent> responses and returns the upper-bound latency
+represented by that bucket. Since the represented percentage may be larger than
+the configured percentile, this algorithm I<overestimes> the actual percentile
+by at most 1000th of I<interval>.
+
 =item B<-Z> I<percent>
 
 If any hosts have a drop rate higher than I<percent>, where I<percent> is a

@@ -151,6 +151,11 @@ typedef struct ping_context
 	double latency_total;
 	double latency_total_square;
 
+/* 1000 + one "infinity" bucket. */
+#define OPING_HISTOGRAM_BUCKETS 1001
+	uint32_t *latency_histogram;
+	size_t latency_histogram_size;
+
 #if USE_NCURSES
 	WINDOW *window;
 #endif
@@ -164,6 +169,8 @@ static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+#define OPING_DEFAULT_PERCENTILE 95.0
+static double  opt_percentile = -1.0;
 static double  opt_exit_status_threshold = 1.0;
 #if USE_NCURSES
 static int     opt_utf8       = 0;
@@ -197,6 +204,10 @@ static ping_context_t *context_create (void) /* {{{ */
 	ret->latency_total = 0.0;
 	ret->latency_total_square = 0.0;
 
+	ret->latency_histogram_size = (size_t) OPING_HISTOGRAM_BUCKETS;
+	ret->latency_histogram = calloc (ret->latency_histogram_size,
+			sizeof (*ret->latency_histogram));
+
 #if USE_NCURSES
 	ret->window = NULL;
 #endif
@@ -217,6 +228,9 @@ static void context_destroy (ping_context_t *context) /* {{{ */
 	}
 #endif
 
+	free (context->latency_histogram);
+	context->latency_histogram = NULL;
+
 	free (context);
 } /* }}} void context_destroy */
 
@@ -233,6 +247,44 @@ static double context_get_average (ping_context_t *ctx) /* {{{ */
 	num_total = (double) ctx->req_rcvd;
 	return (ctx->latency_total / num_total);
 } /* }}} double context_get_average */
+
+static double context_get_percentile (ping_context_t *ctx, /* {{{ */
+		double percentile)
+{
+	double threshold = percentile / 100.0;
+	uint32_t accumulated[ctx->latency_histogram_size];
+	double ratios[ctx->latency_histogram_size];
+	double index_to_ms_factor;
+	uint32_t num;
+	size_t i;
+
+	if (ctx->latency_histogram == NULL)
+		return (NAN);
+
+	accumulated[0] = ctx->latency_histogram[0];
+	for (i = 1; i < ctx->latency_histogram_size; i++)
+		accumulated[i] = accumulated[i - 1]
+			+ ctx->latency_histogram[i];
+	num = accumulated[ctx->latency_histogram_size - 1];
+
+	for (i = 0; i < ctx->latency_histogram_size; i++)
+	{
+		ratios[i] = ((double) accumulated[i]) / ((double) num);
+		if (ratios[i] >= threshold)
+			break;
+	}
+
+	if (i >= ctx->latency_histogram_size)
+		return (NAN);
+	else if (i == (ctx->latency_histogram_size - 1))
+		return (INFINITY);
+
+	index_to_ms_factor = (1000.0 * opt_interval) / (ctx->latency_histogram_size - 1);
+
+	/* Multiply with i+1, because we're interested in the _upper_ bound of
+	 * each bucket. */
+	return (index_to_ms_factor * ((double) (i + 1)));
+} /* }}} double context_get_percentile */
 
 static double context_get_stddev (ping_context_t *ctx) /* {{{ */
 {
@@ -315,6 +367,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 #if USE_NCURSES
 			"  -u / -U      force / disable UTF-8 output\n"
 #endif
+			"  -P percent   Report the n'th percentile of latency\n"
 			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
 			"               probes timed out. (default: never)\n"
 
@@ -519,7 +572,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:"
 #if USE_NCURSES
 				"uU"
 #endif
@@ -540,7 +593,12 @@ static int read_options (int argc, char **argv) /* {{{ */
 					int new_count;
 					new_count = atoi (optarg);
 					if (new_count > 0)
+					{
 						opt_count = new_count;
+
+						if ((opt_percentile < 0.0) && (opt_count < 20))
+							opt_percentile = 100.0 * (opt_count - 1) / opt_count;
+					}
 					else
 						fprintf(stderr, "Ignoring invalid count: %s\n",
 								optarg);
@@ -566,6 +624,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 						opt_interval = new_interval;
 				}
 				break;
+
 			case 'I':
 				{
 					if (opt_srcaddr != NULL)
@@ -592,6 +651,20 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 			case 'Q':
 				set_opt_send_qos (optarg);
+				break;
+
+			case 'P':
+				{
+					double new_percentile;
+					new_percentile = atof (optarg);
+					if (isnan (new_percentile)
+							|| (new_percentile < 0.1)
+							|| (new_percentile > 100.0))
+						fprintf (stderr, "Ignoring invalid percentile: %s\n",
+								optarg);
+					else
+						opt_percentile = new_percentile;
+				}
 				break;
 
 #if USE_NCURSES
@@ -628,6 +701,9 @@ static int read_options (int argc, char **argv) /* {{{ */
 				usage_exit (argv[0], 1);
 		}
 	}
+
+	if (opt_percentile <= 0.0)
+		opt_percentile = OPING_DEFAULT_PERCENTILE;
 
 	return (optind);
 } /* }}} read_options */
@@ -811,14 +887,19 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	{
 		double average;
 		double deviation;
+		double percentile;
 
 		average = context_get_average (ctx);
 		deviation = context_get_stddev (ctx);
+		percentile = context_get_percentile (ctx, opt_percentile);
 
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
+				"rtt min/avg/%.0f%%/max/sdev = "
+				"%.3f/%.3f/%.0f/%.3f/%.3f ms\n",
+				opt_percentile,
 				ctx->latency_min,
 				average,
+				percentile,
 				ctx->latency_max,
 				deviation);
 	}
@@ -1015,6 +1096,30 @@ static int post_sleep_hook (__attribute__((unused)) pingobj_t *ping) /* {{{ */
 } /* }}} int post_sleep_hook */
 #endif
 
+static void update_context (ping_context_t *context, double latency) /* {{{ */
+{
+	size_t bucket;
+
+	context->req_rcvd++;
+	context->latency_total += latency;
+	context->latency_total_square += (latency * latency);
+
+	if ((context->latency_max < 0.0) || (context->latency_max < latency))
+		context->latency_max = latency;
+	if ((context->latency_min < 0.0) || (context->latency_min > latency))
+		context->latency_min = latency;
+
+	if (context->latency_histogram == NULL)
+		return;
+
+	/* latency is in ms, opt_interval is in s. */
+	bucket = (size_t) ((latency * (context->latency_histogram_size - 1))
+			/ (1000.0 * opt_interval));
+	if (bucket >= context->latency_histogram_size)
+		bucket = context->latency_histogram_size - 1;
+	context->latency_histogram[bucket]++;
+} /* }}} void update_context */
+
 static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		__attribute__((unused)) int index)
 {
@@ -1062,14 +1167,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	context->req_sent++;
 	if (latency > 0.0)
 	{
-		context->req_rcvd++;
-		context->latency_total += latency;
-		context->latency_total_square += (latency * latency);
-
-		if ((context->latency_max < 0.0) || (context->latency_max < latency))
-			context->latency_max = latency;
-		if ((context->latency_min < 0.0) || (context->latency_min > latency))
-			context->latency_min = latency;
+		update_context (context, latency);
 
 #if USE_NCURSES
 		if (has_colors () == TRUE)
@@ -1184,13 +1282,18 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 		{
 			double average;
 			double deviation;
+			double percentile;
 
 			average = context_get_average (context);
 			deviation = context_get_stddev (context);
+			percentile = context_get_percentile (context, opt_percentile);
 
-			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
+			printf ("rtt min/avg/%.0f%%/max/sdev = "
+					"%.3f/%.3f/%.0f/%.3f/%.3f ms\n",
+					opt_percentile,
 					context->latency_min,
 					average,
+					percentile,
 					context->latency_max,
 					deviation);
 		}
