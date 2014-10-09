@@ -123,14 +123,15 @@ static size_t const hist_colors_num = sizeof (hist_colors_utf8)
 #endif
 
 /* "─" */
-#define BOXPLOT_WHISKER_BAR (113 | A_ALTCHARSET)
+#define BOXPLOT_WHISKER_BAR       (113 | A_ALTCHARSET)
 /* "├" */
-#define BOXPLOT_WHISKER_LEFT_END (116 | A_ALTCHARSET)
+#define BOXPLOT_WHISKER_LEFT_END  (116 | A_ALTCHARSET)
 /* "┤" */
 #define BOXPLOT_WHISKER_RIGHT_END (117 | A_ALTCHARSET)
-#define BOXPLOT_BOX ' '
-/* "│" */
-#define BOXPLOT_MEDIAN (120 | A_ALTCHARSET)
+/* Inverted */
+#define BOXPLOT_BOX               ' '
+/* "│", inverted */
+#define BOXPLOT_MEDIAN            (120 | A_ALTCHARSET)
 
 #include "oping.h"
 
@@ -183,6 +184,7 @@ static uint8_t opt_send_qos   = 0;
 static double  opt_percentile = -1.0;
 static double  opt_exit_status_threshold = 1.0;
 #if USE_NCURSES
+static int     opt_show_graph = 1;
 static int     opt_utf8       = 0;
 #endif
 
@@ -584,7 +586,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 	{
 		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:"
 #if USE_NCURSES
-				"uU"
+				"uUg:"
 #endif
 				);
 
@@ -678,6 +680,17 @@ static int read_options (int argc, char **argv) /* {{{ */
 				break;
 
 #if USE_NCURSES
+			case 'g':
+				if (strcasecmp ("none", optarg) == 0)
+					opt_show_graph = 0;
+				else if (strcasecmp ("prettyping", optarg) == 0)
+					opt_show_graph = 1;
+				else if (strcasecmp ("boxplot", optarg) == 0)
+					opt_show_graph = 2;
+				else
+					fprintf (stderr, "Unknown graph option: %s\n", optarg);
+				break;
+
 			case 'u':
 				opt_utf8 = 2;
 				break;
@@ -707,6 +720,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case 'h':
 				usage_exit (argv[0], 0);
 				break;
+
 			default:
 				usage_exit (argv[0], 1);
 		}
@@ -1011,7 +1025,10 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 				deviation);
 	}
 
-	update_prettyping_graph (ctx, latency, sequence);
+	if (opt_show_graph == 1)
+		update_prettyping_graph (ctx, latency, sequence);
+	else if (opt_show_graph == 2)
+		update_boxplot (ctx);
 
 	wrefresh (ctx->window);
 
@@ -1024,12 +1041,13 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 	int width = 0;
 	int height = 0;
 	int main_win_height;
+	int box_height = (opt_show_graph == 0) ? 4 : 5;
 
 	getmaxyx (stdscr, height, width);
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-	main_win_height = height - (5 * host_num);
+	main_win_height = height - (box_height * host_num);
 	wresize (main_win, main_win_height, /* width = */ width);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
@@ -1053,9 +1071,9 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 5,
+		context->window = newwin (/* height = */ box_height,
 				/* width = */ width,
-				/* y = */ main_win_height + (5 * context->index),
+				/* y = */ main_win_height + (box_height * context->index),
 				/* x = */ 0);
 	}
 
@@ -1087,6 +1105,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 	int width = 0;
 	int height = 0;
 	int main_win_height;
+	int box_height = (opt_show_graph == 0) ? 4 : 5;
 
 	initscr ();
 	cbreak ();
@@ -1108,7 +1127,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
 	}
 
-	main_win_height = height - (5 * host_num);
+	main_win_height = height - (box_height * host_num);
 	main_win = newwin (/* height = */ main_win_height,
 			/* width = */ width,
 			/* y = */ 0, /* x = */ 0);
@@ -1135,9 +1154,9 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 5,
+		context->window = newwin (/* height = */ box_height,
 				/* width = */ width,
-				/* y = */ main_win_height + (5 * context->index),
+				/* y = */ main_win_height + (box_height * context->index),
 				/* x = */ 0);
 	}
 
