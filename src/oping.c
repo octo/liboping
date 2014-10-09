@@ -687,6 +687,8 @@ static int read_options (int argc, char **argv) /* {{{ */
 					opt_show_graph = 1;
 				else if (strcasecmp ("boxplot", optarg) == 0)
 					opt_show_graph = 2;
+				else if (strcasecmp ("histogram", optarg) == 0)
+					opt_show_graph = 3;
 				else
 					fprintf (stderr, "Unknown graph option: %s\n", optarg);
 				break;
@@ -797,7 +799,7 @@ static _Bool has_utf8() /* {{{ */
 # endif
 } /* }}} _Bool has_utf8 */
 
-static int update_boxplot (ping_context_t *ctx) /* {{{ */
+static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 {
 	uint32_t *accumulated;
 	double *ratios;
@@ -892,9 +894,9 @@ static int update_boxplot (ping_context_t *ctx) /* {{{ */
 	free (ratios);
 	free (accumulated);
 	return (0);
-} /* }}} int update_boxplot */
+} /* }}} int update_graph_boxplot */
 
-static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
+static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 		double latency, unsigned int sequence)
 {
 	int color = OPING_RED;
@@ -971,7 +973,93 @@ static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 
 	wprintw (ctx->window, " ");
 	return (0);
-} /* }}} int update_prettyping_graph */
+} /* }}} int update_graph_prettyping */
+
+static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
+{
+	uint32_t *counters;
+	uint32_t *accumulated;
+	uint32_t num;
+	uint32_t max;
+	size_t i;
+	size_t x_max;
+	size_t x;
+
+	size_t symbols_num = hist_symbols_acs_num;
+
+	if (has_utf8 ())
+		symbols_num = hist_symbols_utf8_num;
+
+	x_max = (size_t) getmaxx (ctx->window);
+	if (x_max <= 4)
+		return (EINVAL);
+	x_max -= 4;
+
+	counters = calloc (x_max, sizeof (*counters));
+	accumulated = calloc (x_max, sizeof (*accumulated));
+
+	/* Downsample */
+	max = 0;
+	for (i = 0; i < ctx->latency_histogram_size; i++)
+	{
+		x = i * x_max / ctx->latency_histogram_size;
+		counters[x] += ctx->latency_histogram[i];
+		accumulated[x] = counters[x];
+
+		if (max < counters[x])
+			max = counters[x];
+	}
+
+	/* Sum */
+	for (x = 1; x < x_max; x++)
+		accumulated[x] += accumulated[x - 1];
+	num = accumulated[x_max - 1];
+
+	/* Calculate ratios */
+	for (x = 0; x < x_max; x++)
+	{
+		double height = ((double) counters[x]) / ((double) max);
+		double ratio_this = ((double) accumulated[x]) / ((double) num);
+		double ratio_prev = 0.0;
+		size_t index;
+		int color = 0;
+
+		index = (size_t) (height * ((double) symbols_num));
+		if (index >= symbols_num)
+			index = symbols_num - 1;
+
+		if (x > 0)
+			ratio_prev = ((double) accumulated[x - 1]) / ((double) num);
+
+		if (has_colors () == TRUE)
+		{
+			if ((ratio_this <= 0.5) || ((ratio_prev < 0.5) && (ratio_this > 0.5)))
+				color = OPING_GREEN;
+			else if ((ratio_this <= 0.95) || ((ratio_prev < 0.95) && (ratio_this > 0.95)))
+				color = OPING_YELLOW;
+			else
+				color = OPING_RED;
+
+			wattron (ctx->window, COLOR_PAIR(color));
+		}
+
+		if (counters[x] == 0)
+			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, ' ');
+		else if (has_utf8 ())
+			mvwprintw (ctx->window, /* y = */ 3, /* x = */ x + 2,
+					hist_symbols_utf8[index]);
+		else
+			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2,
+					hist_symbols_acs[index] | A_ALTCHARSET);
+
+		if (has_colors () == TRUE)
+			wattroff (ctx->window, COLOR_PAIR(color));
+
+	}
+
+	free (accumulated);
+	return (0);
+} /* }}} int update_graph_histogram */
 
 static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter) /* {{{ */
 {
@@ -1026,9 +1114,11 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	}
 
 	if (opt_show_graph == 1)
-		update_prettyping_graph (ctx, latency, sequence);
+		update_graph_prettyping (ctx, latency, sequence);
 	else if (opt_show_graph == 2)
-		update_boxplot (ctx);
+		update_graph_boxplot (ctx);
+	else if (opt_show_graph == 3)
+		update_graph_histogram (ctx);
 
 	wrefresh (ctx->window);
 
