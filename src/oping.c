@@ -122,6 +122,16 @@ static size_t const hist_colors_num = sizeof (hist_colors_utf8)
 	/ sizeof (hist_colors_utf8[0]);
 #endif
 
+/* "─" */
+#define BOXPLOT_WHISKER_BAR (113 | A_ALTCHARSET)
+/* "├" */
+#define BOXPLOT_WHISKER_LEFT_END (116 | A_ALTCHARSET)
+/* "┤" */
+#define BOXPLOT_WHISKER_RIGHT_END (117 | A_ALTCHARSET)
+#define BOXPLOT_BOX ' '
+/* "│" */
+#define BOXPLOT_MEDIAN (120 | A_ALTCHARSET)
+
 #include "oping.h"
 
 #ifndef _POSIX_SAVED_IDS
@@ -772,6 +782,103 @@ static _Bool has_utf8() /* {{{ */
 	return (0);
 # endif
 } /* }}} _Bool has_utf8 */
+
+static int update_boxplot (ping_context_t *ctx) /* {{{ */
+{
+	uint32_t *accumulated;
+	double *ratios;
+	uint32_t num;
+	size_t i;
+	size_t x_max;
+	size_t x;
+
+	x_max = (size_t) getmaxx (ctx->window);
+	if (x_max <= 4)
+		return (EINVAL);
+	x_max -= 4;
+
+	accumulated = calloc (x_max, sizeof (*accumulated));
+	ratios = calloc (x_max, sizeof (*ratios));
+
+	/* Downsample */
+	for (i = 0; i < ctx->latency_histogram_size; i++)
+	{
+		x = i * x_max / ctx->latency_histogram_size;
+		accumulated[x] += ctx->latency_histogram[i];
+	}
+
+	/* Sum */
+	for (x = 1; x < x_max; x++)
+		accumulated[x] += accumulated[x - 1];
+
+	num = accumulated[x_max - 1];
+
+	/* Calculate ratios */
+	for (x = 0; x < x_max; x++)
+		ratios[x] = ((double) accumulated[x]) / ((double) num);
+
+	for (x = 0; x < x_max; x++)
+	{
+		int symbol = ' ';
+		_Bool reverse = 0;
+
+		if (x == 0)
+		{
+			if (ratios[x] >= 0.5)
+			{
+				symbol = BOXPLOT_MEDIAN;
+				reverse = 1;
+			}
+			else if (ratios[x] > 0.25)
+			{
+				symbol = BOXPLOT_BOX;
+				reverse = 1;
+			}
+			else if (ratios[x] > 0.025)
+				symbol = BOXPLOT_WHISKER_BAR;
+			else
+				symbol = ' '; /* NOP */
+		}
+		else /* (x != 0) */
+		{
+			if ((ratios[x - 1] < 0.5) && (ratios[x] >= 0.5))
+			{
+				symbol = BOXPLOT_MEDIAN;
+				reverse = 1;
+			}
+			else if (((ratios[x] >= 0.25) && (ratios[x] <= 0.75))
+					|| ((ratios[x - 1] < 0.75) && (ratios[x] > 0.75)))
+			{
+				symbol = BOXPLOT_BOX;
+				reverse = 1;
+			}
+			else if ((ratios[x] < 0.5) && (ratios[x] >= 0.025))
+			{
+				if (ratios[x - 1] < 0.025)
+					symbol = BOXPLOT_WHISKER_LEFT_END;
+				else
+					symbol = BOXPLOT_WHISKER_BAR;
+			}
+			else if ((ratios[x] > .5) && (ratios[x] < 0.975))
+			{
+				symbol = BOXPLOT_WHISKER_BAR;
+			}
+			else if ((ratios[x] >= 0.975) && (ratios[x - 1] < 0.975))
+				symbol = BOXPLOT_WHISKER_RIGHT_END;
+		}
+
+		if (reverse)
+			wattron (ctx->window, A_REVERSE);
+		mvwaddch (ctx->window, /* y = */ 3, /* x = */ (int) (x + 2), symbol);
+		// mvwprintw (ctx->window, /* y = */ 3, /* x = */ (int) (x + 2), symbol);
+		if (reverse)
+			wattroff (ctx->window, A_REVERSE);
+	}
+
+	free (ratios);
+	free (accumulated);
+	return (0);
+} /* }}} int update_boxplot */
 
 static int update_prettyping_graph (ping_context_t *ctx, /* {{{ */
 		double latency, unsigned int sequence)
