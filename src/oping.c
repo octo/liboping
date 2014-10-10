@@ -378,6 +378,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -f filename  filename to read hosts from\n"
 #if USE_NCURSES
 			"  -u / -U      force / disable UTF-8 output\n"
+			"  -g graph     graph type to draw\n"
 #endif
 			"  -P percent   Report the n'th percentile of latency\n"
 			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"

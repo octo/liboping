@@ -171,7 +171,7 @@ packets.
 I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
 neither is given, the codeset is automatically determined from the locale.
 
-=item B<-g> B<none>|B<prettyping>|B<boxplot>
+=item B<-g> B<none>|B<prettyping>|B<boxplot>|B<histogram>
 
 I<noping only> Selects the graph to display.
 
@@ -179,7 +179,7 @@ I<noping only> Selects the graph to display.
 
 =item B<none>
 
-Do not shot a graph.
+Do not show a graph.
 
 =item B<prettyping>
 
@@ -189,13 +189,31 @@ This is the default.
 
 =item B<boxplot>
 
-Shows a box plot where the x-axis, i.e. the width of the window, is the
+Show a I<box plot> where the x-axis, i.e. the width of the window, is the
 round-trip time. The entire width of the window it the ping interval, set with
 the B<-i> option.
 
 The box is sized so it contains 50% of the replies. The vertical line shows the
 median. The whiskers are sized to contain 95% of the replies -- 2.5% below the
 whiskers and 2.5% above.
+
+  |----------[#####|##########]--------------------------------------------|
+  ^          ^     ^          ^                                            ^
+ 2.75%      25%   50%        75%                                         97.5%
+
+=item B<histogram>
+
+Show a I<histrogram> of the round-trip times. The width of the window is taken
+as round-trip time from 0ms on the left to the I<interval> (the B<-i> option,
+default 1000ms) on the right.
+
+The height of the graph is scaled so that the most-used buckets vertically fills
+the line. The buckets are colored green up to and including the median, yellow
+up to and including the 95th percentile and red for the remainder.
+
+In addition, the histogram is colored, if supported by the terminal. The green
+bars include the median (50% of responses), yellow bars include the 95th
+percentile and outliers are colored red.
 
 =back
 
