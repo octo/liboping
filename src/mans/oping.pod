@@ -258,13 +258,10 @@ If supported by the terminal, I<noping> will highlight the round-trip times
 the "expected" range, yellow marks moderately unusual times and times that
 differ a lot from the expected value are printed in red.
 
-The information used to categorize round-trip times is the I<average>
-round-trip time and the I<standard deviation>. RTTs that differ from the
-average by less than the standard deviation are considered to be "normal" and
-are printed in green. Times that differ from the average more than the standard
-deviation but less than twice the standard deviation are considered "moderately
-unusual" and are printed in yellow. Times differing more than twice the
-standard deviation from the average are considered to be "unusual" and are
+The information used to categorize round-trip times is the I<percentile>. RTTs
+in the 80th percentile are considered to be "normal" and are printed in green.
+RTTs within the 95th percentile are considered "moderately unusual" and are
+printed in yellow. RTTs above that are considered to be "unusual" and are
 printed in red.
 
 =head1 SEE ALSO
