@@ -95,6 +95,9 @@
 # define OPING_YELLOW_HIST 5
 # define OPING_RED_HIST 6
 
+double const threshold_green = 0.8;
+double const threshold_yellow = 0.95;
+
 static char const * const hist_symbols_utf8[] = {
 	"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
 static size_t const hist_symbols_utf8_num = sizeof (hist_symbols_utf8)
@@ -1027,9 +1030,13 @@ static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
 
 		if (has_colors () == TRUE)
 		{
-			if ((ratio_this <= 0.5) || ((ratio_prev < 0.5) && (ratio_this > 0.5)))
+			if ((ratio_this <= threshold_green)
+					|| ((ratio_prev < threshold_green)
+						&& (ratio_this > threshold_green)))
 				color = OPING_GREEN;
-			else if ((ratio_this <= 0.95) || ((ratio_prev < 0.95) && (ratio_this > 0.95)))
+			else if ((ratio_this <= threshold_yellow)
+					|| ((ratio_prev < threshold_yellow)
+						&& (ratio_this > threshold_yellow)))
 				color = OPING_YELLOW;
 			else
 				color = OPING_RED;
@@ -1413,11 +1420,13 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 			else
 				ratio_prev = 0.0;
 
-			if ((ratio_this <= 0.5) ||
-					((ratio_prev < 0.5) && (ratio_this > 0.5)))
+			if ((ratio_this <= threshold_green)
+					|| ((ratio_prev < threshold_green)
+						&& (ratio_this > threshold_green)))
 				color = OPING_GREEN;
-			else if ((ratio_this <= 0.95) ||
-					((ratio_prev < 0.95) && (ratio_this > 0.95)))
+			else if ((ratio_this <= threshold_yellow)
+					|| ((ratio_prev < threshold_yellow)
+						&& (ratio_this > threshold_yellow)))
 				color = OPING_YELLOW;
 			else
 				color = OPING_RED;
