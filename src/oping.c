@@ -278,6 +278,7 @@ static double context_get_percentile (ping_context_t *ctx, /* {{{ */
 	double threshold = percentile / 100.0;
 	double index_to_ms_factor;
 	size_t i;
+	double ret;
 
 	if (ctx->histogram_ratio == NULL)
 		return (NAN);
@@ -295,7 +296,13 @@ static double context_get_percentile (ping_context_t *ctx, /* {{{ */
 
 	/* Multiply with i+1, because we're interested in the _upper_ bound of
 	 * each bucket. */
-	return (index_to_ms_factor * ((double) (i + 1)));
+	ret = (index_to_ms_factor * ((double) (i + 1)));
+
+	/* Avoid reporting a higher latency than latency_max. */
+	if (ret > ctx->latency_max)
+		ret = ctx->latency_max;
+
+	return (ret);
 } /* }}} double context_get_percentile */
 
 static double context_get_stddev (ping_context_t *ctx) /* {{{ */
