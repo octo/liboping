@@ -163,7 +163,6 @@ typedef struct ping_context
 	double latency_min;
 	double latency_max;
 	double latency_total;
-	double latency_total_square;
 
 /* 1000 + one "infinity" bucket. */
 #define OPING_HISTOGRAM_BUCKETS 1001
@@ -219,7 +218,6 @@ static ping_context_t *context_create (void) /* {{{ */
 	ret->latency_min   = -1.0;
 	ret->latency_max   = -1.0;
 	ret->latency_total = 0.0;
-	ret->latency_total_square = 0.0;
 
 	ret->latency_histogram_size = (size_t) OPING_HISTOGRAM_BUCKETS;
 	ret->histogram_counters = calloc (ret->latency_histogram_size,
@@ -261,20 +259,6 @@ static void context_destroy (ping_context_t *context) /* {{{ */
 	free (context);
 } /* }}} void context_destroy */
 
-static double context_get_average (ping_context_t *ctx) /* {{{ */
-{
-	double num_total;
-
-	if (ctx == NULL)
-		return (-1.0);
-
-	if (ctx->req_rcvd < 1)
-		return (-0.0);
-
-	num_total = (double) ctx->req_rcvd;
-	return (ctx->latency_total / num_total);
-} /* }}} double context_get_average */
-
 static double context_get_percentile (ping_context_t *ctx, /* {{{ */
 		double percentile)
 {
@@ -307,24 +291,6 @@ static double context_get_percentile (ping_context_t *ctx, /* {{{ */
 
 	return (ret);
 } /* }}} double context_get_percentile */
-
-static double context_get_stddev (ping_context_t *ctx) /* {{{ */
-{
-	double num_total;
-
-	if (ctx == NULL)
-		return (-1.0);
-
-	if (ctx->req_rcvd < 1)
-		return (-0.0);
-	else if (ctx->req_rcvd < 2)
-		return (0.0);
-
-	num_total = (double) ctx->req_rcvd;
-	return (sqrt (((num_total * ctx->latency_total_square)
-					- (ctx->latency_total * ctx->latency_total))
-				/ (num_total * (num_total - 1.0))));
-} /* }}} double context_get_stddev */
 
 static double context_get_packet_loss (const ping_context_t *ctx) /* {{{ */
 {
@@ -1095,23 +1061,17 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 			ctx->latency_total);
 	if (ctx->req_rcvd != 0)
 	{
-		double average;
-		double deviation;
+		double median;
 		double percentile;
 
-		average = context_get_average (ctx);
-		deviation = context_get_stddev (ctx);
+		median = context_get_percentile (ctx, 50.0);
 		percentile = context_get_percentile (ctx, opt_percentile);
 
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"rtt min/avg/%.0f%%/max/sdev = "
-				"%.3f/%.3f/%.0f/%.3f/%.3f ms\n",
-				opt_percentile,
-				ctx->latency_min,
-				average,
-				percentile,
-				ctx->latency_max,
-				deviation);
+				"RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f",
+				ctx->latency_min, median,
+				opt_percentile, percentile,
+				ctx->latency_max);
 	}
 
 	if (opt_show_graph == 1)
@@ -1334,7 +1294,6 @@ static void update_context (ping_context_t *context, double latency) /* {{{ */
 
 	context->req_rcvd++;
 	context->latency_total += latency;
-	context->latency_total_square += (latency * latency);
 
 	if ((context->latency_max < 0.0) || (context->latency_max < latency))
 		context->latency_max = latency;
@@ -1463,7 +1422,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		}
 #endif
 	}
-	else
+	else /* if (!(latency > 0.0)) */
 	{
 #if USE_NCURSES
 		if (has_colors () == TRUE)
@@ -1528,22 +1487,16 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 
 		if (context->req_rcvd != 0)
 		{
-			double average;
-			double deviation;
+			double median;
 			double percentile;
 
-			average = context_get_average (context);
-			deviation = context_get_stddev (context);
+			median = context_get_percentile (context, 50.0);
 			percentile = context_get_percentile (context, opt_percentile);
 
-			printf ("rtt min/avg/%.0f%%/max/sdev = "
-					"%.3f/%.3f/%.0f/%.3f/%.3f ms\n",
-					opt_percentile,
-					context->latency_min,
-					average,
-					percentile,
-					context->latency_max,
-					deviation);
+			printf ("RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f\n",
+					context->latency_min, median,
+					opt_percentile, percentile,
+					context->latency_max);
 		}
 
 		ping_iterator_set_context (iter, NULL);
