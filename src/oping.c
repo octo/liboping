@@ -1759,6 +1759,9 @@ int main (int argc, char **argv) /* {{{ */
 		exit (EXIT_FAILURE);
 	}
 
+	if (host_num == 0)
+		exit (EXIT_FAILURE);
+
 #if _POSIX_SAVED_IDS
 	saved_set_uid = (uid_t) -1;
 #endif
