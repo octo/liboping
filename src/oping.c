@@ -1268,6 +1268,13 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 			break;
 		else if (key == KEY_RESIZE)
 			need_resize = 1;
+		else if (key == 'g')
+		{
+			if (opt_show_graph == 3)
+				opt_show_graph = 1;
+			else if (opt_show_graph > 0)
+				opt_show_graph++;
+		}
 	}
 
 	if (need_resize)
