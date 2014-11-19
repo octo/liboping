@@ -183,9 +183,15 @@ Do not show a graph.
 
 =item B<prettyping>
 
-Show a graph with time on the x-axis in a round-robin fashion, i.e. continue on
-the left if the right edge is reached. The y-axis shows the round-trip time.
-This is the default.
+Show a graph with time on the x-axis, the y-axis shows the round-trip time.
+This is the default graph.
+
+If your terminal supports unicode and colors, they are used to improve
+the precision of the data shown: a green box is drawn for round-trip times up
+to one third of the configured timeout, the height representing the RTT. Longer
+RTTs will start to fill the box yellow (with a green background) and then red
+(with a yellow background). Lost packages are drawn as a bold red explamation
+mark.
 
 =item B<boxplot>
 
@@ -208,12 +214,9 @@ as round-trip time from 0ms on the left to the I<interval> (the B<-i> option,
 default 1000ms) on the right.
 
 The height of the graph is scaled so that the most-used buckets vertically fills
-the line. The buckets are colored green up to and including the median, yellow
-up to and including the 95th percentile and red for the remainder.
-
-In addition, the histogram is colored, if supported by the terminal. The green
-bars include the median (50% of responses), yellow bars include the 95th
-percentile and outliers are colored red.
+the line. The buckets are colored green up to and including the 80th
+percentile, yellow up to and including the 95th percentile and red for the
+remainder.
 
 =back
 
@@ -223,19 +226,8 @@ Configures the latency percentile to report. I<percent> must be a number
 between zero and 100, exclusively in both cases. In general, defaults to B<95>.
 If B<-c> is given and a number less than 20, this would be the same as the
 maximum. In this case the default is chosen so that it excludes the maximum,
-e.g. if B<-cE<nbsp>5> is given, the default is I<80>.
-
-The calculated percentile has roughly millisecond precision. If precision is of
-importance, read on for a more detailed explanation. In order to calculate the
-percentile without keeping all replies in memory, I<oping> divides the
-I<interval> (the B<-i> option) in 1000 "buckets". Each bucket counts the number
-of packets received in the represented time. That means that the precision
-decreases if the interval is increased, because each bucket represents a larger
-(fraction of the) response time. The code looks for the first bucket
-representing at least I<percent> responses and returns the upper-bound latency
-represented by that bucket. Since the represented percentage may be larger than
-the configured percentile, this algorithm I<overestimes> the actual percentile
-by at most 1000th of I<interval>.
+e.g. if B<-cE<nbsp>5> is given, the default is I<80>. The calculated percentile
+is based on the last 900 packets (15 minutes with the default interval).
 
 =item B<-Z> I<percent>
 
