@@ -167,17 +167,22 @@ typedef struct ping_context
 #endif
 	/* The last n RTTs in the order they were sent. */
 	double history_by_time[HISTORY_SIZE_MAX];
-	/* Current size of the history. This is a value between 0 and
-	 * HISTORY_SIZE_MAX. */
+
+	/* Current number of entries in the history. This is a value between 0
+	 * and HISTORY_SIZE_MAX. */
 	size_t history_size;
+
+	/* Number "received" entries in the history, i.e. non-NAN entries. */
+	size_t history_received;
+
 	/* Index of the next RTT to be written to history_by_time. This wraps
 	 * around to 0 once the histroty has grown to HISTORY_SIZE_MAX. */
 	size_t history_index;
-	/* Number received replies, i.e. non-NAN entries. */
-	size_t history_received;
-	/* The last n RTTs sorted by value. timed out packets are sorted to the
-	 * back. */
+
+	/* The last history_size RTTs sorted by value. timed out packets (NAN
+	 * entries) are sorted to the back. */
 	double history_by_value[HISTORY_SIZE_MAX];
+
 	/* If set to true, history_by_value has to be re-calculated. */
 	_Bool history_dirty;
 
@@ -282,10 +287,12 @@ static void clean_history (ping_context_t *ctx) /* {{{ */
 	/* Copy all values from by_time to by_value. */
 	memcpy (ctx->history_by_value, ctx->history_by_time,
 			sizeof (ctx->history_by_time));
+
 	/* Sort all RTTs. */
 	qsort (ctx->history_by_value, ctx->history_size, sizeof
 			(ctx->history_by_value[0]), compare_double);
 
+	/* Update the number of received RTTs. */
 	ctx->history_received = 0;
 	for (i = 0; i < ctx->history_size; i++)
 		if (!isnan (ctx->history_by_value[i]))
@@ -302,6 +309,7 @@ static double percentile_to_latency (ping_context_t *ctx, /* {{{ */
 
 	clean_history (ctx);
 
+	/* Not a single packet was received successfully. */
 	if (ctx->history_received == 0)
 		return NAN;
 
@@ -320,7 +328,7 @@ static double percentile_to_latency (ping_context_t *ctx, /* {{{ */
 } /* }}} double percentile_to_latency */
 
 #if USE_NCURSES
-static double latency_to_percentile (ping_context_t *ctx, /* {{{ */
+static double latency_to_ratio (ping_context_t *ctx, /* {{{ */
 		double latency)
 {
 	size_t low;
@@ -329,6 +337,7 @@ static double latency_to_percentile (ping_context_t *ctx, /* {{{ */
 
 	clean_history (ctx);
 
+	/* Not a single packet was received successfully. */
 	if (ctx->history_received == 0)
 		return NAN;
 
@@ -340,6 +349,11 @@ static double latency_to_percentile (ping_context_t *ctx, /* {{{ */
 	else if (latency >= ctx->history_by_value[high])
 		return 100.0;
 
+	/* Do a binary search for the latency. This will work even when the
+	 * exact latency is not in the array. If the latency is in the array
+	 * multiple times, "low" will be set to the index of the last
+	 * occurrence. The value at index "high" will be larger than the
+	 * searched for latency (assured by the above "if" block. */
 	while ((high - low) > 1)
 	{
 		index = (high + low) / 2;
@@ -358,8 +372,8 @@ static double latency_to_percentile (ping_context_t *ctx, /* {{{ */
 	else
 		index = high;
 
-	return (100.0 * ((double) (index + 1)) / ((double) ctx->history_received));
-} /* }}} double latency_to_percentile */
+	return (((double) (index + 1)) / ((double) ctx->history_received));
+} /* }}} double latency_to_ratio */
 #endif
 
 static double context_get_packet_loss (const ping_context_t *ctx) /* {{{ */
@@ -962,6 +976,8 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 		return (EINVAL);
 	x_max -= 4;
 
+	/* Determine the first index in the history we need to draw
+	 * the graph. */
 	history_offset = 0;
 	if (((size_t) x_max) < ctx->history_size)
 	{
@@ -1481,29 +1497,16 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #if USE_NCURSES
 		if (has_colors () == TRUE)
 		{
-			double percentile;
+			double ratio;
 			int color = OPING_GREEN;
 
-			percentile = latency_to_percentile (context, latency);
-			if (percentile < (100.0 * threshold_green))
+			ratio = latency_to_ratio (context, latency);
+			if (ratio < threshold_green)
 				color = OPING_GREEN;
-			else if (percentile < (100.0 * threshold_yellow))
+			else if (ratio < threshold_yellow)
 				color = OPING_YELLOW;
 			else
 				color = OPING_RED;
-
-#if 0
-			if ((ratio_this <= threshold_green)
-					|| ((ratio_prev < threshold_green)
-						&& (ratio_this > threshold_green)))
-				color = OPING_GREEN;
-			else if ((ratio_this <= threshold_yellow)
-					|| ((ratio_prev < threshold_yellow)
-						&& (ratio_this > threshold_yellow)))
-				color = OPING_YELLOW;
-			else
-				color = OPING_RED;
-#endif
 
 			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 					data_len, context->host, context->addr,
