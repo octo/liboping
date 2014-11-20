@@ -732,9 +732,9 @@ static int read_options (int argc, char **argv) /* {{{ */
 					opt_show_graph = 0;
 				else if (strcasecmp ("prettyping", optarg) == 0)
 					opt_show_graph = 1;
-				else if (strcasecmp ("boxplot", optarg) == 0)
-					opt_show_graph = 2;
 				else if (strcasecmp ("histogram", optarg) == 0)
+					opt_show_graph = 2;
+				else if (strcasecmp ("boxplot", optarg) == 0)
 					opt_show_graph = 3;
 				else
 					fprintf (stderr, "Unknown graph option: %s\n", optarg);
@@ -1203,9 +1203,9 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	if (opt_show_graph == 1)
 		update_graph_prettyping (ctx, latency, sequence);
 	else if (opt_show_graph == 2)
-		update_graph_boxplot (ctx);
-	else if (opt_show_graph == 3)
 		update_graph_histogram (ctx);
+	else if (opt_show_graph == 3)
+		update_graph_boxplot (ctx);
 
 	wrefresh (ctx->window);
 
