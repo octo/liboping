@@ -1,10 +1,17 @@
+2014-11-20, Version 1.8.0:
+	* oping, noping: Average and standard deviation have been removed from
+	  the status output, which show median and 95th percentile instead.
+	  The percentile can be chosen with the "-P" option.
+	* noping: The additional graph types "histogram" and "boxplot" have
+	  been added, which can be selected with the "-g" option.
+
 2014-09-25, Version 1.7.0:
 	* oping, noping: The new -Z option allows the exit status to indicate
 	  the number of failing hosts. Thanks to Barak Pearlmutter for the
 	  patch.
 	* noping: The ability to print a "prettyping" style graph has been
 	  added. Thanks to Antoine Beaupré for his work!
-	* src/liboping.c: Build fixes for Solaris have been fixed. Thanks
+	* src/liboping.c: Build issues on Solaris have been fixed. Thanks
 	  Scott Severtson for the fix!
 	* Build system: Creation and installation of a pkg-config file has
 	  been added. Thanks to Barak Pearlmutter for the patch.

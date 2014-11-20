@@ -2,10 +2,10 @@
 
 AC_PREREQ([2.65])
 AC_INIT([liboping],
-	[1.7.0],
+	[1.8.0],
 	[liboping@verplant.org],
 	[],
-	[http://octo.it/liboping/])
+	[http://noping.cc/])
 AC_CONFIG_SRCDIR([src/liboping.c])
 AC_CONFIG_HEADERS([src/config.h])
 AC_CONFIG_MACRO_DIR([m4])
@@ -24,7 +24,7 @@ AC_SUBST(LIBOPING_PATCH)
 
 # ABI version
 LIBOPING_CURRENT=2
-LIBOPING_REVISION=10
+LIBOPING_REVISION=11
 LIBOPING_AGE=2
 AC_SUBST(LIBOPING_CURRENT)
 AC_SUBST(LIBOPING_REVISION)
