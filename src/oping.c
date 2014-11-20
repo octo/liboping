@@ -979,12 +979,19 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 	/* Determine the first index in the history we need to draw
 	 * the graph. */
 	history_offset = 0;
-	if (((size_t) x_max) < ctx->history_size)
+	if (((size_t) x_max) < ctx->history_size) /* window is smaller than history */
 	{
 		if (ctx->history_index > x_max)
 			history_offset = ctx->history_index - x_max;
 		else /* wrap around */
-			history_offset = ctx->history_index + x_max - ctx->history_size;
+			history_offset = ctx->history_index + ctx->history_size - x_max;
+	}
+	else /* window is larger than history */
+	{
+		if (ctx->history_index != ctx->history_size) /* no longer growing. */
+			history_offset = ctx->history_index;
+		else /* start-up */
+			history_offset = 0;
 	}
 
 	for (x = 0; x < x_max; x++)
