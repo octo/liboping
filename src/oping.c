@@ -1219,7 +1219,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 		percentile = percentile_to_latency (ctx, opt_percentile);
 
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f",
+				"RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f  ",
 				min, median, opt_percentile, percentile, max);
 	}
 
