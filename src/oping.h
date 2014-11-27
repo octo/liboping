@@ -104,7 +104,7 @@ typedef struct oping_s oping_t;
 struct oping_options_s
 {
 	/* Number of sequence numbers to keep in memory. This is used to detect
-	 * duplicates and effectively defined the timeout. For example, if you
+	 * duplicates and effectively defines the timeout. For example, if you
 	 * set this to 100 and send two echo request per second, the timeout
 	 * effectively becomes 100 * 0.5 = 50 seconds. Values greater than
 	 * 65536 (2^16) don't make sense and are capped. Defaults to 256. */
@@ -138,6 +138,25 @@ oping_t *oping_create (char const *node, /* node / host to ping. */
 		void *user_data);
 /* Destroys a oping_t* object. */
 void oping_destroy (oping_t *obj);
+
+/* Starts a background thread to receive and dispatch replies. */
+int oping_start (oping_t *obj);
+/* Stops the background thread previously started by oping_start(). */
+int oping_stop (oping_t *obj);
+
+/* Enter a receive loop. This call blocks until oping_stop() is called from
+ * another thread. This is intended to be used in cases where you need to be
+ * able to control thread creation. */
+int oping_loop (oping_t *obj);
+
+/* Returns the underlying file descriptor of the socket in use. This is
+ * intended for applications with their own event loop, so they can check on
+ * the socket and call oping_receive() whenever data is available. */
+int oping_get_socket (oping_t *obj);
+
+/* Retrieve and dispatch a single response packet. This call will block, unless
+ * you make sure that data is available (see oping_get_socket()). */
+int oping_receive (oping_t *obj);
 
 /* Increases the sequence number and sends an ICMP echo request to the node. */
 int oping_send (oping_t *obj);
