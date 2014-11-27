@@ -444,8 +444,8 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
 			"               probes timed out. (default: never)\n"
 
-			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
-			"by Florian octo Forster <octo@verplant.org>\n"
+			"\noping "PACKAGE_VERSION", http://noping.cc/\n"
+			"by Florian octo Forster <ff@octo.it>\n"
 			"for contributions see `AUTHORS'\n",
 			name);
 	exit (status);

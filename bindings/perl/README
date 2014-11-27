@@ -28,13 +28,13 @@ INSTALLATION
 DEPENDENCIES
 
   This module requires the "oping" library to be installed. The library is
-  available at <http://verplant.org/liboping/>.
+  available at <http://noping.cc/>.
 
 COPYRIGHT AND LICENSE
 
   Copyright (C) 2007 by Olivier Fredj <ofredj at proxad.net>
 
-  Copyright (C) 2008,2009 by Florian Forster <octo at verplant.org>
+  Copyright (C) 2008,2009 by Florian Forster <ff at octo.it>
 
   This library is free software; you can redistribute it and/or modify it
   under the same terms as Perl itself, either Perl version 5.8.7 or, at your

@@ -19,7 +19,7 @@
 #
 # Authors:
 #   Olivier Fredj <ofredj at proxad.net>
-#   Florian octo Forster <octo at verplant.org>
+#   Florian octo Forster <ff at octo.it>
 #
 
 package Net::Oping;
@@ -41,11 +41,11 @@ Net::Oping - ICMP latency measurement module using the oping library.
 =head1 DESCRIPTION
 
 This Perl module is a high-level interface to the
-L<oping library|http://verplant.org/liboping/>. Its purpose it to send
-C<ICMP ECHO_REQUEST> packets (also known as "ping") to a host and measure the
-time that elapses until the reception of an C<ICMP ECHO_REPLY> packet (also
-known as "pong"). If no such packet is received after a certain timeout the
-host is considered to be unreachable.
+L<oping library|http://noping.cc/>. Its purpose it to send C<ICMP ECHO_REQUEST>
+packets (also known as "ping") to a host and measure the time that elapses
+until the reception of an C<ICMP ECHO_REPLY> packet (also known as "pong"). If
+no such packet is received after a certain timeout the host is considered to be
+unreachable.
 
 The used I<oping> library supports "ping"ing multiple hosts in parallel and
 works with IPv4 and IPv6 transparently. Other advanced features that are
@@ -432,7 +432,7 @@ superuser or, under Linux, needs the C<CAP_NET_RAW> capability.
 
 L<liboping(3)>
 
-The I<liboping> homepage may be found at L<http://verplant.org/liboping/>.
+The I<liboping> homepage may be found at L<http://noping.cc/>.
 Information about its mailing list may be found at
 L<http://mailman.verplant.org/listinfo/liboping>.
 
@@ -445,8 +445,7 @@ Perl interface by Florian Forster.
 
 Copyright (C) 2007 by Olivier Fredj E<lt>ofredjE<nbsp>atE<nbsp>proxad.netE<gt>
 
-Copyright (C) 2008,2009 by Florian Forster
-E<lt>octoE<nbsp>atE<nbsp>verplant.orgE<gt>
+Copyright (C) 2008,2009 by Florian Forster E<lt>ffE<nbsp>atE<nbsp>octo.itE<gt>
 
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.8.7 or,

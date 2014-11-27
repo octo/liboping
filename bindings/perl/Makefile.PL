@@ -123,7 +123,7 @@ WriteMakefile(
     PREREQ_PM         => {},
     ($] >= 5.005
      ? (ABSTRACT_FROM => 'lib/Net/Oping.pm',
-        AUTHOR        => 'Florian Forster <octo@verplant.org>')
+        AUTHOR        => 'Florian Forster <ff@octo.it>')
      : ()),
     ($OPING_DEPEND ? (depend => $OPING_DEPEND) : ()),
     LIBS              => [$OPING_LIBS],
