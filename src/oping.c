@@ -1762,19 +1762,20 @@ int main (int argc, char **argv) /* {{{ */
 		}
 	}
 
-	if(opt_mark != NULL)
+	if (opt_mark != NULL)
 	{
-		char *endp;
-		int mark = strtoul(opt_mark, &endp, 0);
-		if(opt_mark[0] != '\0' && *endp == '\0')
+		char *endp = NULL;
+		int mark = (int) strtol (opt_mark, &endp, /* base = */ 0);
+		if ((opt_mark[0] != 0) && (endp != NULL) && (*endp == 0))
 		{
-			if(ping_setopt(ping, PING_OPT_MARK, (void*)(&mark)) != 0)
+			if (ping_setopt(ping, PING_OPT_MARK, (void*)(&mark)) != 0)
 			{
 				fprintf (stderr, "Setting mark failed: %s\n",
 					ping_get_error (ping));
 			}
 		}
-		else{
+		else
+		{
 			fprintf(stderr, "Ignoring invalid mark: %s\n", optarg);
 		}
 	}
