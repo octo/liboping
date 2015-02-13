@@ -172,6 +172,12 @@ I<Explicit Congestion Notification> (ECN), even if the deprecated
 I<Type of Service> (ToS) aliases were used to specify the bits of outgoing
 packets.
 
+=item B<-m> I<mark>
+
+I<Linux only> Sets the I<mark> (an integer number) on outgoing packets. This
+can be used by L<iptables(8)> and other networking infrastructure for filtering
+and routing.
+
 =item B<-u>|B<-U>
 
 I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
