@@ -701,20 +701,16 @@ static int read_options (int argc, char **argv) /* {{{ */
 				break;
 
 			case 'w':
-			{
-				char *endp;
-				double t = strtod(optarg, &endp);
-				if(optarg[0] != '\0' && *endp == '\0')
 				{
-					opt_timeout = t;
+					char *endp = NULL;
+					double t = strtod (optarg, &endp);
+					if ((optarg[0] != 0) && (endp != NULL) && (*endp == 0))
+						opt_timeout = t;
+					else
+						fprintf (stderr, "Ignoring invalid timeout: %s\n",
+								optarg);
 				}
-				else{
-					fprintf (stderr, "Ignoring invalid timeout: %s\n",
-							optarg);
-				}
-
 				break;
-			}
 
 			case 'I':
 				{
@@ -1682,7 +1678,7 @@ int main (int argc, char **argv) /* {{{ */
 	}
 #endif
 
-        setlocale(LC_ALL, "");
+	setlocale(LC_ALL, "");
 	optind = read_options (argc, argv);
 
 #if !_POSIX_SAVED_IDS
