@@ -258,7 +258,7 @@ printed in red.
 
 =head1 SEE ALSO
 
-L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
+L<ping(8)>, L<http://fping.org/>, L<liboping(3)>
 
 =head1 AUTHOR
 
