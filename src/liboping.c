@@ -134,6 +134,7 @@ struct pingobj
 	double                   timeout;
 	int                      ttl;
 	int                      addrfamily;
+        int                      sockettype;
 	uint8_t                  qos;
 	char                    *data;
 
@@ -1135,6 +1136,7 @@ pingobj_t *ping_construct (void)
 	obj->timeout    = PING_DEF_TIMEOUT;
 	obj->ttl        = PING_DEF_TTL;
 	obj->addrfamily = PING_DEF_AF;
+        obj->sockettype = PING_DEF_SOCKTYPE;
 	obj->data       = strdup (PING_DEF_DATA);
 	obj->qos        = 0;
 
@@ -1338,6 +1340,16 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 		} /* case PING_OPT_MARK */
 		break;
 
+		case PING_OPT_SOCKTYPE:
+			obj->sockettype = *((int *) value);
+			if ((obj->sockettype != SOCK_RAW)
+					&& (obj->sockettype != SOCK_DGRAM))
+			{
+				obj->sockettype = PING_DEF_SOCKTYPE;
+				ret = -1;
+			}
+			break;
+
 		default:
 			ret = -2;
 	} /* switch (option) */
@@ -1395,7 +1407,7 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	ai_hints.ai_flags    |= AI_CANONNAME;
 #endif
 	ai_hints.ai_family    = obj->addrfamily;
-	ai_hints.ai_socktype  = SOCK_RAW;
+	ai_hints.ai_socktype  = obj->sockettype;
 
 	if ((ph = ping_alloc ()) == NULL)
 	{
@@ -1453,16 +1465,16 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 		if (ai_ptr->ai_family == AF_INET)
 		{
-			ai_ptr->ai_socktype = SOCK_RAW;
+			ai_ptr->ai_socktype = ai_hints.ai_socktype;
 			ai_ptr->ai_protocol = IPPROTO_ICMP;
 		}
 		else if (ai_ptr->ai_family == AF_INET6)
 		{
-			ai_ptr->ai_socktype = SOCK_RAW;
+			ai_ptr->ai_socktype = ai_hints.ai_socktype;
 			ai_ptr->ai_protocol = IPPROTO_ICMPV6;
 		}
 		else
-		{
+     		{
 			char errmsg[PING_ERRMSG_LEN];
 
 			snprintf (errmsg, PING_ERRMSG_LEN, "Unknown `ai_family': %i", ai_ptr->ai_family);

@@ -194,6 +194,7 @@ typedef struct ping_context
 static double  opt_interval   = 1.0;
 static double  opt_timeout    = PING_DEF_TIMEOUT;
 static int     opt_addrfamily = PING_DEF_AF;
+static int      opt_socktype  = PING_DEF_SOCKTYPE;
 static char   *opt_srcaddr    = NULL;
 static char   *opt_device     = NULL;
 static char   *opt_mark       = NULL;
@@ -429,6 +430,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 				"-f filename | host [host [host ...]]\n"
 
 			"\nAvailable options:\n"
+                        "  -s sockettype socket type to use RAW or DGRAM\n"
 			"  -4|-6        force the use of IPv4 or IPv6\n"
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
@@ -649,7 +651,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:m:w:"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:P:m:w:s:"
 #if USE_NCURSES
 				"uUg:"
 #endif
@@ -797,6 +799,17 @@ static int read_options (int argc, char **argv) /* {{{ */
 				else
 					opt_exit_status_threshold = tmp / 100.0;
 
+				break;
+			}
+                        case 's':
+			{
+                                if (strcasecmp ("RAW", optarg) == 0)
+					opt_socktype = SOCK_RAW;
+				else if (strcasecmp ("DGRAM", optarg) == 0)
+					opt_socktype = SOCK_DGRAM;
+				else
+					fprintf (stderr, "Ignoring invalid Socket Type Argument: %s\n",
+							optarg);
 				break;
 			}
 
@@ -1743,6 +1756,9 @@ int main (int argc, char **argv) /* {{{ */
 
 	if (opt_addrfamily != PING_DEF_AF)
 		ping_setopt (ping, PING_OPT_AF, (void *) &opt_addrfamily);
+
+        if (opt_socktype != PING_DEF_SOCKTYPE)
+		ping_setopt (ping, PING_OPT_SOCKTYPE, (void *) &opt_socktype);
 
 	if (opt_srcaddr != NULL)
 	{

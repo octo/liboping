@@ -54,10 +54,12 @@ typedef struct pingobj pingobj_t;
 #define PING_OPT_DEVICE  0x20
 #define PING_OPT_QOS     0x40
 #define PING_OPT_MARK    0x80
+#define PING_OPT_SOCKTYPE 0x100
 
 #define PING_DEF_TIMEOUT 1.0
 #define PING_DEF_TTL     255
 #define PING_DEF_AF      AF_UNSPEC
+#define PING_DEF_SOCKTYPE SOCK_RAW
 #define PING_DEF_DATA    "liboping -- ICMP ping library <http://octo.it/liboping/>"
 
 /*
