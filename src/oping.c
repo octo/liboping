@@ -1569,12 +1569,13 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	}
 	else /* if (!(latency > 0.0)) */
 	{
+		size_t buffer_size = sizeof (context->addr);
+		ping_iterator_get_info (iter, PING_INFO_ADDRESS, context->addr, &buffer_size);
 #if USE_NCURSES
 		if (has_colors () == TRUE)
 		{
-			HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u ",
-					context->host, context->addr,
-					sequence);
+			HOST_PRINTF ("echo reply from %s: icmp_seq=%u ",
+					context->addr, sequence);
 			wattron (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
 			HOST_PRINTF ("timeout");
 			wattroff (main_win, COLOR_PAIR(OPING_RED) | A_BOLD);
@@ -1583,9 +1584,8 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		else
 		{
 #endif
-		HOST_PRINTF ("echo reply from %s (%s): icmp_seq=%u timeout\n",
-				context->host, context->addr,
-				sequence);
+		HOST_PRINTF ("echo reply from %s: icmp_seq=%u timeout\n",
+				context->addr, sequence);
 #if USE_NCURSES
 		}
 #endif

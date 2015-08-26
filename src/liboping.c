@@ -271,7 +271,7 @@ static uint16_t ping_icmp4_checksum (char *buf, size_t len)
 }
 
 static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
-		size_t buffer_len)
+		size_t buffer_len, int fd)
 {
 	struct ip *ip_hdr;
 	struct icmp *icmp_hdr;
@@ -305,22 +305,10 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	buffer     += sizeof (struct icmp);
 	buffer_len -= sizeof (struct icmp);
 
-	if (icmp_hdr->icmp_type != ICMP_ECHOREPLY)
+	if (icmp_hdr->icmp_type != ICMP_ECHOREPLY
+		&& icmp_hdr->icmp_type != ICMP_TIMXCEED)
 	{
 		dprintf ("Unexpected ICMP type: %i\n", icmp_hdr->icmp_type);
-		return (NULL);
-	}
-
-	recv_checksum = icmp_hdr->icmp_cksum;
-	icmp_hdr->icmp_cksum = 0;
-	calc_checksum = ping_icmp4_checksum ((char *) icmp_hdr,
-			sizeof (struct icmp) + buffer_len);
-
-	if (recv_checksum != calc_checksum)
-	{
-		dprintf ("Checksum missmatch: Got 0x%04"PRIx16", "
-				"calculated 0x%04"PRIx16"\n",
-				recv_checksum, calc_checksum);
 		return (NULL);
 	}
 
@@ -340,11 +328,19 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 		if (!timerisset (ptr->timer))
 			continue;
 
-		if (ptr->ident != ident)
-			continue;
+		if (icmp_hdr->icmp_type == ICMP_TIMXCEED)
+		{
+			if (ptr->fd != fd)
+				continue;
+		}
+		else
+		{
+			if (ptr->ident != ident)
+				continue;
 
-		if (((ptr->sequence - 1) & 0xFFFF) != seq)
-			continue;
+			if (((ptr->sequence - 1) & 0xFFFF) != seq)
+				continue;
+		}
 
 		dprintf ("Match found: hostname = %s, ident = 0x%04"PRIx16", "
 				"seq = %"PRIu16"\n",
@@ -357,11 +353,29 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	{
 		dprintf ("No match found for ident = 0x%04"PRIx16", seq = %"PRIu16"\n",
 				ident, seq);
+		return (NULL);
 	}
 
-	if (ptr != NULL){
-		ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
-		ptr->recv_qos = (uint8_t) ip_hdr->ip_tos;
+	ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
+	ptr->recv_qos = (uint8_t) ip_hdr->ip_tos;
+
+	if (icmp_hdr->icmp_type == ICMP_TIMXCEED)
+	{
+		ptr->recv_ttl = -1;
+		return (ptr);
+	}
+
+	recv_checksum = icmp_hdr->icmp_cksum;
+	icmp_hdr->icmp_cksum = 0;
+	calc_checksum = ping_icmp4_checksum ((char *) icmp_hdr,
+			sizeof (struct icmp) + buffer_len);
+
+	if (recv_checksum != calc_checksum)
+	{
+		dprintf ("Checksum missmatch: Got 0x%04"PRIx16", "
+				"calculated 0x%04"PRIx16"\n",
+				recv_checksum, calc_checksum);
+		return (NULL);
 	}
 	return (ptr);
 }
@@ -461,6 +475,9 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	pinghost_t *host = NULL;
 	int recv_ttl;
 	uint8_t recv_qos;
+
+	struct sockaddr_storage sin;
+	memset(&sin,0,sizeof(sin));
 	
 	/*
 	 * Set up the receive buffer..
@@ -478,8 +495,8 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	memset (&msghdr, 0, sizeof (msghdr));
 	/* unspecified source address */
-	msghdr.msg_name = NULL;
-	msghdr.msg_namelen = 0;
+	msghdr.msg_name = &sin;
+	msghdr.msg_namelen = sizeof(sin);
 	/* output buffer vector, see readv(2) */
 	msghdr.msg_iov = &payload_iovec;
 	msghdr.msg_iovlen = 1;
@@ -594,7 +611,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 
 	if (ph->addrfamily == AF_INET)
 	{
-		host = ping_receive_ipv4 (obj, payload_buffer, payload_buffer_len);
+		host = ping_receive_ipv4 (obj, payload_buffer, payload_buffer_len, ph->fd);
 		if (host == NULL)
 			return (-1);
 	}
@@ -628,12 +645,21 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			(int) diff.tv_sec,
 			(int) diff.tv_usec);
 
-	if (recv_ttl >= 0)
-		host->recv_ttl = recv_ttl;
-	host->recv_qos = recv_qos;
+	if (host->recv_ttl < 0)
+	{
+		memcpy (host->addr, &sin, sizeof(sin));
+		host->addrlen = sizeof(sin);
+		host->latency = -1.0;
+	}
+	else
+	{
+		if (recv_ttl > 0)
+			host->recv_ttl = recv_ttl;
+		host->recv_qos = recv_qos;
 
-	host->latency  = ((double) diff.tv_usec) / 1000.0;
-	host->latency += ((double) diff.tv_sec)  * 1000.0;
+		host->latency  = ((double) diff.tv_usec) / 1000.0;
+		host->latency += ((double) diff.tv_sec)  * 1000.0;
+	}
 
 	timerclear (host->timer);
 
