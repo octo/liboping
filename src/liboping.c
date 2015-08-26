@@ -353,15 +353,17 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	{
 		dprintf ("No match found for ident = 0x%04"PRIx16", seq = %"PRIu16"\n",
 				ident, seq);
+		return (NULL);
 	}
 
-	if (ptr != NULL){
-		ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
-		ptr->recv_qos = (uint8_t) ip_hdr->ip_tos;
-	}
+	ptr->recv_ttl = (int)     ip_hdr->ip_ttl;
+	ptr->recv_qos = (uint8_t) ip_hdr->ip_tos;
 
 	if (icmp_hdr->icmp_type == ICMP_TIMXCEED)
+	{
+		ptr->recv_ttl = -1;
 		return (ptr);
+	}
 
 	recv_checksum = icmp_hdr->icmp_cksum;
 	icmp_hdr->icmp_cksum = 0;
@@ -643,14 +645,16 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 			(int) diff.tv_sec,
 			(int) diff.tv_usec);
 
-	if (recv_ttl <= 0)
+	if (host->recv_ttl < 0)
 	{
 		memcpy (host->addr, &sin, sizeof(sin));
 		host->addrlen = sizeof(sin);
+		host->latency = -1.0;
 	}
 	else
 	{
-		host->recv_ttl = recv_ttl;
+		if (recv_ttl > 0)
+			host->recv_ttl = recv_ttl;
 		host->recv_qos = recv_qos;
 
 		host->latency  = ((double) diff.tv_usec) / 1000.0;
