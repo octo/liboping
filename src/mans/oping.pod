@@ -238,6 +238,50 @@ remainder.
 
 =back
 
+=item B<-b>
+
+Audible bell. Print a ASCII BEL character (\a or 0x07) when a packet
+is received before the timeout occurs. This can be useful in order to
+monitory hosts' connectivity without looking physically at the
+console, for example to trace network cables (start audible beep,
+disconnect cable N: if beep stops, the cable was in use) or to tell
+when a host returns from a reboot.
+
+This relies on the terminal bell to be functional. To enable the
+terminal bell, use the following instructions.
+
+=over 4
+
+=item
+
+the visual bell is disabled in your terminal emulator, with the +vb
+commandline flag or the following in your .Xresources:
+
+ XTerm*visualBell: false
+
+=item
+
+the PC speaker module is loaded in your kernel:
+
+ modprobe pcspkr
+
+=item
+
+X11 has the terminal bell enabled:
+
+ xset b on; xset b 100
+
+=item
+
+and finally, if you are using PulseAudio, that the module-x11-bell
+module is loaded with a pre-loaded sample defined in your pulseaudio
+configuration:
+
+ load-sample-lazy x11-bell /usr/share/sounds/freedesktop/stereo/complete.oga
+ load-module module-x11-bell sample=x11-bell
+
+=back
+
 =item B<-P> I<percent>
 
 Configures the latency percentile to report. I<percent> must be a number

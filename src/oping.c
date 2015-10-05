@@ -209,6 +209,7 @@ static int     opt_show_graph = 1;
 static int     opt_utf8       = 0;
 #endif
 static char   *opt_outfile    = NULL;
+static int     opt_bell       = 0;
 
 static int host_num  = 0;
 static FILE *outfile = NULL;
@@ -652,7 +653,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:b"
 #if USE_NCURSES
 				"uUg:"
 #endif
@@ -790,6 +791,9 @@ static int read_options (int argc, char **argv) /* {{{ */
 				opt_utf8 = 1;
 				break;
 #endif
+			case 'b':
+				opt_bell = 1;
+				break;
 
 			case 'Z':
 			{
@@ -1575,6 +1579,13 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #if USE_NCURSES
 		}
 #endif
+                if (opt_bell) {
+#if USE_NCURSES
+			beep();
+#else
+			HOST_PRINTF ("\a");
+#endif
+                }
 	}
 	else /* if (!(latency > 0.0)) */
 	{
