@@ -37,3 +37,6 @@ src/liboping.pc
 *.tar.gz
 *.tar.bz2
 bindings/perl/MYMETA.yml
+
+# Netbeans Project
+nbproject

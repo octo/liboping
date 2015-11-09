@@ -1,3 +1,7 @@
+2015-04-03, Version 1.8.1:
+	* oping, noping: Added option to specify socket type.
+	  This will allow us to bypass the need for sudo on systems that support
+	  SOCK_DGRAM.
 2014-11-20, Version 1.8.0:
 	* oping, noping: Average and standard deviation have been removed from
 	  the status output, which show median and 95th percentile instead.

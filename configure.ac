@@ -2,7 +2,7 @@
 
 AC_PREREQ([2.65])
 AC_INIT([liboping],
-	[1.8.0],
+	[1.8.1],
 	[liboping@verplant.org],
 	[],
 	[http://noping.cc/])
