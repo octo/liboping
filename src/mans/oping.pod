@@ -189,6 +189,10 @@ and routing.
 I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
 neither is given, the codeset is automatically determined from the locale.
 
+=item B<-B>
+
+I<noping only> B<-B> disables drawing boxes around the ping results.
+
 =item B<-g> B<none>|B<prettyping>|B<boxplot>|B<histogram>
 
 I<noping only> Selects the graph to display.
