@@ -940,7 +940,7 @@ static int update_graph_boxplot (ping_context_t *ctx, int graph_x, int graph_y) 
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 8)
 		return (EINVAL);
-	x_max -= 4;
+	x_max -= 2 * graph_x;
 
 	counters = calloc (x_max, sizeof (*counters));
 	ratios = calloc (x_max, sizeof (*ratios));
@@ -1039,7 +1039,7 @@ static int update_graph_prettyping (ping_context_t *ctx,  /* {{{ */
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 4)
 		return (EINVAL);
-	x_max -= 4;
+	x_max -= 2 * graph_x;
 
 	/* Determine the first index in the history we need to draw
 	 * the graph. */
@@ -1169,7 +1169,7 @@ static int update_graph_histogram (ping_context_t *ctx, int graph_x, int graph_y
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 4)
 		return (EINVAL);
-	x_max -= 4;
+	x_max -= 2 * graph_x;
 
 	counters = calloc (x_max, sizeof (*counters));
 	accumulated = calloc (x_max, sizeof (*accumulated));
