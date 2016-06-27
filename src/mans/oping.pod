@@ -31,7 +31,7 @@ supports colors.
 
 =item B<-4>
 
-Force the use of IPv4. 
+Force the use of IPv4.
 
 =item B<-6>
 
@@ -84,6 +84,12 @@ possible to I<temporarily> drop privileges. The alternative behavior is: If the
 real user ID (as returned by L<getuid(2)>) and the effective user ID (as
 returned by L<geteuid(2)>) differ, the only argument allowed for this option is
 "-" (i.e. standard input).
+
+=item B<-O> I<filename>
+
+Write measurements in I<Comma Separated Values> (CSV) format to I<filename>.
+This option writes three columns per row: wall clock time in (fractional)
+seconds since epoch, hostname and the round trip time in milliseconds.
 
 =item B<-Q> I<qos>
 
