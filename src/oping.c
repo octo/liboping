@@ -1611,7 +1611,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 			if ((sequence % 32) == 0)
 				fprintf (outfile, "#time,host,latency[ms]\n");
 
-			fprintf (outfile, "%.3f \"%s\" %.2f\n", t, context->host, latency);
+			fprintf (outfile, "%.3f,\"%s\",%.2f\n", t, context->host, latency);
 		}
 	}
 
