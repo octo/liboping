@@ -1,3 +1,13 @@
+2016-06-27, Version 1.9.0:
+	* liboping: The new "PING_OPT_MARK" option allows to mark packets,
+	  which can be used for filtering and routing such packets on Linux.
+	* oping, noping: The new "-m" command line option allows to set a mark
+	  on packets sent by the tool.
+	* oping, noping: The new "-O" command line option allows to write
+	  measurements to an CSV file.
+	* oping, noping: The new "-w" command line option allows to specify
+	  the timeout after which a packet/reply is considered "dropped".
+
 2014-11-20, Version 1.8.0:
 	* oping, noping: Average and standard deviation have been removed from
 	  the status output, which show median and 95th percentile instead.
