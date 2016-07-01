@@ -754,6 +754,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 					free (opt_outfile);
 					opt_outfile = strdup (optarg);
 				}
+				break;
 
 			case 'P':
 				{
