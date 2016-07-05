@@ -199,12 +199,10 @@ fi
 
 AC_SUBST(LIBOPING_PC_LIBS_PRIVATE)
 
-nanosleep_needs_rt="no"
-AC_CHECK_FUNCS(nanosleep, [],
-	AC_CHECK_LIB(rt, nanosleep,
-		[nanosleep_needs_rt="yes"],
-		AC_MSG_ERROR(cannot find nanosleep)))
-AM_CONDITIONAL(BUILD_WITH_LIBRT, test "x$nanosleep_needs_rt" = "xyes")
+AC_SEARCH_LIBS([nanosleep],[rt],[],
+		[AC_MSG_ERROR([cannot find nanosleep])])
+AC_SEARCH_LIBS([clock_gettime],[rt],[],
+		[AC_MSG_ERROR([cannot find clock_gettime])])
 
 with_ncurses="no"
 AC_CHECK_HEADERS(ncursesw/ncurses.h ncurses.h, [with_ncurses="yes"], [])
