@@ -298,12 +298,12 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	buffer     += ip_hdr_len;
 	buffer_len -= ip_hdr_len;
 
-	if (buffer_len < sizeof (struct icmp))
+	if (buffer_len < sizeof (struct icmphdr))
 		return (NULL);
 
 	icmp_hdr = (struct icmp *) buffer;
-	buffer     += sizeof (struct icmp);
-	buffer_len -= sizeof (struct icmp);
+	buffer     += sizeof (struct icmphdr);
+	buffer_len -= sizeof (struct icmphdr);
 
 	if (icmp_hdr->icmp_type != ICMP_ECHOREPLY)
 	{
@@ -314,7 +314,7 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	recv_checksum = icmp_hdr->icmp_cksum;
 	icmp_hdr->icmp_cksum = 0;
 	calc_checksum = ping_icmp4_checksum ((char *) icmp_hdr,
-			sizeof (struct icmp) + buffer_len);
+			sizeof (struct icmphdr) + buffer_len);
 
 	if (recv_checksum != calc_checksum)
 	{
@@ -825,7 +825,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 
 	memset (buf, '\0', sizeof (buf));
 	icmp4 = (struct icmp *) buf;
-	data  = (char *) (icmp4 + 1);
+	data  = buf + sizeof (struct icmphdr);
 
 	icmp4->icmp_type  = ICMP_ECHO;
 	icmp4->icmp_code  = 0;
@@ -833,11 +833,11 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	icmp4->icmp_id    = htons (ph->ident);
 	icmp4->icmp_seq   = htons (ph->sequence);
 
-	buflen = 4096 - sizeof (struct icmp);
+	buflen = sizeof(buf) - sizeof (struct icmphdr);
 	strncpy (data, ph->data, buflen);
 	datalen = strlen (data);
 
-	buflen = datalen + sizeof (struct icmp);
+	buflen = datalen + sizeof (struct icmphdr);
 
 	icmp4->icmp_cksum = ping_icmp4_checksum (buf, buflen);
 
