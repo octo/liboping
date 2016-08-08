@@ -1265,7 +1265,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	return (0);
 } /* }}} int update_stats_from_context */
 
-static int on_resize (pingobj_t *ping) /* {{{ */
+static int create_windows (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
 	int width = 0;
@@ -1278,12 +1278,22 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 		return (EINVAL);
 
 	main_win_height = height - (box_height * host_num);
-	wresize (main_win, main_win_height, /* width = */ width);
+        if (main_win != NULL )
+        {
+            delwin(main_win);
+            main_win = NULL;
+        }
+        main_win = newwin (/* height = */ main_win_height,
+                           /* width = */ width,
+                           /* y = */ 0, /* x = */ 0);
+
+
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
 	/* wsetscrreg (main_win, 0, main_win_height - 1); */
 	/* Allow hardware accelerated scrolling. */
 	idlok (main_win, TRUE);
+        wmove (main_win, /* y = */ main_win_height - 1, /* x = */ 0);
 	wrefresh (main_win);
 
 	for (iter = ping_iterator_get (ping);
@@ -1331,27 +1341,17 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 	}
 
 	if (need_resize)
-		return (on_resize (ping));
+		return (create_windows (ping));
 	else
 		return (0);
 } /* }}} int check_resize */
 
 static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 {
-	pingobj_iter_t *iter;
-	int width = 0;
-	int height = 0;
-	int main_win_height;
-	int box_height = (opt_show_graph == 0) ? 4 : 5;
-
 	initscr ();
 	cbreak ();
 	noecho ();
 	nodelay (stdscr, TRUE);
-
-	getmaxyx (stdscr, height, width);
-	if ((height < 1) || (width < 1))
-		return (EINVAL);
 
 	if (has_colors () == TRUE)
 	{
@@ -1364,39 +1364,8 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
 	}
 
-	main_win_height = height - (box_height * host_num);
-	main_win = newwin (/* height = */ main_win_height,
-			/* width = */ width,
-			/* y = */ 0, /* x = */ 0);
-	/* Allow scrolling */
-	scrollok (main_win, TRUE);
-	/* wsetscrreg (main_win, 0, main_win_height - 1); */
-	/* Allow hardware accelerated scrolling. */
-	idlok (main_win, TRUE);
-	wmove (main_win, /* y = */ main_win_height - 1, /* x = */ 0);
-	wrefresh (main_win);
-
-	for (iter = ping_iterator_get (ping);
-			iter != NULL;
-			iter = ping_iterator_next (iter))
-	{
-		ping_context_t *context;
-
-		context = ping_iterator_get_context (iter);
-		if (context == NULL)
-			continue;
-
-		if (context->window != NULL)
-		{
-			delwin (context->window);
-			context->window = NULL;
-		}
-		context->window = newwin (/* height = */ box_height,
-				/* width = */ width,
-				/* y = */ main_win_height + (box_height * context->index),
-				/* x = */ 0);
-	}
-
+        /* FIXME - if this returns einval, fail out */
+        create_windows(ping);
 
 	/* Don't know what good this does exactly, but without this code
 	 * "check_resize" will be called right after startup and *somehow*
