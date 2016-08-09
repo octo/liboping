@@ -790,7 +790,7 @@ static int read_options (int argc, char **argv) /* {{{ */
                         {
                                 int height;
                                 height = atoi (optarg);
-                                if ((height > 2) && (height <= 5))
+                                if ((height > 0) && (height <= 5))
                                     opt_box_height = height;
                                 else
                                     fprintf (stderr, "Ignoring invalid window height: %s\n",
@@ -919,7 +919,10 @@ static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 		return (ENOENT);
 
         y_max = (size_t) getmaxy (ctx->window);
-        y_max -= 2; /* one each for top and bottom border */
+        if (y_max>2) {
+            y_max -= 2; /* one each for top and bottom border */
+        } else
+            y_max -= 1;
 
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 8)
@@ -1021,7 +1024,10 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 	size_t history_offset;
 
         y_max = (size_t) getmaxy (ctx->window);
-        y_max -= 2; /* one each for top and bottom border */
+        if (y_max>2) {
+            y_max -= 2; /* one each for top and bottom border */
+        } else
+            y_max -= 1;
 
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 4)
@@ -1151,7 +1157,10 @@ static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
 		symbols_num = hist_symbols_utf8_num;
 
         y_max = (size_t) getmaxy (ctx->window);
-        y_max -= 2; /* one each for top and bottom border */
+        if (y_max>2) {
+            y_max -= 2; /* one each for top and bottom border */
+        } else
+            y_max -= 1;
 
 
 	x_max = (size_t) getmaxx (ctx->window);
@@ -1251,7 +1260,12 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 
 	/* werase (ctx->window); */
 
-        if (opt_box_height > 1 ) {
+        if (opt_box_height == 1 ) {
+            mvwprintw (ctx->window, /* y = */ 0, /* x = */ 1,
+                            "[");
+            mvwprintw (ctx->window, /* y = */ 0,
+                /* x = */ getmaxx(ctx->window) -2, "]");
+        } else if (opt_box_height > 1 ) {
             box (ctx->window, 0, 0);
             wattron (ctx->window, A_BOLD);
             mvwprintw (ctx->window, /* y = */ 0, /* x = */ 5,
