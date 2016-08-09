@@ -206,6 +206,7 @@ static double  opt_percentile = -1.0;
 static double  opt_exit_status_threshold = 1.0;
 #if USE_NCURSES
 static int     opt_show_graph = 1;
+static int     opt_box_height = 5;
 static int     opt_utf8       = 0;
 #endif
 static char   *opt_outfile    = NULL;
@@ -446,6 +447,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 #if USE_NCURSES
 			"  -u / -U      force / disable UTF-8 output\n"
 			"  -g graph     graph type to draw\n"
+                        "  -H lines     height of each box\n"
 #endif
 			"  -P percent   Report the n'th percentile of latency\n"
 			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
@@ -654,7 +656,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 	{
 		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:"
 #if USE_NCURSES
-				"uUg:"
+				"uUg:H:"
 #endif
 				);
 
@@ -783,6 +785,18 @@ static int read_options (int argc, char **argv) /* {{{ */
 				else
 					fprintf (stderr, "Unknown graph option: %s\n", optarg);
 				break;
+
+			case 'H':
+                        {
+                                int height;
+                                height = atoi (optarg);
+                                if ((height > 2) && (height <= 5))
+                                    opt_box_height = height;
+                                else
+                                    fprintf (stderr, "Ignoring invalid window height: %s\n",
+                                             optarg);
+				break;
+                        }
 
 			case 'u':
 				opt_utf8 = 2;
@@ -1237,34 +1251,40 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 
 	/* werase (ctx->window); */
 
-	box (ctx->window, 0, 0);
-	wattron (ctx->window, A_BOLD);
-	mvwprintw (ctx->window, /* y = */ 0, /* x = */ 5,
-			" %s ", ctx->host);
-	wattroff (ctx->window, A_BOLD);
-	wprintw (ctx->window, "ping statistics ");
-	mvwprintw (ctx->window, /* y = */ 1, /* x = */ 2,
-			"%i packets transmitted, %i received, %.2f%% packet "
-			"loss, time %.1fms",
-			ctx->req_sent, ctx->req_rcvd,
-			context_get_packet_loss (ctx),
-			ctx->latency_total);
-	if (ctx->req_rcvd != 0)
-	{
-		double min;
-		double median;
-		double max;
-		double percentile;
+        if (opt_box_height > 1 ) {
+            box (ctx->window, 0, 0);
+            wattron (ctx->window, A_BOLD);
+            mvwprintw (ctx->window, /* y = */ 0, /* x = */ 5,
+                            " %s ", ctx->host);
+            wattroff (ctx->window, A_BOLD);
+            wprintw (ctx->window, "ping statistics ");
+        }
+        if (opt_box_height > 3) {
+            mvwprintw (ctx->window, /* y = */ 1, /* x = */ 2,
+                        "%i packets transmitted, %i received, %.2f%% packet "
+                        "loss, time %.1fms",
+                        ctx->req_sent, ctx->req_rcvd,
+                        context_get_packet_loss (ctx),
+                        ctx->latency_total);
+        }
+        if (opt_box_height > 4) {
+            if (ctx->req_rcvd != 0)
+            {
+                    double min;
+                    double median;
+                    double max;
+                    double percentile;
 
-		min = percentile_to_latency (ctx, 0.0);
-		median = percentile_to_latency (ctx, 50.0);
-		max = percentile_to_latency (ctx, 100.0);
-		percentile = percentile_to_latency (ctx, opt_percentile);
+                    min = percentile_to_latency (ctx, 0.0);
+                    median = percentile_to_latency (ctx, 50.0);
+                    max = percentile_to_latency (ctx, 100.0);
+                    percentile = percentile_to_latency (ctx, opt_percentile);
 
-		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f  ",
-				min, median, opt_percentile, percentile, max);
-	}
+                    mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
+                                    "RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f  ",
+                                    min, median, opt_percentile, percentile, max);
+            }
+        }
 
 	if (opt_show_graph == 1)
 		update_graph_prettyping (ctx, latency, sequence);
@@ -1284,7 +1304,11 @@ static int create_windows (pingobj_t *ping) /* {{{ */
 	int width = 0;
 	int height = 0;
 	int main_win_height;
-	int box_height = (opt_show_graph == 0) ? 4 : 5;
+	int box_height = opt_box_height;
+
+        if (opt_show_graph == 0) {
+            box_height--;
+        }
 
 	getmaxyx (stdscr, height, width);
 	if ((height < 1) || (width < 1))
