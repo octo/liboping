@@ -88,6 +88,9 @@
 #  include <ncurses.h>
 # endif
 
+# define MIN_BOX_HEIGHT 1
+# define MAX_BOX_HEIGHT 5
+
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
 # define OPING_RED 3
@@ -206,7 +209,7 @@ static double  opt_percentile = -1.0;
 static double  opt_exit_status_threshold = 1.0;
 #if USE_NCURSES
 static int     opt_show_graph = 1;
-static int     opt_box_height = 5;
+static int     opt_box_height = MAX_BOX_HEIGHT;
 static int     opt_utf8       = 0;
 #endif
 static char   *opt_outfile    = NULL;
@@ -790,7 +793,7 @@ static int read_options (int argc, char **argv) /* {{{ */
                         {
                                 int height;
                                 height = atoi (optarg);
-                                if ((height > 0) && (height <= 5))
+                                if ((height >= MIN_BOX_HEIGHT) && (height <= MAX_BOX_HEIGHT))
                                     opt_box_height = height;
                                 else
                                     fprintf (stderr, "Ignoring invalid window height: %s\n",
@@ -1389,6 +1392,22 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 			else if (opt_show_graph > 0)
 				opt_show_graph++;
 		}
+                else if (key == '+')
+                {
+                    opt_box_height++;
+                    if (opt_box_height>MAX_BOX_HEIGHT)
+                        opt_box_height=MAX_BOX_HEIGHT;
+                    else
+                        need_resize = 1;
+                }
+                else if (key == '-')
+                {
+                    opt_box_height--;
+                    if (opt_box_height<MIN_BOX_HEIGHT)
+                        opt_box_height=MIN_BOX_HEIGHT;
+                    else
+                        need_resize = 1;
+                }
 	}
 
 	if (need_resize)
