@@ -298,12 +298,12 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	buffer     += ip_hdr_len;
 	buffer_len -= ip_hdr_len;
 
-	if (buffer_len < sizeof (struct icmphdr))
+	if (buffer_len < ICMP_MINLEN)
 		return (NULL);
 
 	icmp_hdr = (struct icmp *) buffer;
-	buffer     += sizeof (struct icmphdr);
-	buffer_len -= sizeof (struct icmphdr);
+	buffer     += ICMP_MINLEN;
+	buffer_len -= ICMP_MINLEN;
 
 	if (icmp_hdr->icmp_type != ICMP_ECHOREPLY)
 	{
@@ -314,7 +314,7 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	recv_checksum = icmp_hdr->icmp_cksum;
 	icmp_hdr->icmp_cksum = 0;
 	calc_checksum = ping_icmp4_checksum ((char *) icmp_hdr,
-			sizeof (struct icmphdr) + buffer_len);
+			ICMP_MINLEN + buffer_len);
 
 	if (recv_checksum != calc_checksum)
 	{
@@ -392,12 +392,12 @@ static pinghost_t *ping_receive_ipv6 (pingobj_t *obj, char *buffer,
 
 	pinghost_t *ptr;
 
-	if (buffer_len < sizeof (struct icmp6_hdr))
+	if (buffer_len < ICMP_MINLEN)
 		return (NULL);
 
 	icmp_hdr = (struct icmp6_hdr *) buffer;
-	buffer     += sizeof (struct icmp);
-	buffer_len -= sizeof (struct icmp);
+	buffer     += ICMP_MINLEN;
+	buffer_len -= ICMP_MINLEN;
 
 	if (icmp_hdr->icmp6_type != ICMP6_ECHO_REPLY)
 	{
@@ -825,7 +825,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 
 	memset (buf, '\0', sizeof (buf));
 	icmp4 = (struct icmp *) buf;
-	data  = buf + sizeof (struct icmphdr);
+	data  = buf + ICMP_MINLEN;
 
 	icmp4->icmp_type  = ICMP_ECHO;
 	icmp4->icmp_code  = 0;
@@ -833,11 +833,11 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	icmp4->icmp_id    = htons (ph->ident);
 	icmp4->icmp_seq   = htons (ph->sequence);
 
-	buflen = sizeof(buf) - sizeof (struct icmphdr);
+	buflen = sizeof(buf) - ICMP_MINLEN;
 	strncpy (data, ph->data, buflen);
 	datalen = strlen (data);
 
-	buflen = datalen + sizeof (struct icmphdr);
+	buflen = datalen + ICMP_MINLEN;
 
 	icmp4->icmp_cksum = ping_icmp4_checksum (buf, buflen);
 
@@ -880,11 +880,11 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	icmp6->icmp6_id    = htons (ph->ident);
 	icmp6->icmp6_seq   = htons (ph->sequence);
 
-	buflen = 4096 - sizeof (struct icmp6_hdr);
+	buflen = 4096 - ICMP_MINLEN;
 	strncpy (data, ph->data, buflen);
 	datalen = strlen (data);
 
-	buflen = datalen + sizeof (struct icmp6_hdr);
+	buflen = datalen + ICMP_MINLEN;
 
 	dprintf ("Sending ICMPv6 package with ID 0x%04x\n", ph->ident);
 
