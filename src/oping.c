@@ -895,6 +895,7 @@ static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 	uint32_t *counters;
 	double *ratios;
 	size_t i;
+        size_t y_max;
 	size_t x_max;
 	size_t x;
 
@@ -902,6 +903,9 @@ static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 
 	if (ctx->history_received == 0)
 		return (ENOENT);
+
+        y_max = (size_t) getmaxy (ctx->window);
+        y_max -= 2; /* one each for top and bottom border */
 
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 8)
@@ -983,8 +987,8 @@ static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 
 		if (reverse)
 			wattron (ctx->window, A_REVERSE);
-		mvwaddch (ctx->window, /* y = */ 3, /* x = */ (int) (x + 2), symbol);
-		// mvwprintw (ctx->window, /* y = */ 3, /* x = */ (int) (x + 2), symbol);
+		mvwaddch (ctx->window, /* y = */ y_max, /* x = */ (int) (x + 2), symbol);
+		// mvwprintw (ctx->window, /* y = */ y_max, /* x = */ (int) (x + 2), symbol);
 		if (reverse)
 			wattroff (ctx->window, A_REVERSE);
 	}
@@ -999,7 +1003,11 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 {
 	size_t x;
 	size_t x_max;
+        size_t y_max;
 	size_t history_offset;
+
+        y_max = (size_t) getmaxy (ctx->window);
+        y_max -= 2; /* one each for top and bottom border */
 
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 4)
@@ -1035,7 +1043,7 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 
 		if (x >= ctx->history_size)
 		{
-			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, ' ');
+			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2, ' ');
 			continue;
 		}
 
@@ -1093,9 +1101,9 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 			wattron (ctx->window, COLOR_PAIR(color));
 
 		if (has_utf8())
-			mvwprintw (ctx->window, /* y = */ 3, /* x = */ x + 2, symbol);
+			mvwprintw (ctx->window, /* y = */ y_max, /* x = */ x + 2, symbol);
 		else
-			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, symbolc);
+			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2, symbolc);
 
 		if (has_colors () == TRUE)
 			wattroff (ctx->window, COLOR_PAIR(color));
@@ -1114,6 +1122,7 @@ static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
 	uint32_t *accumulated;
 	uint32_t max;
 	size_t i;
+        size_t y_max;
 	size_t x_max;
 	size_t x;
 
@@ -1126,6 +1135,10 @@ static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
 
 	if (has_utf8 ())
 		symbols_num = hist_symbols_utf8_num;
+
+        y_max = (size_t) getmaxy (ctx->window);
+        y_max -= 2; /* one each for top and bottom border */
+
 
 	x_max = (size_t) getmaxx (ctx->window);
 	if (x_max <= 4)
@@ -1188,12 +1201,12 @@ static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
 		}
 
 		if (counters[x] == 0)
-			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, ' ');
+			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2, ' ');
 		else if (has_utf8 ())
-			mvwprintw (ctx->window, /* y = */ 3, /* x = */ x + 2,
+			mvwprintw (ctx->window, /* y = */ y_max, /* x = */ x + 2,
 					hist_symbols_utf8[index]);
 		else
-			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2,
+			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2,
 					hist_symbols_acs[index] | A_ALTCHARSET);
 
 		if (has_colors () == TRUE)
