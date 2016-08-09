@@ -302,19 +302,16 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 		return (NULL);
 
 	icmp_hdr = (struct icmp *) buffer;
-	buffer     += ICMP_MINLEN;
-	buffer_len -= ICMP_MINLEN;
-
 	if (icmp_hdr->icmp_type != ICMP_ECHOREPLY)
 	{
-		dprintf ("Unexpected ICMP type: %i\n", icmp_hdr->icmp_type);
+		dprintf ("Unexpected ICMP type: %"PRIu8"\n", icmp_hdr->icmp_type);
 		return (NULL);
 	}
 
 	recv_checksum = icmp_hdr->icmp_cksum;
+	/* This writes to buffer. */
 	icmp_hdr->icmp_cksum = 0;
-	calc_checksum = ping_icmp4_checksum ((char *) icmp_hdr,
-			ICMP_MINLEN + buffer_len);
+	calc_checksum = ping_icmp4_checksum (buffer, buffer_len);
 
 	if (recv_checksum != calc_checksum)
 	{
@@ -815,29 +812,28 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	struct icmp *icmp4;
 	int status;
 
-	char buf[4096];
-	int  buflen;
+	char   buf[4096] = {0};
+	size_t buflen;
 
 	char *data;
-	int   datalen;
+	size_t datalen;
 
 	dprintf ("ph->hostname = %s\n", ph->hostname);
 
-	memset (buf, '\0', sizeof (buf));
 	icmp4 = (struct icmp *) buf;
+	*icmp4 = (struct icmp) {
+		.icmp_type = ICMP_ECHO,
+		.icmp_id   = htons (ph->ident),
+		.icmp_seq  = htons (ph->sequence),
+	};
+
+	datalen = strlen (ph->data);
+	buflen = ICMP_MINLEN + datalen;
+	if (sizeof (buf) < buflen)
+		return (EINVAL);
+
 	data  = buf + ICMP_MINLEN;
-
-	icmp4->icmp_type  = ICMP_ECHO;
-	icmp4->icmp_code  = 0;
-	icmp4->icmp_cksum = 0;
-	icmp4->icmp_id    = htons (ph->ident);
-	icmp4->icmp_seq   = htons (ph->sequence);
-
-	buflen = sizeof(buf) - ICMP_MINLEN;
-	strncpy (data, ph->data, buflen);
-	datalen = strlen (data);
-
-	buflen = datalen + ICMP_MINLEN;
+	memcpy (data, ph->data, datalen);
 
 	icmp4->icmp_cksum = ping_icmp4_checksum (buf, buflen);
 
@@ -860,7 +856,7 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	struct icmp6_hdr *icmp6;
 	int status;
 
-	char buf[4096];
+	char buf[4096] = {0};
 	int  buflen;
 
 	char *data;
@@ -868,23 +864,22 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 
 	dprintf ("ph->hostname = %s\n", ph->hostname);
 
-	memset (buf, '\0', sizeof (buf));
 	icmp6 = (struct icmp6_hdr *) buf;
-	data  = (char *) (icmp6 + 1);
+	*icmp6 = (struct icmp6_hdr) {
+		.icmp6_type  = ICMP6_ECHO_REQUEST,
+		.icmp6_id    = htons (ph->ident),
+		.icmp6_seq   = htons (ph->sequence),
+	};
 
-	icmp6->icmp6_type  = ICMP6_ECHO_REQUEST;
-	icmp6->icmp6_code  = 0;
-	/* The checksum will be calculated by the TCP/IP stack.  */
-	/* FIXME */
-	icmp6->icmp6_cksum = 0;
-	icmp6->icmp6_id    = htons (ph->ident);
-	icmp6->icmp6_seq   = htons (ph->sequence);
+	datalen = strlen (ph->data);
+	buflen = sizeof (*icmp6) + datalen;
+	if (sizeof (buf) < buflen)
+		return (EINVAL);
 
-	buflen = 4096 - ICMP_MINLEN;
-	strncpy (data, ph->data, buflen);
-	datalen = strlen (data);
+	data  = buf + ICMP_MINLEN;
+	memcpy (data, ph->data, datalen);
 
-	buflen = datalen + ICMP_MINLEN;
+	/* The checksum will be calculated by the TCP/IP stack. */
 
 	dprintf ("Sending ICMPv6 package with ID 0x%04x\n", ph->ident);
 
