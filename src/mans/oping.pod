@@ -238,6 +238,14 @@ remainder.
 
 =back
 
+=item B<-H> I<height>
+
+Sets the height of the boxs containing each graph.  The <height> must
+be a number between 1 and 5.  The default is B<5> lines, which shows the
+maximum amount of information.  Reducing the size will remove the textual
+information and will eventually remove the box drawn around the graph -
+showing only the graph when set to B<1> line.
+
 =item B<-P> I<percent>
 
 Configures the latency percentile to report. I<percent> must be a number
@@ -273,6 +281,12 @@ in the 80th percentile are considered to be "normal" and are printed in green.
 RTTs within the 95th percentile are considered "moderately unusual" and are
 printed in yellow. RTTs above that are considered to be "unusual" and are
 printed in red.
+
+=head1 INTERACTIVE KEYBOARD CONTROLS
+
+When running I<noping>, the type of graph being displayed can be
+changed by using the B<g> key.  The height of the graph boxes can
+also be increased and decreased with B<+> and B<-> keys.
 
 =head1 SEE ALSO
 
