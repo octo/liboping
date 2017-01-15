@@ -40,8 +40,8 @@ if BUILD_WITH_LIBNCURSES
 bin_PROGRAMS += noping
 
 noping_SOURCES = oping.c
-noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1
-noping_LDADD = liboping.la -lm $(NCURSES_LIB)
+noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1 $(NCURSES_CFLAGS)
+noping_LDADD = liboping.la -lm $(NCURSES_LIBS)
 endif # BUILD_WITH_LIBNCURSES
 
 install-exec-hook:
