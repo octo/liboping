@@ -151,6 +151,11 @@ static size_t const hist_colors_num = sizeof (hist_colors_utf8)
 # define __attribute__(x) /**/
 #endif
 
+#ifdef __MACH__
+#include <mach/clock.h>
+#include <mach/mach.h>
+#endif
+
 typedef struct ping_context
 {
 	char host[NI_MAXHOST];
@@ -1615,8 +1620,22 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 	if (outfile != NULL)
 	{
 		struct timespec ts = { 0, 0 };
+		int cret;
 
-		if (clock_gettime (CLOCK_REALTIME, &ts) == 0)
+#ifdef __MACH__ // OS X does not have clock_gettime, use clock_get_time
+		clock_serv_t cclock;
+		mach_timespec_t mts;
+		host_get_clock_service (mach_host_self (), CALENDAR_CLOCK, &cclock);
+		cret = clock_get_time (cclock, &mts);
+		mach_port_deallocate (mach_task_self (), cclock);
+		ts = (struct timespec) {
+			.tv_sec = mts.tv_sec,
+			.tv_nsec = mts.tv_nsec,
+		};
+#else	
+		cret = clock_gettime (CLOCK_REALTIME, &ts);
+#endif
+		if (cret == 0)
 		{
 			double t = ((double) ts.tv_sec) + (((double) ts.tv_nsec) / 1000000000.0);
 
