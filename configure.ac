@@ -202,7 +202,7 @@ AC_SUBST(LIBOPING_PC_LIBS_PRIVATE)
 AC_SEARCH_LIBS([nanosleep],[rt],[],
 		[AC_MSG_ERROR([cannot find nanosleep])])
 AC_SEARCH_LIBS([clock_gettime],[rt],[],
-		[]
+		[])
 
 with_ncurses="no"
 AC_CHECK_HEADERS(ncursesw/ncurses.h ncurses.h, [with_ncurses="yes"], [])
