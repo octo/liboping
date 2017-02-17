@@ -1722,6 +1722,20 @@ pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter)
 	return ((pingobj_iter_t *) iter->next);
 }
 
+int ping_iterator_count (pingobj_t *obj)
+{
+	if (obj == NULL)
+		return 0;
+
+        int count = 0;
+        pingobj_iter_t *iter = obj->head;
+        while(iter) {
+            count++;
+            iter = iter->next;
+        }
+        return count;
+}
+
 int ping_iterator_get_info (pingobj_iter_t *iter, int info,
 		void *buffer, size_t *buffer_len)
 {
