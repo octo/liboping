@@ -1324,6 +1324,8 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 
 		if (context->window != NULL)
 		{
+                        werase (context->window);
+                        wrefresh (context->window);
 			delwin (context->window);
 			context->window = NULL;
 		}
