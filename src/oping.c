@@ -293,7 +293,7 @@ static void clean_history (ping_context_t *ctx) /* {{{ */
 	memcpy (ctx->history_by_value, ctx->history_by_time,
 			sizeof (ctx->history_by_time));
 
-        /* Remove impossible values */
+        /* Remove impossible values caused by adding a new host */
 	for (i = 0; i < ctx->history_size; i++)
                 if (ctx->history_by_value[i]<0)
                         ctx->history_by_value[i]=NAN;
@@ -402,6 +402,7 @@ static int ping_initialize_contexts (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
 	int index;
+        size_t history_size = 0;
 
 	if (ping == NULL)
 		return (EINVAL);
@@ -414,8 +415,24 @@ static int ping_initialize_contexts (pingobj_t *ping) /* {{{ */
 		ping_context_t *context;
 		size_t buffer_size;
 
+                context = ping_iterator_get_context(iter);
+
+                /* if this is a previously existing host, do not recreate it */
+                if (context != NULL) {
+                    history_size = context->history_size;
+                    context->index = index++;
+                    continue;
+                }
+
 		context = context_create ();
 		context->index = index;
+
+                /* start new hosts at the same graph point as old hosts */
+                context->history_size = history_size;
+                context->history_index = history_size;
+                for (int i = 0; i<history_size; i++) {
+                    context->history_by_time[i] = -1;
+                }
 
 		buffer_size = sizeof (context->host);
 		ping_iterator_get_info (iter, PING_INFO_HOSTNAME, context->host, &buffer_size);
@@ -1335,6 +1352,34 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 			else if (opt_show_graph > 0)
 				opt_show_graph++;
 		}
+                else if (key == 'a')
+                {
+                        char host[80];
+
+                        wprintw(main_win, "New Host: ");
+                        echo();
+                        wgetnstr(main_win, host, sizeof(host));
+                        noecho();
+
+			if (ping_host_add(ping, host) < 0)
+			{
+				const char *errmsg = ping_get_error (ping);
+
+				wprintw (main_win, "Adding host `%s' failed: %s\n", host, errmsg);
+			}
+			else
+			{
+                                int box_height = (opt_show_graph == 0) ? 4 : 5;
+
+                                /* make sure old data is still visible */
+                                for (int i = 0; i<box_height; i++)
+                                    wprintw (main_win, "\n");
+
+                                need_resize = 1;
+				host_num++;
+                                ping_initialize_contexts(ping);
+			}
+                }
 	}
 
 	if (need_resize)
