@@ -999,7 +999,7 @@ static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 } /* }}} int update_graph_boxplot */
 
 static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
-		double latency, unsigned int sequence)
+		double latency)
 {
 	size_t x;
 	size_t x_max;
@@ -1217,12 +1217,6 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	ping_iterator_get_info (iter, PING_INFO_LATENCY,
 			&latency, &buffer_len);
 
-	unsigned int sequence = 0;
-	buffer_len = sizeof (sequence);
-	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
-			&sequence, &buffer_len);
-
-
 	if ((ctx == NULL) || (ctx->window == NULL))
 		return (EINVAL);
 
@@ -1258,7 +1252,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	}
 
 	if (opt_show_graph == 1)
-		update_graph_prettyping (ctx, latency, sequence);
+		update_graph_prettyping (ctx, latency);
 	else if (opt_show_graph == 2)
 		update_graph_histogram (ctx);
 	else if (opt_show_graph == 3)
