@@ -293,6 +293,11 @@ static void clean_history (ping_context_t *ctx) /* {{{ */
 	memcpy (ctx->history_by_value, ctx->history_by_time,
 			sizeof (ctx->history_by_time));
 
+        /* Remove impossible values */
+	for (i = 0; i < ctx->history_size; i++)
+                if (ctx->history_by_value[i]<0)
+                        ctx->history_by_value[i]=NAN;
+
 	/* Sort all RTTs. */
 	qsort (ctx->history_by_value, ctx->history_size, sizeof
 			(ctx->history_by_value[0]), compare_double);
@@ -1045,6 +1050,10 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 
 		index = (history_offset + x) % ctx->history_size;
 		latency = ctx->history_by_time[index];
+
+                if (latency < 0) {
+                        continue;
+                }
 
 		if (latency >= 0.0)
 		{
