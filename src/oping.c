@@ -1369,11 +1369,8 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 			}
 			else
 			{
-                                int box_height = (opt_show_graph == 0) ? 4 : 5;
-
-                                /* make sure old data is still visible */
-                                for (int i = 0; i<box_height; i++)
-                                    wprintw (main_win, "\n");
+                                /* FIXME - scroll main_win correctly so that
+                                    old data is still visible */
 
                                 need_resize = 1;
 				host_num++;
