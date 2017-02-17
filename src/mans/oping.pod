@@ -318,6 +318,12 @@ RTTs within the 95th percentile are considered "moderately unusual" and are
 printed in yellow. RTTs above that are considered to be "unusual" and are
 printed in red.
 
+=head1 INTERACTIVE KEYBOARD CONTROLS
+
+When running I<noping>, the type of graph being displayed can be
+changed by using the B<g> key.  A new host can be added at any time
+with the B<a> key.
+
 =head1 SEE ALSO
 
 L<ping(8)>, L<http://fping.org/>, L<liboping(3)>
