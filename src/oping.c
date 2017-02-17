@@ -1376,7 +1376,7 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 				/* FIXME - scroll main_win correctly so that old
 				 * data is still visible */
 				need_resize = 1;
-				host_num++;
+				host_num = ping_iterator_count(ping);
 				ping_initialize_contexts(ping);
 			}
 		}
