@@ -1614,11 +1614,10 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 
 	if (outfile != NULL)
 	{
-		struct timespec ts = { 0, 0 };
-
-		if (clock_gettime (CLOCK_REALTIME, &ts) == 0)
+		struct timeval tv = {0};
+		if (gettimeofday (&tv, NULL) == 0)
 		{
-			double t = ((double) ts.tv_sec) + (((double) ts.tv_nsec) / 1000000000.0);
+			double t = ((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0);
 
 			if ((sequence % 32) == 0)
 				fprintf (outfile, "#time,host,latency[ms]\n");
