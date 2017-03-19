@@ -82,11 +82,17 @@
 /* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
 # define _X_OPEN_SOURCE_EXTENDED
 
-# if HAVE_NCURSESW_NCURSES_H
-#  include <ncursesw/ncurses.h>
-# elif HAVE_NCURSES_H
+#if defined HAVE_NCURSESW_CURSES_H
+#  include <ncursesw/curses.h>
+#elif defined HAVE_NCURSESW_H
+#  include <ncursesw.h>
+#elif defined HAVE_NCURSES_CURSES_H
+#  include <ncurses/curses.h>
+#elif defined HAVE_NCURSES_H
 #  include <ncurses.h>
-# endif
+#else
+#  error "SysV or X/Open-compatible Curses header file required"
+#endif
 
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
