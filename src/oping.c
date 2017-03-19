@@ -1360,10 +1360,11 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 	if (has_colors () == TRUE)
 	{
 		start_color ();
-		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
-		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
-		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
-		init_pair (OPING_GREEN_HIST,  COLOR_GREEN,  COLOR_BLACK);
+		use_default_colors ();
+		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ -1);
+		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ -1);
+		init_pair (OPING_RED,    COLOR_RED,    /* default = */ -1);
+		init_pair (OPING_GREEN_HIST,  COLOR_GREEN,  -1);
 		init_pair (OPING_YELLOW_HIST, COLOR_YELLOW, COLOR_GREEN);
 		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
 	}
