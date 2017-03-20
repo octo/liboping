@@ -1354,7 +1354,7 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 		}
 		else if (key == 'a')
 		{
-			char host[80];
+			char host[NI_MAXHOST];
 
 			wprintw(main_win, "New Host: ");
 			echo();
