@@ -178,7 +178,7 @@ typedef struct ping_context
 	 * and HISTORY_SIZE_MAX. */
 	size_t history_size;
 
-	/* Number "received" entries in the history, i.e. non-NAN entries. */
+	/* Total number of reponses received. */
 	size_t history_received;
 
 	/* Index of the next RTT to be written to history_by_time. This wraps
