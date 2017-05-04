@@ -232,22 +232,17 @@ static void sigint_handler (int signal) /* {{{ */
 	opt_count = 0;
 } /* }}} void sigint_handler */
 
-static ping_context_t *context_create (void) /* {{{ */
+static ping_context_t *context_create () /* {{{ */
 {
-	ping_context_t *ret;
-
-	if ((ret = malloc (sizeof (ping_context_t))) == NULL)
+	ping_context_t *ctx = calloc (1, sizeof (*ctx));
+	if (ctx == NULL)
 		return (NULL);
 
-	memset (ret, '\0', sizeof (ping_context_t));
-
-	ret->latency_total = 0.0;
-
 #if USE_NCURSES
-	ret->window = NULL;
+	ctx->window = NULL;
 #endif
 
-	return (ret);
+	return (ctx);
 } /* }}} ping_context_t *context_create */
 
 static void context_destroy (ping_context_t *context) /* {{{ */
