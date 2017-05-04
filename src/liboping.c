@@ -694,6 +694,7 @@ static int ping_receive_all (pingobj_t *obj)
 			if (!timerisset (ptr->timer))
 				continue;
 
+			assert (ptr->fd < FD_SETSIZE);
 			FD_SET (ptr->fd, &read_fds);
 			FD_SET (ptr->fd, &err_fds);
 			num_fds++;
@@ -1479,6 +1480,16 @@ int ping_host_add (pingobj_t *obj, const char *host)
 					sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
 			ping_set_errno (obj, errno);
+			continue;
+		}
+		else if (ph->fd >= FD_SETSIZE)
+		{
+			dprintf("socket(2) returned file descriptor %d, which is above the file "
+				"descriptor limit for select(2) (FD_SETSIZE = %d)\n",
+				ph->fd, FD_SETSIZE);
+			close(ph->fd);
+			ph->fd = -1;
+			ping_set_errno(obj, EMFILE);
 			continue;
 		}
 
