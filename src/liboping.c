@@ -1361,64 +1361,52 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 
 int ping_send (pingobj_t *obj)
 {
-	fd_set read_fds;
-	fd_set write_fds;
-	fd_set err_fds;
-
-	int num_fds;
-	int max_fd;
-
-	pinghost_t *ph;
 	pinghost_t *ptr;
 
 	struct timeval endtime;
 	struct timeval nowtime;
 	struct timeval timeout;
-	int status;
 
+	/* pings is the number of in-flight pings, i.e. hosts we sent a "ping"
+	 * to but didn't receive a "pong" yet. */
 	int pings = 0;
 	int ret = 0;
 
-	ph = obj->head;
+	_Bool need_ipv4_socket = 0;
+	_Bool need_ipv6_socket = 0;
 
-	int fd4 = obj->fd4;
-	int fd6 = obj->fd6;
-
-	for (ptr = ph; ptr != NULL; ptr = ptr->next)
+	for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
 	{
-		if (fd6 == -1 && ptr->addrfamily == AF_INET6)
-		{
-			obj->fd6 = fd6 = ping_open_socket(obj, AF_INET6);
-			ping_set_ttl (obj, obj->ttl);
-			ping_set_qos (obj, obj->qos);
-		}
-		else if (fd4 == -1 && ptr->addrfamily == AF_INET)
-		{
-			obj->fd4 = fd4 = ping_open_socket(obj, AF_INET);
-			ping_set_ttl (obj, obj->ttl);
-			ping_set_qos (obj, obj->qos);
-		}
-
-		if ((fd6 == -1 && ptr->addrfamily == AF_INET6)
-			|| (fd4 == -1 && ptr->addrfamily == AF_INET))
-		{
-#if WITH_DEBUG
-			char errbuf[PING_ERRMSG_LEN];
-			dprintf ("socket: %s\n",
-					sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-			ping_set_errno (obj, errno);
-			return (-1);
-		}
-
 		ptr->latency  = -1.0;
 		ptr->recv_ttl = -1;
+
+		if (ptr->addrfamily == AF_INET)
+			need_ipv4_socket = 1;
+		else if (ptr->addrfamily == AF_INET6)
+			need_ipv6_socket = 1;
 	}
 
-	if (fd4 == -1 && fd6 == -1)
+	if (!need_ipv4_socket && !need_ipv6_socket)
 	{
-		dprintf("No sockets to use\n");
+		ping_set_error (obj, "ping_send", "No hosts to ping");
 		return (-1);
+	}
+
+	if (need_ipv4_socket && obj->fd4 == -1)
+	{
+		obj->fd4 = ping_open_socket(obj, AF_INET);
+		if (obj->fd4 == -1)
+			return (-1);
+		ping_set_ttl (obj, obj->ttl);
+		ping_set_qos (obj, obj->qos);
+	}
+	if (need_ipv6_socket && obj->fd6 == -1)
+	{
+		obj->fd6 = ping_open_socket(obj, AF_INET6);
+		if (obj->fd6 == -1)
+			return (-1);
+		ping_set_ttl (obj, obj->ttl);
+		ping_set_qos (obj, obj->qos);
 	}
 
 	if (gettimeofday (&nowtime, NULL) == -1)
@@ -1437,36 +1425,43 @@ int ping_send (pingobj_t *obj)
 
 	ping_timeval_add (&nowtime, &timeout, &endtime);
 
-	ptr = ph;
-	num_fds = 0;
-	if (fd4 != -1)
-		num_fds++;
-	if (fd6 != -1)
-		num_fds++;
-	max_fd = (fd4 > fd6) ? fd4 : fd6;
-	assert (max_fd < FD_SETSIZE);
-
+	ptr = obj->head;
 	while (pings > 0 || ptr != NULL)
 	{
+		fd_set read_fds;
+		fd_set write_fds;
+		fd_set err_fds;
+
+		int max_fd = -1;
+
 		FD_ZERO (&read_fds);
 		FD_ZERO (&write_fds);
 		FD_ZERO (&err_fds);
 
-		if (fd4 != -1)
+		if (obj->fd4 != -1)
 		{
-			FD_SET(fd4, &read_fds);
+			FD_SET(obj->fd4, &read_fds);
 			if (ptr != NULL && ptr->addrfamily == AF_INET)
-				FD_SET(fd4, &write_fds);
-			FD_SET(fd4, &err_fds);
+				FD_SET(obj->fd4, &write_fds);
+			FD_SET(obj->fd4, &err_fds);
+
+			if (max_fd < obj->fd4)
+				max_fd = obj->fd4;
 		}
 
-		if (fd6 != -1)
+		if (obj->fd6 != -1)
 		{
-			FD_SET(fd6, &read_fds);
+			FD_SET(obj->fd6, &read_fds);
 			if (ptr != NULL && ptr->addrfamily == AF_INET6)
-				FD_SET(fd6, &write_fds);
-			FD_SET(fd6, &err_fds);
+				FD_SET(obj->fd6, &write_fds);
+			FD_SET(obj->fd6, &err_fds);
+
+			if (max_fd < obj->fd6)
+				max_fd = obj->fd6;
 		}
+
+		assert (max_fd != -1);
+		assert (max_fd < FD_SETSIZE);
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
@@ -1481,7 +1476,7 @@ int ping_send (pingobj_t *obj)
 				(int) timeout.tv_sec,
 				(int) timeout.tv_usec);
 
-		status = select (max_fd + 1, &read_fds, &write_fds, &err_fds, &timeout);
+		int status = select (max_fd + 1, &read_fds, &write_fds, &err_fds, &timeout);
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
@@ -1507,24 +1502,24 @@ int ping_send (pingobj_t *obj)
 		else if (status == 0)
 		{
 			dprintf ("select timed out\n");
-			for (ptr = ph; ptr != NULL; ptr = ptr->next)
+			for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
 				if (ptr->latency < 0.0)
 					ptr->dropped++;
 
 			break;
 		}
 
-		if (fd4 != -1)
+		if (obj->fd4 != -1)
 		{
-			if (FD_ISSET (fd4, &read_fds))
+			if (FD_ISSET (obj->fd4, &read_fds))
 			{
 				if (!ping_receive_one(obj, &nowtime, AF_INET))
 					--pings;
 			}
 			else if (ptr != NULL && ptr->addrfamily == AF_INET &&
-						FD_ISSET (fd4, &write_fds))
+						FD_ISSET (obj->fd4, &write_fds))
 			{
-				if (!ping_send_one(obj, ptr, fd4))
+				if (!ping_send_one(obj, ptr, obj->fd4))
 				{
 					ptr = ptr->next;
 					++pings;
@@ -1537,17 +1532,17 @@ int ping_send (pingobj_t *obj)
 
 		}
 
-		if (fd6  != -1)
+		if (obj->fd6  != -1)
 		{
-			if (FD_ISSET (fd6, &read_fds))
+			if (FD_ISSET (obj->fd6, &read_fds))
 			{
 				if (!ping_receive_one(obj, &nowtime, AF_INET6))
 					--pings;
 			}
 			else if (ptr != NULL && ptr->addrfamily == AF_INET6 &&
-						FD_ISSET (fd6, &write_fds))
+						FD_ISSET (obj->fd6, &write_fds))
 			{
-				if (!ping_send_one(obj, ptr, fd6))
+				if (!ping_send_one(obj, ptr, obj->fd6))
 				{
 					++pings;
 					ptr = ptr->next;
@@ -1558,7 +1553,6 @@ int ping_send (pingobj_t *obj)
 				}
 			}
 		}
-
 	} /* while (1) */
 
 	return (ret);
