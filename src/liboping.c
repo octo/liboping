@@ -1435,9 +1435,11 @@ int ping_send (pingobj_t *obj)
 
 	ptr = ph;
 	num_fds = 0;
-	if (fd4 != -1) num_fds++;
-	if (fd6 != -1) num_fds++;
-	max_fd = fd4 > fd6 ? fd4 : fd6;
+	if (fd4 != -1)
+		num_fds++;
+	if (fd6 != -1)
+		num_fds++;
+	max_fd = (fd4 > fd6) ? fd4 : fd6;
 	assert (max_fd < FD_SETSIZE);
 
 	while (pings > 0 || ptr != NULL)
@@ -1446,15 +1448,21 @@ int ping_send (pingobj_t *obj)
 		FD_ZERO (&write_fds);
 		FD_ZERO (&err_fds);
 
-		if (fd4 != -1) FD_SET(fd4, &read_fds);
-		if (fd6 != -1) FD_SET(fd6, &read_fds);
+		if (fd4 != -1)
+		{
+			FD_SET(fd4, &read_fds);
+			if (ptr != NULL && ptr->addrfamily == AF_INET)
+				FD_SET(fd4, &write_fds);
+			FD_SET(fd4, &err_fds);
+		}
 
-		if (fd4 != -1 && ptr != NULL && ptr->addrfamily == AF_INET)
-			FD_SET(fd4, &write_fds);
-		if (fd6 != -1 && ptr != NULL && ptr->addrfamily == AF_INET6)
-			FD_SET(fd6, &write_fds);
-		if (fd4 != -1) FD_SET(fd4, &err_fds);
-		if (fd6 != -1) FD_SET(fd6, &err_fds);
+		if (fd6 != -1)
+		{
+			FD_SET(fd6, &read_fds);
+			if (ptr != NULL && ptr->addrfamily == AF_INET6)
+				FD_SET(fd6, &write_fds);
+			FD_SET(fd6, &err_fds);
+		}
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
