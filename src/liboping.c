@@ -969,6 +969,9 @@ static void ping_free (pinghost_t *ph)
 	free (ph);
 }
 
+/* ping_open_socket opens, initializes and returns a new raw socket to use for
+ * ICMPv4 or ICMPv6 packets. addrfam must be either AF_INET or AF_INET6. On
+ * error, -1 is returned and obj->errmsg is set appropriately. */
 static int ping_open_socket(pingobj_t *obj, int addrfam)
 {
 	int fd;
@@ -982,27 +985,28 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 	}
 	else /* this should not happen */
 	{
+		ping_set_error (obj, "ping_open_socket", "Unknown address family");
 		dprintf ("Unknown address family: %i\n", addrfam);
-		return (-1);
+		return -1;
 	}
 
 	if (fd == -1)
 	{
+		ping_set_errno (obj, errno);
 #if WITH_DEBUG
 		char errbuf[PING_ERRMSG_LEN];
 		dprintf ("socket: %s\n",
 				sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-		ping_set_errno (obj, errno);
 		return -1;
 	}
 	else if (fd >= FD_SETSIZE)
 	{
+		ping_set_errno (obj, EMFILE);
 		dprintf ("socket(2) returned file descriptor %d, which is above the file "
 			 "descriptor limit for select(2) (FD_SETSIZE = %d)\n",
 			 fd, FD_SETSIZE);
 		close (fd);
-		ping_set_errno (obj, EMFILE);
 		return -1;
 	}
 
@@ -1013,12 +1017,12 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 
 		if (bind (fd, obj->srcaddr, obj->srcaddrlen) == -1)
 		{
+			ping_set_errno (obj, errno);
 #if WITH_DEBUG
 			char errbuf[PING_ERRMSG_LEN];
 			dprintf ("bind: %s\n",
 					sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-			ping_set_errno (obj, errno);
 			close (fd);
 			return -1;
 		}
@@ -1030,12 +1034,12 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 		if (setsockopt (fd, SOL_SOCKET, SO_BINDTODEVICE,
 				obj->device, strlen (obj->device) + 1) != 0)
 		{
+			ping_set_errno (obj, errno);
 #if WITH_DEBUG
 			char errbuf[PING_ERRMSG_LEN];
 			dprintf ("setsockopt (SO_BINDTODEVICE): %s\n",
 					sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-			ping_set_errno (obj, errno);
 			close (fd);
 			return -1;
 		}
@@ -1069,12 +1073,12 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 				&opt, sizeof (opt));
 		if (status != 0)
 		{
+			ping_set_errno (obj, errno);
 #if WITH_DEBUG
 			char errbuf[PING_ERRMSG_LEN];
 			dprintf ("setsockopt (SO_TIMESTAMP): %s\n",
 					sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-			ping_set_errno (obj, errno);
 			close (fd);
 			return -1;
 		}
