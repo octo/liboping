@@ -1367,9 +1367,6 @@ int ping_send (pingobj_t *obj)
 	struct timeval nowtime;
 	struct timeval timeout;
 
-	/* pings is the number of in-flight pings, i.e. hosts we sent a "ping"
-	 * to but didn't receive a "pong" yet. */
-	int pings = 0;
 	int ret = 0;
 
 	_Bool need_ipv4_socket = 0;
@@ -1425,25 +1422,32 @@ int ping_send (pingobj_t *obj)
 
 	ping_timeval_add (&nowtime, &timeout, &endtime);
 
-	ptr = obj->head;
-	while (pings > 0 || ptr != NULL)
+	/* host_to_ping points to the host to which to send the next ping. The
+	 * pointer is advanced to the next host in the linked list after the
+	 * ping has been sent. If host_to_ping is NULL, no more pings need to be
+	 * send out. */
+	pinghost_t *host_to_ping = obj->head;
+
+	/* pings_in_flight is the number of hosts we sent a "ping" to but didn't
+	 * receive a "pong" yet. */
+	int pings_in_flight = 0;
+
+	while (pings_in_flight > 0 || host_to_ping != NULL)
 	{
 		fd_set read_fds;
 		fd_set write_fds;
-		fd_set err_fds;
 
+		int write_fd = -1;
 		int max_fd = -1;
 
 		FD_ZERO (&read_fds);
 		FD_ZERO (&write_fds);
-		FD_ZERO (&err_fds);
 
 		if (obj->fd4 != -1)
 		{
 			FD_SET(obj->fd4, &read_fds);
-			if (ptr != NULL && ptr->addrfamily == AF_INET)
-				FD_SET(obj->fd4, &write_fds);
-			FD_SET(obj->fd4, &err_fds);
+			if (host_to_ping != NULL && host_to_ping->addrfamily == AF_INET)
+				write_fd = obj->fd4;
 
 			if (max_fd < obj->fd4)
 				max_fd = obj->fd4;
@@ -1452,13 +1456,15 @@ int ping_send (pingobj_t *obj)
 		if (obj->fd6 != -1)
 		{
 			FD_SET(obj->fd6, &read_fds);
-			if (ptr != NULL && ptr->addrfamily == AF_INET6)
-				FD_SET(obj->fd6, &write_fds);
-			FD_SET(obj->fd6, &err_fds);
+			if (host_to_ping != NULL && host_to_ping->addrfamily == AF_INET6)
+				write_fd = obj->fd6;
 
 			if (max_fd < obj->fd6)
 				max_fd = obj->fd6;
 		}
+
+		if (write_fd != -1)
+			FD_SET(write_fd, &write_fds);
 
 		assert (max_fd != -1);
 		assert (max_fd < FD_SETSIZE);
@@ -1476,7 +1482,7 @@ int ping_send (pingobj_t *obj)
 				(int) timeout.tv_sec,
 				(int) timeout.tv_usec);
 
-		int status = select (max_fd + 1, &read_fds, &write_fds, &err_fds, &timeout);
+		int status = select (max_fd + 1, &read_fds, &write_fds, NULL, &timeout);
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
@@ -1484,74 +1490,51 @@ int ping_send (pingobj_t *obj)
 			return (-1);
 		}
 
-		if ((status == -1) && (errno == EINTR))
+		if (status == -1)
 		{
-			dprintf ("select was interrupted by signal..\n");
-			ping_set_errno (obj, EINTR);
+			ping_set_errno (obj, errno);
+			dprintf ("select: %s\n", obj->errmsg);
 			return (-1);
-		}
-		else if (status < 0)
-		{
-#if WITH_DEBUG
-			char errbuf[PING_ERRMSG_LEN];
-			dprintf ("select: %s\n",
-					sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-			break;
 		}
 		else if (status == 0)
 		{
 			dprintf ("select timed out\n");
-			for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
-				if (ptr->latency < 0.0)
-					ptr->dropped++;
 
+			pinghost_t *ph;
+			for (ph = obj->head; ph != NULL; ph = ph->next)
+				if (ph->latency < 0.0)
+					ph->dropped++;
 			break;
 		}
 
-		if (obj->fd4 != -1)
+		/* first, check if we can receive a reply ... */
+		if (obj->fd6  != -1 && FD_ISSET (obj->fd6, &read_fds))
 		{
-			if (FD_ISSET (obj->fd4, &read_fds))
-			{
-				if (!ping_receive_one(obj, &nowtime, AF_INET))
-					--pings;
-			}
-			else if (ptr != NULL && ptr->addrfamily == AF_INET &&
-						FD_ISSET (obj->fd4, &write_fds))
-			{
-				if (!ping_send_one(obj, ptr, obj->fd4))
-				{
-					ptr = ptr->next;
-					++pings;
-				}
-				else
-				{
-					--ret;
-				}
-			}
-
+			if (ping_receive_one (obj, &nowtime, AF_INET6) == 0)
+				pings_in_flight--;
+			continue;
+		}
+		if (obj->fd4 != -1 && FD_ISSET (obj->fd4, &read_fds))
+		{
+			if (ping_receive_one (obj, &nowtime, AF_INET) == 0)
+				pings_in_flight--;
+			continue;
 		}
 
-		if (obj->fd6  != -1)
+		/* ... and if no reply is available to read, continue sending
+		 * out pings. */
+
+		/* this condition should always be true. We keep it for
+		 * consistency with the read blocks above and just to be on the
+		 * safe side. */
+		if (write_fd != -1 && FD_ISSET (write_fd, &write_fds))
 		{
-			if (FD_ISSET (obj->fd6, &read_fds))
-			{
-				if (!ping_receive_one(obj, &nowtime, AF_INET6))
-					--pings;
-			}
-			else if (ptr != NULL && ptr->addrfamily == AF_INET6 &&
-						FD_ISSET (obj->fd6, &write_fds))
-			{
-				if (!ping_send_one(obj, ptr, obj->fd6))
-				{
-					++pings;
-					ptr = ptr->next;
-				}
-				else
-				{
-					--ret;
-				}
-			}
+			if (ping_send_one (obj, host_to_ping, write_fd) == 0)
+				pings_in_flight++;
+			else
+				ret--;
+			host_to_ping = host_to_ping->next;
+			continue;
 		}
 	} /* while (1) */
 
