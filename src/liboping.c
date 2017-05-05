@@ -458,7 +458,7 @@ static int ping_receive_one (pingobj_t *obj, struct timeval *now, int addrfam)
 	pinghost_t *host = NULL;
 	int recv_ttl;
 	uint8_t recv_qos;
-	
+
 	/*
 	 * Set up the receive buffer..
 	 */
@@ -925,7 +925,7 @@ static int ping_get_ident (void)
 	retval = (int) random ();
 
 	dprintf ("Random number: %#x\n", retval);
-	
+
 	return (retval);
 }
 
@@ -1498,7 +1498,7 @@ int ping_send (pingobj_t *obj)
 			for (ptr = ph; ptr != NULL; ptr = ptr->next)
 				if (ptr->latency < 0.0)
 					ptr->dropped++;
-			
+
 			break;
 		}
 
@@ -1693,7 +1693,6 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			}
 		}
 #endif /* AI_CANONNAME */
-
 	} /* for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next) */
 
 	freeaddrinfo (ai_list);
@@ -1754,10 +1753,10 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 		obj->head = cur->next;
 	else
 		pre->next = cur->next;
-	
+
 	target = cur;
 	pre = NULL;
-	
+
 	cur = obj->table[target->ident % PING_TABLE_LEN];
 
 	while (cur != NULL)
