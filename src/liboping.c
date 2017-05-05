@@ -1478,9 +1478,10 @@ int ping_send (pingobj_t *obj)
 		if (ping_timeval_sub (&endtime, &nowtime, &timeout) == -1)
 			break;
 
-		dprintf ("Waiting on %i sockets for %i.%06i seconds\n", num_fds,
-				(int) timeout.tv_sec,
-				(int) timeout.tv_usec);
+		dprintf ("Waiting on %i sockets for %u.%06u seconds\n",
+				((obj->fd4 != -1) ? 1 : 0) + ((obj->fd6 != -1) ? 1 : 0),
+				(unsigned) timeout.tv_sec,
+				(unsigned) timeout.tv_usec);
 
 		int status = select (max_fd + 1, &read_fds, &write_fds, NULL, &timeout);
 
