@@ -1367,8 +1367,6 @@ int ping_send (pingobj_t *obj)
 	struct timeval nowtime;
 	struct timeval timeout;
 
-	int ret = 0;
-
 	_Bool need_ipv4_socket = 0;
 	_Bool need_ipv6_socket = 0;
 
@@ -1431,6 +1429,12 @@ int ping_send (pingobj_t *obj)
 	/* pings_in_flight is the number of hosts we sent a "ping" to but didn't
 	 * receive a "pong" yet. */
 	int pings_in_flight = 0;
+
+	/* pongs_received is the number of echo replies received. Unless there
+	 * is an error, this is used as the return value of ping_send(). */
+	int pongs_received = 0;
+
+	int error_count = 0;
 
 	while (pings_in_flight > 0 || host_to_ping != NULL)
 	{
@@ -1512,13 +1516,19 @@ int ping_send (pingobj_t *obj)
 		if (obj->fd6  != -1 && FD_ISSET (obj->fd6, &read_fds))
 		{
 			if (ping_receive_one (obj, &nowtime, AF_INET6) == 0)
+			{
 				pings_in_flight--;
+				pongs_received++;
+			}
 			continue;
 		}
 		if (obj->fd4 != -1 && FD_ISSET (obj->fd4, &read_fds))
 		{
 			if (ping_receive_one (obj, &nowtime, AF_INET) == 0)
+			{
 				pings_in_flight--;
+				pongs_received++;
+			}
 			continue;
 		}
 
@@ -1533,13 +1543,15 @@ int ping_send (pingobj_t *obj)
 			if (ping_send_one (obj, host_to_ping, write_fd) == 0)
 				pings_in_flight++;
 			else
-				ret--;
+				error_count++;
 			host_to_ping = host_to_ping->next;
 			continue;
 		}
 	} /* while (1) */
 
-	return (ret);
+	if (error_count)
+		return (-1 * error_count);
+	return (pongs_received);
 } /* int ping_send */
 
 static pinghost_t *ping_host_search (pinghost_t *ph, const char *host)
