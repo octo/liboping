@@ -50,7 +50,8 @@ AC_ARG_VAR(PERL, [Perl interpreter command])
 LT_INIT([dlopen])
 
 # pkg-config interface
-PKG_INSTALLDIR
+# PKG_INSTALLDIR is only available for pkg-config >= 0.27
+m4_ifdef([PKG_INSTALLDIR], [PKG_INSTALLDIR], [])
 
 AC_ARG_WITH(pkgconfigdir,
 	    AC_HELP_STRING([--with-pkgconfigdir], [Use the specified pkgconfig dir (default is libdir/pkgconfig)]),
