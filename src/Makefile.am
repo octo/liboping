@@ -25,31 +25,23 @@ liboping_la_SOURCES = oping.h liboping.c
 
 liboping_la_CPPFLAGS = $(AM_CPPFLAGS)
 liboping_la_LDFLAGS = $(AM_LDFLAGS) -version-info @LIBOPING_CURRENT@:@LIBOPING_REVISION@:@LIBOPING_AGE@
-liboping_la_LIBADD =
-if BUILD_WITH_LIBSOCKET
-liboping_la_LIBADD += -lsocket
-endif
-if BUILD_WITH_LIBXNET
-liboping_la_LIBADD += -lxnet
-endif
+liboping_la_LIBADD = $(LIBOPING_PC_LIBS_PRIVATE)
+
+pkgconfig_DATA = liboping.pc
+
+MOSTLYCLEANFILES = $(pkgconfig_DATA)
 
 bin_PROGRAMS = oping
 
 oping_SOURCES = oping.c
 oping_LDADD = liboping.la -lm
-if BUILD_WITH_LIBRT
-oping_LDADD += -lrt
-endif
 
 if BUILD_WITH_LIBNCURSES
 bin_PROGRAMS += noping
 
 noping_SOURCES = oping.c
-noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1
-noping_LDADD = liboping.la -lm -lncurses
-if BUILD_WITH_LIBRT
-noping_LDADD += -lrt
-endif
+noping_CPPFLAGS = $(AM_CPPFLAGS) -DUSE_NCURSES=1 $(NCURSES_CFLAGS)
+noping_LDADD = liboping.la -lm $(NCURSES_LIBS)
 endif # BUILD_WITH_LIBNCURSES
 
 install-exec-hook:

@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2011  Florian octo Forster <ff at octo.it>
+ * Copyright (C) 2006-2016  Florian octo Forster <ff at octo.it>
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -74,19 +74,82 @@
 #include <sys/types.h>
 #endif
 
+#include <locale.h>
+#include <langinfo.h>
+
 #if USE_NCURSES
 # define NCURSES_OPAQUE 1
-# include <ncurses.h>
+/* http://newsgroups.derkeiler.com/Archive/Rec/rec.games.roguelike.development/2010-09/msg00050.html */
+# define _X_OPEN_SOURCE_EXTENDED
+
+#if defined HAVE_NCURSESW_CURSES_H
+#  include <ncursesw/curses.h>
+#elif defined HAVE_NCURSESW_H
+#  include <ncursesw.h>
+#elif defined HAVE_NCURSES_CURSES_H
+#  include <ncurses/curses.h>
+#elif defined HAVE_NCURSES_H
+#  include <ncurses.h>
+#else
+#  error "SysV or X/Open-compatible Curses header file required"
+#endif
 
 # define OPING_GREEN 1
 # define OPING_YELLOW 2
 # define OPING_RED 3
+# define OPING_GREEN_HIST 4
+# define OPING_YELLOW_HIST 5
+# define OPING_RED_HIST 6
+
+double const threshold_green = 0.8;
+double const threshold_yellow = 0.95;
+
+static char const * const hist_symbols_utf8[] = {
+	"▁", "▂", "▃", "▄", "▅", "▆", "▇", "█" };
+static size_t const hist_symbols_utf8_num = sizeof (hist_symbols_utf8)
+	/ sizeof (hist_symbols_utf8[0]);
+
+/* scancodes for 6 levels of horizontal bars, ncurses-specific */
+/* those are not the usual constants because those are not constant */
+static int const hist_symbols_acs[] = {
+	115, /* ACS_S9 "⎽" */
+	114, /* ACS_S7 "⎼" */
+	113, /* ACS_S5 "─" */
+	112, /* ACS_S3 "⎻" */
+	111  /* ACS_S1 "⎺" */
+};
+static size_t const hist_symbols_acs_num = sizeof (hist_symbols_acs)
+	/ sizeof (hist_symbols_acs[0]);
+
+/* use different colors without a background for scancodes */
+static int const hist_colors_utf8[] = {
+	OPING_GREEN_HIST, OPING_YELLOW_HIST, OPING_RED_HIST };
+static int const hist_colors_acs[] = {
+	OPING_GREEN, OPING_YELLOW, OPING_RED };
+/* assuming that both arrays are the same size */
+static size_t const hist_colors_num = sizeof (hist_colors_utf8)
+	/ sizeof (hist_colors_utf8[0]);
 #endif
+
+/* "─" */
+#define BOXPLOT_WHISKER_BAR       (113 | A_ALTCHARSET)
+/* "├" */
+#define BOXPLOT_WHISKER_LEFT_END  (116 | A_ALTCHARSET)
+/* "┤" */
+#define BOXPLOT_WHISKER_RIGHT_END (117 | A_ALTCHARSET)
+/* Inverted */
+#define BOXPLOT_BOX               ' '
+/* "│", inverted */
+#define BOXPLOT_MEDIAN            (120 | A_ALTCHARSET)
 
 #include "oping.h"
 
 #ifndef _POSIX_SAVED_IDS
 # define _POSIX_SAVED_IDS 0
+#endif
+
+#ifndef IPTOS_MINCOST
+# define IPTOS_MINCOST 0x02
 #endif
 
 /* Remove GNU specific __attribute__ settings when using another compiler */
@@ -103,10 +166,31 @@ typedef struct ping_context
 	int req_sent;
 	int req_rcvd;
 
-	double latency_min;
-	double latency_max;
 	double latency_total;
-	double latency_total_square;
+
+#ifndef HISTORY_SIZE_MAX
+# define HISTORY_SIZE_MAX 900
+#endif
+	/* The last n RTTs in the order they were sent. */
+	double history_by_time[HISTORY_SIZE_MAX];
+
+	/* Current number of entries in the history. This is a value between 0
+	 * and HISTORY_SIZE_MAX. */
+	size_t history_size;
+
+	/* Total number of reponses received. */
+	size_t history_received;
+
+	/* Index of the next RTT to be written to history_by_time. This wraps
+	 * around to 0 once the histroty has grown to HISTORY_SIZE_MAX. */
+	size_t history_index;
+
+	/* The last history_size RTTs sorted by value. timed out packets (NAN
+	 * entries) are sorted to the back. */
+	double history_by_value[HISTORY_SIZE_MAX];
+
+	/* If set to true, history_by_value has to be re-calculated. */
+	_Bool history_dirty;
 
 #if USE_NCURSES
 	WINDOW *window;
@@ -114,15 +198,27 @@ typedef struct ping_context
 } ping_context_t;
 
 static double  opt_interval   = 1.0;
+static double  opt_timeout    = PING_DEF_TIMEOUT;
 static int     opt_addrfamily = PING_DEF_AF;
 static char   *opt_srcaddr    = NULL;
 static char   *opt_device     = NULL;
+static char   *opt_mark       = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
+#define OPING_DEFAULT_PERCENTILE 95.0
+static double  opt_percentile = -1.0;
+static double  opt_exit_status_threshold = 1.0;
+#if USE_NCURSES
+static int     opt_show_graph = 1;
+static int     opt_utf8       = 0;
+#endif
+static char   *opt_outfile    = NULL;
+static int     opt_bell       = 0;
 
-static int host_num = 0;
+static int host_num  = 0;
+static FILE *outfile = NULL;
 
 #if USE_NCURSES
 static WINDOW *main_win = NULL;
@@ -136,25 +232,17 @@ static void sigint_handler (int signal) /* {{{ */
 	opt_count = 0;
 } /* }}} void sigint_handler */
 
-static ping_context_t *context_create (void) /* {{{ */
+static ping_context_t *context_create () /* {{{ */
 {
-	ping_context_t *ret;
-
-	if ((ret = malloc (sizeof (ping_context_t))) == NULL)
+	ping_context_t *ctx = calloc (1, sizeof (*ctx));
+	if (ctx == NULL)
 		return (NULL);
 
-	memset (ret, '\0', sizeof (ping_context_t));
-
-	ret->latency_min   = -1.0;
-	ret->latency_max   = -1.0;
-	ret->latency_total = 0.0;
-	ret->latency_total_square = 0.0;
-
 #if USE_NCURSES
-	ret->window = NULL;
+	ctx->window = NULL;
 #endif
 
-	return (ret);
+	return (ctx);
 } /* }}} ping_context_t *context_create */
 
 static void context_destroy (ping_context_t *context) /* {{{ */
@@ -173,37 +261,126 @@ static void context_destroy (ping_context_t *context) /* {{{ */
 	free (context);
 } /* }}} void context_destroy */
 
-static double context_get_average (ping_context_t *ctx) /* {{{ */
+static int compare_double (void const *arg0, void const *arg1) /* {{{ */
 {
-	double num_total;
+	double dbl0 = *((double *) arg0);
+	double dbl1 = *((double *) arg1);
 
-	if (ctx == NULL)
-		return (-1.0);
+	if (isnan (dbl0))
+	{
+		if (isnan (dbl1))
+			return 0;
+		else
+			return 1;
+	}
+	else if (isnan (dbl1))
+		return -1;
+	else if (dbl0 < dbl1)
+		return -1;
+	else if (dbl0 > dbl1)
+		return 1;
+	else
+		return 0;
+} /* }}} int compare_double */
 
-	if (ctx->req_rcvd < 1)
-		return (-0.0);
-
-	num_total = (double) ctx->req_rcvd;
-	return (ctx->latency_total / num_total);
-} /* }}} double context_get_average */
-
-static double context_get_stddev (ping_context_t *ctx) /* {{{ */
+static void clean_history (ping_context_t *ctx) /* {{{ */
 {
-	double num_total;
+	size_t i;
 
-	if (ctx == NULL)
-		return (-1.0);
+	if (!ctx->history_dirty)
+		return;
 
-	if (ctx->req_rcvd < 1)
-		return (-0.0);
-	else if (ctx->req_rcvd < 2)
-		return (0.0);
+	/* Copy all values from by_time to by_value. */
+	memcpy (ctx->history_by_value, ctx->history_by_time,
+			sizeof (ctx->history_by_time));
 
-	num_total = (double) ctx->req_rcvd;
-	return (sqrt (((num_total * ctx->latency_total_square)
-					- (ctx->latency_total * ctx->latency_total))
-				/ (num_total * (num_total - 1.0))));
-} /* }}} double context_get_stddev */
+	/* Sort all RTTs. */
+	qsort (ctx->history_by_value, ctx->history_size, sizeof
+			(ctx->history_by_value[0]), compare_double);
+
+	/* Update the number of received RTTs. */
+	ctx->history_received = 0;
+	for (i = 0; i < ctx->history_size; i++)
+		if (!isnan (ctx->history_by_value[i]))
+			ctx->history_received++;
+
+	/* Mark as clean. */
+	ctx->history_dirty = 0;
+} /* }}} void clean_history */
+
+static double percentile_to_latency (ping_context_t *ctx, /* {{{ */
+		double percentile)
+{
+	size_t index;
+
+	clean_history (ctx);
+
+	/* Not a single packet was received successfully. */
+	if (ctx->history_received == 0)
+		return NAN;
+
+	if (percentile <= 0.0)
+		index = 0;
+	else if (percentile >= 100.0)
+		index = ctx->history_received - 1;
+	else
+	{
+		index = (size_t) ceil ((percentile / 100.0) * ((double) ctx->history_received));
+		assert (index > 0);
+		index--;
+	}
+
+	return (ctx->history_by_value[index]);
+} /* }}} double percentile_to_latency */
+
+#if USE_NCURSES
+static double latency_to_ratio (ping_context_t *ctx, /* {{{ */
+		double latency)
+{
+	size_t low;
+	size_t high;
+	size_t index;
+
+	clean_history (ctx);
+
+	/* Not a single packet was received successfully. */
+	if (ctx->history_received == 0)
+		return NAN;
+
+	low = 0;
+	high = ctx->history_received - 1;
+
+	if (latency < ctx->history_by_value[low])
+		return 0.0;
+	else if (latency >= ctx->history_by_value[high])
+		return 100.0;
+
+	/* Do a binary search for the latency. This will work even when the
+	 * exact latency is not in the array. If the latency is in the array
+	 * multiple times, "low" will be set to the index of the last
+	 * occurrence. The value at index "high" will be larger than the
+	 * searched for latency (assured by the above "if" block. */
+	while ((high - low) > 1)
+	{
+		index = (high + low) / 2;
+
+		if (ctx->history_by_value[index] > latency)
+			high = index;
+		else
+			low = index;
+	}
+
+	assert (ctx->history_by_value[high] > latency);
+	assert (ctx->history_by_value[low] <= latency);
+
+	if (ctx->history_by_value[low] == latency)
+		index = low;
+	else
+		index = high;
+
+	return (((double) (index + 1)) / ((double) ctx->history_received));
+} /* }}} double latency_to_ratio */
+#endif
 
 static double context_get_packet_loss (const ping_context_t *ctx) /* {{{ */
 {
@@ -259,15 +436,25 @@ static void usage_exit (const char *name, int status) /* {{{ */
 			"  -4|-6        force the use of IPv4 or IPv6\n"
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
+			"  -w timeout   time to wait for replies, in seconds\n"
 			"  -t ttl       time to live for each ICMP packet\n"
 			"  -Q qos       Quality of Service (QoS) of outgoing packets\n"
 			"               Use \"-Q help\" for a list of valid options.\n"
 			"  -I srcaddr   source address\n"
 			"  -D device    outgoing interface name\n"
-			"  -f filename  filename to read hosts from\n"
+			"  -m mark      mark to set on outgoing packets\n"
+			"  -f filename  read hosts from <filename>\n"
+			"  -O filename  write RTT measurements to <filename>\n"
+#if USE_NCURSES
+			"  -u / -U      force / disable UTF-8 output\n"
+			"  -g graph     graph type to draw\n"
+#endif
+			"  -P percent   Report the n'th percentile of latency\n"
+			"  -Z percent   Exit with non-zero exit status if more than this percentage of\n"
+			"               probes timed out. (default: never)\n"
 
-			"\noping "PACKAGE_VERSION", http://verplant.org/liboping/\n"
-			"by Florian octo Forster <octo@verplant.org>\n"
+			"\noping "PACKAGE_VERSION", http://noping.cc/\n"
+			"by Florian octo Forster <ff@octo.it>\n"
 			"for contributions see `AUTHORS'\n",
 			name);
 	exit (status);
@@ -467,7 +654,11 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:");
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:b"
+#if USE_NCURSES
+				"uUg:"
+#endif
+				);
 
 		if (optchar == -1)
 			break;
@@ -484,7 +675,12 @@ static int read_options (int argc, char **argv) /* {{{ */
 					int new_count;
 					new_count = atoi (optarg);
 					if (new_count > 0)
+					{
 						opt_count = new_count;
+
+						if ((opt_percentile < 0.0) && (opt_count < 20))
+							opt_percentile = 100.0 * (opt_count - 1) / opt_count;
+					}
 					else
 						fprintf(stderr, "Ignoring invalid count: %s\n",
 								optarg);
@@ -510,6 +706,19 @@ static int read_options (int argc, char **argv) /* {{{ */
 						opt_interval = new_interval;
 				}
 				break;
+
+			case 'w':
+				{
+					char *endp = NULL;
+					double t = strtod (optarg, &endp);
+					if ((optarg[0] != 0) && (endp != NULL) && (*endp == 0))
+						opt_timeout = t;
+					else
+						fprintf (stderr, "Ignoring invalid timeout: %s\n",
+								optarg);
+				}
+				break;
+
 			case 'I':
 				{
 					if (opt_srcaddr != NULL)
@@ -520,6 +729,10 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 			case 'D':
 				opt_device = optarg;
+				break;
+
+			case 'm':
+				opt_mark = optarg;
 				break;
 
 			case 't':
@@ -538,13 +751,81 @@ static int read_options (int argc, char **argv) /* {{{ */
 				set_opt_send_qos (optarg);
 				break;
 
+			case 'O':
+				{
+					free (opt_outfile);
+					opt_outfile = strdup (optarg);
+				}
+				break;
+
+			case 'P':
+				{
+					double new_percentile;
+					new_percentile = atof (optarg);
+					if (isnan (new_percentile)
+							|| (new_percentile < 0.1)
+							|| (new_percentile > 100.0))
+						fprintf (stderr, "Ignoring invalid percentile: %s\n",
+								optarg);
+					else
+						opt_percentile = new_percentile;
+				}
+				break;
+
+#if USE_NCURSES
+			case 'g':
+				if (strcasecmp ("none", optarg) == 0)
+					opt_show_graph = 0;
+				else if (strcasecmp ("prettyping", optarg) == 0)
+					opt_show_graph = 1;
+				else if (strcasecmp ("histogram", optarg) == 0)
+					opt_show_graph = 2;
+				else if (strcasecmp ("boxplot", optarg) == 0)
+					opt_show_graph = 3;
+				else
+					fprintf (stderr, "Unknown graph option: %s\n", optarg);
+				break;
+
+			case 'u':
+				opt_utf8 = 2;
+				break;
+			case 'U':
+				opt_utf8 = 1;
+				break;
+#endif
+			case 'b':
+				opt_bell = 1;
+				break;
+
+			case 'Z':
+			{
+				char *endptr = NULL;
+				double tmp;
+
+				errno = 0;
+				tmp = strtod (optarg, &endptr);
+				if ((errno != 0) || (endptr == NULL) || (*endptr != 0) || (tmp < 0.0) || (tmp > 100.0))
+				{
+					fprintf (stderr, "Ignoring invalid -Z argument: %s\n", optarg);
+					fprintf (stderr, "The \"-Z\" option requires a numeric argument between 0 and 100.\n");
+				}
+				else
+					opt_exit_status_threshold = tmp / 100.0;
+
+				break;
+			}
+
 			case 'h':
 				usage_exit (argv[0], 0);
 				break;
+
 			default:
 				usage_exit (argv[0], 1);
 		}
 	}
+
+	if (opt_percentile <= 0.0)
+		opt_percentile = OPING_DEFAULT_PERCENTILE;
 
 	return (optind);
 } /* }}} read_options */
@@ -597,12 +878,356 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 } /* }}} void time_calc */
 
 #if USE_NCURSES
-static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
+static _Bool has_utf8() /* {{{ */
 {
+# if HAVE_NCURSESW_NCURSES_H
+	if (!opt_utf8)
+	{
+		/* Automatically determine */
+		if (strcasecmp ("UTF-8", nl_langinfo (CODESET)) == 0)
+			opt_utf8 = 2;
+		else
+			opt_utf8 = 1;
+	}
+	return ((_Bool) (opt_utf8 - 1));
+# else
+	return (0);
+# endif
+} /* }}} _Bool has_utf8 */
+
+static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
+{
+	uint32_t *counters;
+	double *ratios;
+	size_t i;
+	size_t x_max;
+	size_t x;
+
+	clean_history (ctx);
+
+	if (ctx->history_received == 0)
+		return (ENOENT);
+
+	x_max = (size_t) getmaxx (ctx->window);
+	if (x_max <= 8)
+		return (EINVAL);
+	x_max -= 4;
+
+	counters = calloc (x_max, sizeof (*counters));
+	ratios = calloc (x_max, sizeof (*ratios));
+
+	/* Bucketize */
+	for (i = 0; i < ctx->history_received; i++)
+	{
+		double latency = ctx->history_by_value[i] / 1000.0;
+		size_t index = (size_t) (((double) x_max) * latency / opt_interval);
+
+		if (index >= x_max)
+			index = x_max - 1;
+
+		counters[index]++;
+	}
+
+	/* Sum and calc ratios */
+	ratios[0] = ((double) counters[0]) / ((double) ctx->history_received);
+	for (x = 1; x < x_max; x++)
+	{
+		counters[x] += counters[x - 1];
+		ratios[x] = ((double) counters[x]) / ((double) ctx->history_received);
+	}
+
+	for (x = 0; x < x_max; x++)
+	{
+		int symbol = ' ';
+		_Bool reverse = 0;
+
+		if (x == 0)
+		{
+			if (ratios[x] >= 0.5)
+			{
+				symbol = BOXPLOT_MEDIAN;
+				reverse = 1;
+			}
+			else if (ratios[x] > 0.25)
+			{
+				symbol = BOXPLOT_BOX;
+				reverse = 1;
+			}
+			else if (ratios[x] > 0.025)
+				symbol = BOXPLOT_WHISKER_BAR;
+			else
+				symbol = ' '; /* NOP */
+		}
+		else /* (x != 0) */
+		{
+			if ((ratios[x - 1] < 0.5) && (ratios[x] >= 0.5))
+			{
+				symbol = BOXPLOT_MEDIAN;
+				reverse = 1;
+			}
+			else if (((ratios[x] >= 0.25) && (ratios[x] <= 0.75))
+					|| ((ratios[x - 1] < 0.75) && (ratios[x] > 0.75)))
+			{
+				symbol = BOXPLOT_BOX;
+				reverse = 1;
+			}
+			else if ((ratios[x] < 0.5) && (ratios[x] >= 0.025))
+			{
+				if (ratios[x - 1] < 0.025)
+					symbol = BOXPLOT_WHISKER_LEFT_END;
+				else
+					symbol = BOXPLOT_WHISKER_BAR;
+			}
+			else if ((ratios[x] > .5) && (ratios[x] < 0.975))
+			{
+				symbol = BOXPLOT_WHISKER_BAR;
+			}
+			else if ((ratios[x] >= 0.975) && (ratios[x - 1] < 0.975))
+				symbol = BOXPLOT_WHISKER_RIGHT_END;
+		}
+
+		if (reverse)
+			wattron (ctx->window, A_REVERSE);
+		mvwaddch (ctx->window, /* y = */ 3, /* x = */ (int) (x + 2), symbol);
+		// mvwprintw (ctx->window, /* y = */ 3, /* x = */ (int) (x + 2), symbol);
+		if (reverse)
+			wattroff (ctx->window, A_REVERSE);
+	}
+
+	free (counters);
+	free (ratios);
+	return (0);
+} /* }}} int update_graph_boxplot */
+
+static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
+		double latency, unsigned int sequence)
+{
+	size_t x;
+	size_t x_max;
+	size_t history_offset;
+
+	x_max = (size_t) getmaxx (ctx->window);
+	if (x_max <= 4)
+		return (EINVAL);
+	x_max -= 4;
+
+	/* Determine the first index in the history we need to draw
+	 * the graph. */
+	history_offset = 0;
+	if (((size_t) x_max) < ctx->history_size) /* window is smaller than history */
+	{
+		if (ctx->history_index > x_max)
+			history_offset = ctx->history_index - x_max;
+		else /* wrap around */
+			history_offset = ctx->history_index + ctx->history_size - x_max;
+	}
+	else /* window is larger than history */
+	{
+		if (ctx->history_index != ctx->history_size) /* no longer growing. */
+			history_offset = ctx->history_index;
+		else /* start-up */
+			history_offset = 0;
+	}
+
+	for (x = 0; x < x_max; x++)
+	{
+		size_t index;
+		double latency;
+
+		int color = OPING_RED;
+		char const *symbol = "!";
+		int symbolc = '!';
+
+		if (x >= ctx->history_size)
+		{
+			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, ' ');
+			continue;
+		}
+
+		index = (history_offset + x) % ctx->history_size;
+		latency = ctx->history_by_time[index];
+
+		if (latency >= 0.0)
+		{
+			double ratio;
+
+			size_t symbols_num = hist_symbols_acs_num;
+			size_t colors_num = 1;
+
+			size_t index_symbols;
+			size_t index_colors;
+			size_t intensity;
+
+			/* latency is in milliseconds, opt_interval is in seconds. */
+			ratio = (latency * 0.001) / opt_interval;
+			if (ratio > 1) {
+				ratio = 1.0;
+			}
+
+			if (has_utf8 ())
+				symbols_num = hist_symbols_utf8_num;
+
+			if (has_colors () == TRUE)
+				colors_num = hist_colors_num;
+
+			intensity = (size_t) (ratio * ((double) (symbols_num * colors_num)));
+			if (intensity >= (symbols_num * colors_num))
+				intensity = (symbols_num * colors_num) - 1;
+
+			index_symbols = intensity % symbols_num;
+			assert (index_symbols < symbols_num);
+
+			index_colors = intensity / symbols_num;
+			assert (index_colors < colors_num);
+
+			if (has_utf8())
+			{
+				color = hist_colors_utf8[index_colors];
+				symbol = hist_symbols_utf8[index_symbols];
+			}
+			else
+			{
+				color = hist_colors_acs[index_colors];
+				symbolc = hist_symbols_acs[index_symbols] | A_ALTCHARSET;
+			}
+		}
+		else /* if (!(latency >= 0.0)) */
+			wattron (ctx->window, A_BOLD);
+
+		if (has_colors () == TRUE)
+			wattron (ctx->window, COLOR_PAIR(color));
+
+		if (has_utf8())
+			mvwprintw (ctx->window, /* y = */ 3, /* x = */ x + 2, symbol);
+		else
+			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, symbolc);
+
+		if (has_colors () == TRUE)
+			wattroff (ctx->window, COLOR_PAIR(color));
+
+		/* Use negation here to handle NaN correctly. */
+		if (!(latency >= 0.0))
+			wattroff (ctx->window, A_BOLD);
+	} /* for (x) */
+
+	return (0);
+} /* }}} int update_graph_prettyping */
+
+static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
+{
+	uint32_t *counters;
+	uint32_t *accumulated;
+	uint32_t max;
+	size_t i;
+	size_t x_max;
+	size_t x;
+
+	size_t symbols_num = hist_symbols_acs_num;
+
+	clean_history (ctx);
+
+	if (ctx->history_received == 0)
+		return (ENOENT);
+
+	if (has_utf8 ())
+		symbols_num = hist_symbols_utf8_num;
+
+	x_max = (size_t) getmaxx (ctx->window);
+	if (x_max <= 4)
+		return (EINVAL);
+	x_max -= 4;
+
+	counters = calloc (x_max, sizeof (*counters));
+	accumulated = calloc (x_max, sizeof (*accumulated));
+
+	/* Bucketize */
+	max = 0;
+	for (i = 0; i < ctx->history_received; i++)
+	{
+		double latency = ctx->history_by_value[i] / 1000.0;
+		size_t index = (size_t) (((double) x_max) * latency / opt_interval);
+
+		if (index >= x_max)
+			index = x_max - 1;
+
+		counters[index]++;
+		if (max < counters[index])
+			max = counters[index];
+	}
+
+	/* Sum */
+	accumulated[0] = counters[0];
+	for (x = 1; x < x_max; x++)
+		accumulated[x] = counters[x] + accumulated[x - 1];
+
+	/* Calculate ratios */
+	for (x = 0; x < x_max; x++)
+	{
+		double height = ((double) counters[x]) / ((double) max);
+		double ratio_this = ((double) accumulated[x]) / ((double) ctx->history_received);
+		double ratio_prev = 0.0;
+		size_t index;
+		int color = 0;
+
+		index = (size_t) (height * ((double) symbols_num));
+		if (index >= symbols_num)
+			index = symbols_num - 1;
+
+		if (x > 0)
+			ratio_prev = ((double) accumulated[x - 1]) / ((double) ctx->history_received);
+
+		if (has_colors () == TRUE)
+		{
+			if ((ratio_this <= threshold_green)
+					|| ((ratio_prev < threshold_green)
+						&& (ratio_this > threshold_green)))
+				color = OPING_GREEN;
+			else if ((ratio_this <= threshold_yellow)
+					|| ((ratio_prev < threshold_yellow)
+						&& (ratio_this > threshold_yellow)))
+				color = OPING_YELLOW;
+			else
+				color = OPING_RED;
+
+			wattron (ctx->window, COLOR_PAIR(color));
+		}
+
+		if (counters[x] == 0)
+			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2, ' ');
+		else if (has_utf8 ())
+			mvwprintw (ctx->window, /* y = */ 3, /* x = */ x + 2,
+					hist_symbols_utf8[index]);
+		else
+			mvwaddch (ctx->window, /* y = */ 3, /* x = */ x + 2,
+					hist_symbols_acs[index] | A_ALTCHARSET);
+
+		if (has_colors () == TRUE)
+			wattroff (ctx->window, COLOR_PAIR(color));
+
+	}
+
+	free (accumulated);
+	return (0);
+} /* }}} int update_graph_histogram */
+
+static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter) /* {{{ */
+{
+	double latency = -1.0;
+	size_t buffer_len = sizeof (latency);
+
+	ping_iterator_get_info (iter, PING_INFO_LATENCY,
+			&latency, &buffer_len);
+
+	unsigned int sequence = 0;
+	buffer_len = sizeof (sequence);
+	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
+			&sequence, &buffer_len);
+
+
 	if ((ctx == NULL) || (ctx->window == NULL))
 		return (EINVAL);
 
-	werase (ctx->window);
+	/* werase (ctx->window); */
 
 	box (ctx->window, 0, 0);
 	wattron (ctx->window, A_BOLD);
@@ -618,19 +1243,27 @@ static int update_stats_from_context (ping_context_t *ctx) /* {{{ */
 			ctx->latency_total);
 	if (ctx->req_rcvd != 0)
 	{
-		double average;
-		double deviation;
+		double min;
+		double median;
+		double max;
+		double percentile;
 
-		average = context_get_average (ctx);
-		deviation = context_get_stddev (ctx);
-			
+		min = percentile_to_latency (ctx, 0.0);
+		median = percentile_to_latency (ctx, 50.0);
+		max = percentile_to_latency (ctx, 100.0);
+		percentile = percentile_to_latency (ctx, opt_percentile);
+
 		mvwprintw (ctx->window, /* y = */ 2, /* x = */ 2,
-				"rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms",
-				ctx->latency_min,
-				average,
-				ctx->latency_max,
-				deviation);
+				"RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f  ",
+				min, median, opt_percentile, percentile, max);
 	}
+
+	if (opt_show_graph == 1)
+		update_graph_prettyping (ctx, latency, sequence);
+	else if (opt_show_graph == 2)
+		update_graph_histogram (ctx);
+	else if (opt_show_graph == 3)
+		update_graph_boxplot (ctx);
 
 	wrefresh (ctx->window);
 
@@ -643,12 +1276,13 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 	int width = 0;
 	int height = 0;
 	int main_win_height;
+	int box_height = (opt_show_graph == 0) ? 4 : 5;
 
 	getmaxyx (stdscr, height, width);
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-	main_win_height = height - (4 * host_num);
+	main_win_height = height - (box_height * host_num);
 	wresize (main_win, main_win_height, /* width = */ width);
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
@@ -672,9 +1306,9 @@ static int on_resize (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 4,
+		context->window = newwin (/* height = */ box_height,
 				/* width = */ width,
-				/* y = */ main_win_height + (4 * context->index),
+				/* y = */ main_win_height + (box_height * context->index),
 				/* x = */ 0);
 	}
 
@@ -692,6 +1326,13 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 			break;
 		else if (key == KEY_RESIZE)
 			need_resize = 1;
+		else if (key == 'g')
+		{
+			if (opt_show_graph == 3)
+				opt_show_graph = 1;
+			else if (opt_show_graph > 0)
+				opt_show_graph++;
+		}
 	}
 
 	if (need_resize)
@@ -706,6 +1347,7 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 	int width = 0;
 	int height = 0;
 	int main_win_height;
+	int box_height = (opt_show_graph == 0) ? 4 : 5;
 
 	initscr ();
 	cbreak ();
@@ -719,12 +1361,16 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 	if (has_colors () == TRUE)
 	{
 		start_color ();
-		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ 0);
-		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ 0);
-		init_pair (OPING_RED,    COLOR_RED,    /* default = */ 0);
+		use_default_colors ();
+		init_pair (OPING_GREEN,  COLOR_GREEN,  /* default = */ -1);
+		init_pair (OPING_YELLOW, COLOR_YELLOW, /* default = */ -1);
+		init_pair (OPING_RED,    COLOR_RED,    /* default = */ -1);
+		init_pair (OPING_GREEN_HIST,  COLOR_GREEN,  -1);
+		init_pair (OPING_YELLOW_HIST, COLOR_YELLOW, COLOR_GREEN);
+		init_pair (OPING_RED_HIST,    COLOR_RED,    COLOR_YELLOW);
 	}
 
-	main_win_height = height - (4 * host_num);
+	main_win_height = height - (box_height * host_num);
 	main_win = newwin (/* height = */ main_win_height,
 			/* width = */ width,
 			/* y = */ 0, /* x = */ 0);
@@ -751,9 +1397,9 @@ static int pre_loop_hook (pingobj_t *ping) /* {{{ */
 			delwin (context->window);
 			context->window = NULL;
 		}
-		context->window = newwin (/* height = */ 4,
+		context->window = newwin (/* height = */ box_height,
 				/* width = */ width,
-				/* y = */ main_win_height + (4 * context->index),
+				/* y = */ main_win_height + (box_height * context->index),
 				/* x = */ 0);
 	}
 
@@ -819,6 +1465,30 @@ static int post_sleep_hook (__attribute__((unused)) pingobj_t *ping) /* {{{ */
 } /* }}} int post_sleep_hook */
 #endif
 
+static void update_context (ping_context_t *ctx, double latency) /* {{{ */
+{
+	ctx->req_sent++;
+
+	if (latency > 0.0)
+	{
+		ctx->req_rcvd++;
+		ctx->latency_total += latency;
+	}
+	else
+	{
+		latency = NAN;
+	}
+
+	ctx->history_by_time[ctx->history_index] = latency;
+
+	ctx->history_dirty = 1;
+
+	/* Update index and size. */
+	ctx->history_index = (ctx->history_index + 1) % HISTORY_SIZE_MAX;
+	if (ctx->history_size < HISTORY_SIZE_MAX)
+		ctx->history_size++;
+} /* }}} void update_context */
+
 static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 		__attribute__((unused)) int index)
 {
@@ -863,31 +1533,23 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 # define HOST_PRINTF(...) printf(__VA_ARGS__)
 #endif
 
-	context->req_sent++;
+	update_context (context, latency);
+
 	if (latency > 0.0)
 	{
-		context->req_rcvd++;
-		context->latency_total += latency;
-		context->latency_total_square += (latency * latency);
-
-		if ((context->latency_max < 0.0) || (context->latency_max < latency))
-			context->latency_max = latency;
-		if ((context->latency_min < 0.0) || (context->latency_min > latency))
-			context->latency_min = latency;
-
 #if USE_NCURSES
 		if (has_colors () == TRUE)
 		{
+			double ratio;
 			int color = OPING_GREEN;
-			double average = context_get_average (context);
-			double stddev = context_get_stddev (context);
 
-			if ((latency < (average - (2 * stddev)))
-					|| (latency > (average + (2 * stddev))))
-				color = OPING_RED;
-			else if ((latency < (average - stddev))
-					|| (latency > (average + stddev)))
+			ratio = latency_to_ratio (context, latency);
+			if (ratio < threshold_green)
+				color = OPING_GREEN;
+			else if (ratio < threshold_yellow)
 				color = OPING_YELLOW;
+			else
+				color = OPING_RED;
 
 			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 					data_len, context->host, context->addr,
@@ -920,8 +1582,15 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #if USE_NCURSES
 		}
 #endif
+                if (opt_bell) {
+#if USE_NCURSES
+			beep();
+#else
+			HOST_PRINTF ("\a");
+#endif
+                }
 	}
-	else
+	else /* if (!(latency > 0.0)) */
 	{
 #if USE_NCURSES
 		if (has_colors () == TRUE)
@@ -945,15 +1614,33 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 #endif
 	}
 
+	if (outfile != NULL)
+	{
+		struct timeval tv = {0};
+		if (gettimeofday (&tv, NULL) == 0)
+		{
+			double t = ((double) tv.tv_sec) + (((double) tv.tv_usec) / 1000000.0);
+
+			if ((sequence % 32) == 0)
+				fprintf (outfile, "#time,host,latency[ms]\n");
+
+			fprintf (outfile, "%.3f,\"%s\",%.2f\n", t, context->host, latency);
+		}
+	}
+
 #if USE_NCURSES
-	update_stats_from_context (context);
+	update_stats_from_context (context, iter);
 	wrefresh (main_win);
 #endif
 } /* }}} void update_host_hook */
 
+/* Prints statistics for each host, cleans up the contexts and returns the
+ * number of hosts which failed to return more than the fraction
+ * opt_exit_status_threshold of pings. */
 static int post_loop_hook (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
+	int failure_count = 0;
 
 #if USE_NCURSES
 	endwin ();
@@ -973,26 +1660,34 @@ static int post_loop_hook (pingobj_t *ping) /* {{{ */
 				context_get_packet_loss (context),
 				context->latency_total);
 
+		{
+			double pct_failed = 1.0 - (((double) context->req_rcvd)
+					/ ((double) context->req_sent));
+			if (pct_failed > opt_exit_status_threshold)
+				failure_count++;
+		}
+
 		if (context->req_rcvd != 0)
 		{
-			double average;
-			double deviation;
+			double min;
+			double median;
+			double max;
+			double percentile;
 
-			average = context_get_average (context);
-			deviation = context_get_stddev (context);
+			min = percentile_to_latency (context, 0.0);
+			median = percentile_to_latency (context, 50.0);
+			max = percentile_to_latency (context, 100.0);
+			percentile = percentile_to_latency (context, opt_percentile);
 
-			printf ("rtt min/avg/max/sdev = %.3f/%.3f/%.3f/%.3f ms\n",
-					context->latency_min,
-					average,
-					context->latency_max,
-					deviation);
+			printf ("RTT[ms]: min = %.0f, median = %.0f, p(%.0f) = %.0f, max = %.0f\n",
+					min, median, opt_percentile, percentile, max);
 		}
 
 		ping_iterator_set_context (iter, NULL);
 		context_destroy (context);
 	}
 
-	return (0);
+	return (failure_count);
 } /* }}} int post_loop_hook */
 
 int main (int argc, char **argv) /* {{{ */
@@ -1026,6 +1721,7 @@ int main (int argc, char **argv) /* {{{ */
 	}
 #endif
 
+	setlocale(LC_ALL, "");
 	optind = read_options (argc, argv);
 
 #if !_POSIX_SAVED_IDS
@@ -1076,6 +1772,12 @@ int main (int argc, char **argv) /* {{{ */
 		/* printf ("ts_int = %i.%09li\n", (int) ts_int.tv_sec, ts_int.tv_nsec); */
 	}
 
+	if (ping_setopt (ping, PING_OPT_TIMEOUT, (void*)(&opt_timeout)) != 0)
+	{
+		fprintf (stderr, "Setting timeout failed: %s\n",
+				ping_get_error (ping));
+	}
+
 	if (opt_addrfamily != PING_DEF_AF)
 		ping_setopt (ping, PING_OPT_AF, (void *) &opt_addrfamily);
 
@@ -1094,6 +1796,24 @@ int main (int argc, char **argv) /* {{{ */
 		{
 			fprintf (stderr, "Setting device failed: %s\n",
 					ping_get_error (ping));
+		}
+	}
+
+	if (opt_mark != NULL)
+	{
+		char *endp = NULL;
+		int mark = (int) strtol (opt_mark, &endp, /* base = */ 0);
+		if ((opt_mark[0] != 0) && (endp != NULL) && (*endp == 0))
+		{
+			if (ping_setopt(ping, PING_OPT_MARK, (void*)(&mark)) != 0)
+			{
+				fprintf (stderr, "Setting mark failed: %s\n",
+					ping_get_error (ping));
+			}
+		}
+		else
+		{
+			fprintf(stderr, "Ignoring invalid mark: %s\n", optarg);
 		}
 	}
 
@@ -1200,9 +1920,23 @@ int main (int argc, char **argv) /* {{{ */
 		exit (EXIT_FAILURE);
 	}
 
+	if (host_num == 0)
+		exit (EXIT_FAILURE);
+
 #if _POSIX_SAVED_IDS
 	saved_set_uid = (uid_t) -1;
 #endif
+
+	if (opt_outfile != NULL)
+	{
+		outfile = fopen (opt_outfile, "a");
+		if (outfile == NULL)
+		{
+			fprintf (stderr, "opening \"%s\" failed: %s\n",
+				 opt_outfile, strerror (errno));
+			exit (EXIT_FAILURE);
+		}
+	}
 
 	ping_initialize_contexts (ping);
 
@@ -1230,7 +1964,12 @@ int main (int argc, char **argv) /* {{{ */
 			return (1);
 		}
 
-		if (ping_send (ping) < 0)
+		status = ping_send (ping);
+		if (status == -EINTR)
+		{
+			continue;
+		}
+		else if (status < 0)
 		{
 			fprintf (stderr, "ping_send failed: %s\n",
 					ping_get_error (ping));
@@ -1263,14 +2002,13 @@ int main (int argc, char **argv) /* {{{ */
 		/* printf ("Sleeping for %i.%09li seconds\n", (int) ts_wait.tv_sec, ts_wait.tv_nsec); */
 		while ((status = nanosleep (&ts_wait, &ts_wait)) != 0)
 		{
-			if (errno != EINTR)
+			if (errno == EINTR)
+			{
+				continue;
+			}
+			else
 			{
 				perror ("nanosleep");
-				break;
-			}
-			else if (opt_count == 0)
-			{
-				/* sigint */
 				break;
 			}
 		}
@@ -1281,11 +2019,25 @@ int main (int argc, char **argv) /* {{{ */
 			opt_count--;
 	} /* while (opt_count != 0) */
 
-	post_loop_hook (ping);
+	/* Returns the number of failed hosts according to -Z. */
+	status = post_loop_hook (ping);
 
 	ping_destroy (ping);
 
-	return (0);
+	if (outfile != NULL)
+	{
+		fclose (outfile);
+		outfile = NULL;
+	}
+
+	if (status == 0)
+		exit (EXIT_SUCCESS);
+	else
+	{
+		if (status > 255)
+			status = 255;
+		exit (status);
+	}
 } /* }}} int main */
 
 /* vim: set fdm=marker : */

@@ -31,7 +31,7 @@ supports colors.
 
 =item B<-4>
 
-Force the use of IPv4. 
+Force the use of IPv4.
 
 =item B<-6>
 
@@ -45,6 +45,12 @@ Send (and receive) I<count> ICMP packets, then stop and exit.
 
 Send one ICMP packet (per host) each I<interval> seconds. This can be a
 floating-point number to specify sub-second precision.
+
+=item B<-w> I<timeout>
+
+Specifies the time to wait for an C<ECHO REPLY> packet before giving up, in
+seconds. This can be a floating point number for sub-second precision. Defaults
+to B<1.0> seconds.
 
 =item B<-t> I<ttl>
 
@@ -78,6 +84,12 @@ possible to I<temporarily> drop privileges. The alternative behavior is: If the
 real user ID (as returned by L<getuid(2)>) and the effective user ID (as
 returned by L<geteuid(2)>) differ, the only argument allowed for this option is
 "-" (i.e. standard input).
+
+=item B<-O> I<filename>
+
+Write measurements in I<Comma Separated Values> (CSV) format to I<filename>.
+This option writes three columns per row: wall clock time in (fractional)
+seconds since epoch, hostname and the round trip time in milliseconds.
 
 =item B<-Q> I<qos>
 
@@ -166,6 +178,131 @@ I<Explicit Congestion Notification> (ECN), even if the deprecated
 I<Type of Service> (ToS) aliases were used to specify the bits of outgoing
 packets.
 
+=item B<-m> I<mark>
+
+I<Linux only> Sets the I<mark> (an integer number) on outgoing packets. This
+can be used by L<iptables(8)> and other networking infrastructure for filtering
+and routing.
+
+=item B<-u>|B<-U>
+
+I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
+neither is given, the codeset is automatically determined from the locale.
+
+=item B<-g> B<none>|B<prettyping>|B<boxplot>|B<histogram>
+
+I<noping only> Selects the graph to display.
+
+=over 4
+
+=item B<none>
+
+Do not show a graph.
+
+=item B<prettyping>
+
+Show a graph with time on the x-axis, the y-axis shows the round-trip time.
+This is the default graph.
+
+If your terminal supports unicode and colors, they are used to improve
+the precision of the data shown: a green box is drawn for round-trip times up
+to one third of the configured timeout, the height representing the RTT. Longer
+RTTs will start to fill the box yellow (with a green background) and then red
+(with a yellow background). Lost packages are drawn as a bold red explamation
+mark.
+
+=item B<boxplot>
+
+Show a I<box plot> where the x-axis, i.e. the width of the window, is the
+round-trip time. The entire width of the window it the ping interval, set with
+the B<-i> option.
+
+The box is sized so it contains 50% of the replies. The vertical line shows the
+median. The whiskers are sized to contain 95% of the replies -- 2.5% below the
+whiskers and 2.5% above.
+
+  |----------[#####|##########]--------------------------------------------|
+  ^          ^     ^          ^                                            ^
+ 2.5%       25%   50%        75%                                         97.5%
+
+=item B<histogram>
+
+Show a I<histrogram> of the round-trip times. The width of the window is taken
+as round-trip time from 0ms on the left to the I<interval> (the B<-i> option,
+default 1000ms) on the right.
+
+The height of the graph is scaled so that the most-used buckets vertically fills
+the line. The buckets are colored green up to and including the 80th
+percentile, yellow up to and including the 95th percentile and red for the
+remainder.
+
+=back
+
+=item B<-b>
+
+Audible bell. Print a ASCII BEL character (\a or 0x07) when a packet
+is received before the timeout occurs. This can be useful in order to
+monitory hosts' connectivity without looking physically at the
+console, for example to trace network cables (start audible beep,
+disconnect cable N: if beep stops, the cable was in use) or to tell
+when a host returns from a reboot.
+
+This relies on the terminal bell to be functional. To enable the
+terminal bell, use the following instructions.
+
+=over 4
+
+=item
+
+the visual bell is disabled in your terminal emulator, with the +vb
+commandline flag or the following in your .Xresources:
+
+ XTerm*visualBell: false
+
+=item
+
+the PC speaker module is loaded in your kernel:
+
+ modprobe pcspkr
+
+=item
+
+X11 has the terminal bell enabled:
+
+ xset b on; xset b 100
+
+=item
+
+and finally, if you are using PulseAudio, that the module-x11-bell
+module is loaded with a pre-loaded sample defined in your pulseaudio
+configuration:
+
+ load-sample-lazy x11-bell /usr/share/sounds/freedesktop/stereo/complete.oga
+ load-module module-x11-bell sample=x11-bell
+
+=back
+
+=item B<-P> I<percent>
+
+Configures the latency percentile to report. I<percent> must be a number
+between zero and 100, exclusively in both cases. In general, defaults to B<95>.
+If B<-c> is given and a number less than 20, this would be the same as the
+maximum. In this case the default is chosen so that it excludes the maximum,
+e.g. if B<-cE<nbsp>5> is given, the default is I<80>. The calculated percentile
+is based on the last 900 packets (15 minutes with the default interval).
+
+=item B<-Z> I<percent>
+
+If any hosts have a drop rate higher than I<percent>, where I<percent> is a
+number between zero and 100 inclusively, exit with a non-zero exit status.
+Since it is not possible to have a higher drop rate than 100%, passing this
+limit will effectively disable the feature (the default). Setting the option to
+zero means that the exit status will only be zero if I<all> replies for I<all>
+hosts have been received.
+
+The exit status will indicate the number of hosts with more than I<percent>
+packets lost, up to a number of 255 failing hosts.
+
 =back
 
 =head1 COLORS
@@ -175,22 +312,19 @@ If supported by the terminal, I<noping> will highlight the round-trip times
 the "expected" range, yellow marks moderately unusual times and times that
 differ a lot from the expected value are printed in red.
 
-The information used to categorize round-trip times is the I<average>
-round-trip time and the I<standard deviation>. RTTs that differ from the
-average by less than the standard deviation are considered to be "normal" and
-are printed in green. Times that differ from the average more than the standard
-deviation but less than twice the standard deviation are considered "moderately
-unusual" and are printed in yellow. Times differing more than twice the
-standard deviation from the average are considered to be "unusual" and are
+The information used to categorize round-trip times is the I<percentile>. RTTs
+in the 80th percentile are considered to be "normal" and are printed in green.
+RTTs within the 95th percentile are considered "moderately unusual" and are
+printed in yellow. RTTs above that are considered to be "unusual" and are
 printed in red.
 
 =head1 SEE ALSO
 
-L<ping(8)>, L<http://www.fping.com/>, L<liboping(3)>
+L<ping(8)>, L<http://fping.org/>, L<liboping(3)>
 
 =head1 AUTHOR
 
-liboping is written by Florian octo Forster E<lt>ff at octo.itE<gt>.
-Its homepage can be found at L<http://verplant.org/liboping/>.
+liboping is written by Florian "octo" Forster E<lt>ff at octo.itE<gt>.
+Its homepage can be found at L<http://noping.cc/>.
 
-(c) 2005-2010 by Florian octo Forster.
+Copyright (c) 2005-2016 by Florian "octo" Forster.

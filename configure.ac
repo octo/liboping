@@ -1,8 +1,16 @@
-AC_INIT(liboping, 1.6.1)
-AC_CONFIG_SRCDIR(src/liboping.c)
-AC_CONFIG_HEADERS(src/config.h)
-AM_INIT_AUTOMAKE(dist-bzip2)
-AC_LANG(C)
+# Process this file with autoconf to produce a configure script.
+
+AC_PREREQ([2.65])
+AC_INIT([liboping],
+	[1.9.0],
+	[liboping@verplant.org],
+	[],
+	[http://noping.cc/])
+AC_CONFIG_SRCDIR([src/liboping.c])
+AC_CONFIG_HEADERS([src/config.h])
+AC_CONFIG_MACRO_DIR([m4])
+AM_INIT_AUTOMAKE([dist-bzip2])
+AC_LANG([C])
 
 AC_PREFIX_DEFAULT("/opt/oping")
 
@@ -16,7 +24,7 @@ AC_SUBST(LIBOPING_PATCH)
 
 # ABI version
 LIBOPING_CURRENT=2
-LIBOPING_REVISION=7
+LIBOPING_REVISION=11
 LIBOPING_AGE=2
 AC_SUBST(LIBOPING_CURRENT)
 AC_SUBST(LIBOPING_REVISION)
@@ -38,26 +46,22 @@ then
 fi
 AC_ARG_VAR(PERL, [Perl interpreter command])
 
-#
 # configure libtool
-#
-AC_LIBTOOL_DLOPEN
-AC_PROG_LIBTOOL
-#AC_PROG_RANLIB
+LT_INIT([dlopen])
 
-#
+# pkg-config interface
+PKG_INSTALLDIR
+
+AC_ARG_WITH(pkgconfigdir,
+	    AC_HELP_STRING([--with-pkgconfigdir], [Use the specified pkgconfig dir (default is libdir/pkgconfig)]),
+	    [pkgconfigdir="${withval}"],
+	    [pkgconfigdir='${libdir}/pkgconfig'])
+AC_SUBST([pkgconfigdir])
+
 # Checks for header files.
-#
 AC_HEADER_STDC
-AC_CHECK_HEADERS(unistd.h)
-AC_CHECK_HEADERS(math.h)
-AC_CHECK_HEADERS(fcntl.h)
-AC_CHECK_HEADERS(sys/types.h)
-AC_CHECK_HEADERS(sys/stat.h)
 AC_HEADER_TIME
-AC_CHECK_HEADERS(sys/socket.h)
-AC_CHECK_HEADERS(netdb.h)
-AC_CHECK_HEADERS(signal.h)
+AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h locale.h langinfo.h])
 
 # This sucks, but what can I do..?
 AC_CHECK_HEADERS(netinet/in_systm.h, [], [],
@@ -162,12 +166,24 @@ AC_CHECK_HEADERS(netinet/icmp6.h, [], [],
 #endif
 ])
 
+# Checks for typedefs, structures, and compiler characteristics.
+AC_TYPE_SIZE_T
+AC_TYPE_SSIZE_T
+AC_TYPE_UID_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT8_T
+
+LIBOPING_PC_LIBS_PRIVATE=''
+
 socket_needs_socket="no"
 AC_CHECK_FUNCS(socket, [],
 	AC_CHECK_LIB(socket, socket,
 		[socket_needs_socket="yes"],
 		AC_MSG_ERROR(cannot find socket)))
-AM_CONDITIONAL(BUILD_WITH_LIBSOCKET, test "x$socket_needs_socket" = "xyes")
+if test "x$socket_needs_socket" = "xyes"; then
+	LIBOPING_PC_LIBS_PRIVATE="${LIBOPING_PC_LIBS_PRIVATE} -lsocket"
+fi
 
 # Under Solaris, the `xnet' library provides `recvmsg' which complies with the
 # X/Open CAE Specification.
@@ -177,22 +193,39 @@ if test "x$with_libxnet" = "xyes"
 then
 	CPPFLAGS="$CPPFLAGS -D_XPG4_2 -D__EXTENSIONS__"
 fi
-AM_CONDITIONAL(BUILD_WITH_LIBXNET, test "x$with_libxnet" = "xyes")
-
-nanosleep_needs_rt="no"
-AC_CHECK_FUNCS(nanosleep, [],
-	AC_CHECK_LIB(rt, nanosleep,
-		[nanosleep_needs_rt="yes"],
-		AC_MSG_ERROR(cannot find nanosleep)))
-AM_CONDITIONAL(BUILD_WITH_LIBRT, test "x$nanosleep_needs_rt" = "xyes")
-
-with_ncurses="yes"
-AC_CHECK_HEADERS(ncurses.h, [with_ncurses="yes"], [with_ncurses="no"])
-if test "x$with_ncurses" = "xyes"
-then
-	AC_CHECK_LIB(ncurses, mvwprintw, [with_ncurses="yes"], [with_ncurses="no"])
+if test "x$with_libxnet" = "xyes"; then
+	LIBOPING_PC_LIBS_PRIVATE="${LIBOPING_PC_LIBS_PRIVATE} -lxnet"
 fi
-AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" = "xyes")
+
+AC_SUBST(LIBOPING_PC_LIBS_PRIVATE)
+
+AC_SEARCH_LIBS([nanosleep],[rt],[],
+		[AC_MSG_ERROR([cannot find nanosleep])])
+
+AC_ARG_WITH(ncurses, AS_HELP_STRING([--with-ncurses], [Build oping CLI tool with ncurses support]))
+AS_IF([test "x$with_ncurses" != "xno"], [
+	can_build_with_ncurses="no"
+	PKG_CHECK_MODULES([NCURSES], [ncursesw], [can_build_with_ncurses=yes], [
+		PKG_CHECK_MODULES([NCURSES], [ncurses], [can_build_with_ncurses=yes], [
+			AC_CHECK_LIB(ncursesw, mvwprintw, [NCURSES_LIBS="-lncursesw"; can_build_with_ncurses=yes], [
+				AC_CHECK_LIB(ncurses, mvwprintw, [NCURSES_LIBS="-lncurses"; can_build_with_ncurses=yes])
+			])
+		])
+	])
+
+	AS_IF([test "x$can_build_with_ncurses" = "xyes"], [
+		AC_CHECK_HEADERS([ncursesw/curses.h ncursesw.h ncurses/curses.h ncurses.h], [can_build_with_ncurses=yes; break;], [can_build_with_ncurses=no])
+	])
+
+	AS_IF([test "x$can_build_with_ncurses" = "xno" && test "x$with_ncurses" = "xyes"], [
+		AC_MSG_ERROR([ncurses not found but explicit enabled])
+	],
+	[test "x$can_build_with_ncurses" = "xno"], [
+		AC_MSG_WARN([Will not build oping with ncurses support -- no suiteable ncurses installation found])
+	])
+])
+
+AM_CONDITIONAL(BUILD_WITH_LIBNCURSES, test "x$with_ncurses" != "xno" && test "x$can_build_with_ncurses" = "xyes")
 
 AC_FUNC_STRERROR_R
 
@@ -232,4 +265,10 @@ AC_SUBST(PERL_BINDINGS_OPTIONS)
 
 AC_SUBST(BINDINGS)
 
-AC_OUTPUT(Makefile src/Makefile src/mans/Makefile bindings/Makefile)
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_FUNC_STRERROR_R
+AC_CHECK_FUNCS([gettimeofday memset modf select socket sqrt strcasecmp strdup strerror strncasecmp strtoul])
+
+AC_CONFIG_FILES([Makefile src/Makefile src/liboping.pc src/mans/Makefile bindings/Makefile])
+AC_OUTPUT

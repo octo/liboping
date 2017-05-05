@@ -19,7 +19,7 @@
  *
  * Authors:
  *   Olivier Fredj <ofredj at proxad.net>
- *   Florian octo Forster <octo at verplant.org>
+ *   Florian octo Forster <ff at octo.it>
  */
 #include "EXTERN.h"
 #include "perl.h"

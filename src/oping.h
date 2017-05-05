@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2011  Florian octo Forster <ff at octo.it>
+ * Copyright (C) 2006-2016  Florian octo Forster <ff at octo.it>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -33,7 +33,7 @@
 extern "C" {
 #endif
 
-#define OPING_VERSION 1006001
+#define OPING_VERSION 1009000
 
 /*
  * Type definitions
@@ -53,6 +53,7 @@ typedef struct pingobj pingobj_t;
 #define PING_OPT_SOURCE  0x10
 #define PING_OPT_DEVICE  0x20
 #define PING_OPT_QOS     0x40
+#define PING_OPT_MARK    0x80
 
 #define PING_DEF_TIMEOUT 1.0
 #define PING_DEF_TTL     255

@@ -75,6 +75,12 @@ C<IP_TOS> (IPv4) or C<IPV6_TCLASS> (IPv6) option. It is the caller's
 responsibility to chose a valid bit combination. For details, read the L<ip(7)>
 and L<ipv6(7)> manual pages, as well as I<RFCE<nbsp>2474>.
 
+=item B<PING_OPT_MARK>
+
+Mark (as in netfilter) outgoing packets using the SO_MARK socket option. Takes
+an int* pointer as a value. Setting this requires CAP_NET_ADMIN under Linux.
+Fails with C<operation not supported> on platforms which don't have SO_MARK.
+
 =back
 
 The I<val> argument is a pointer to the new value. It must not be NULL. It is
@@ -92,7 +98,7 @@ L<liboping(3)>
 
 =head1 AUTHOR
 
-liboping is written by Florian octo Forster E<lt>octo at verplant.orgE<gt>.
-Its homepage can be found at L<http://verplant.org/liboping/>.
+liboping is written by Florian "octo" Forster E<lt>ff at octo.itE<gt>.
+Its homepage can be found at L<http://noping.cc/>.
 
-(c) 2005-2010 by Florian octo Forster.
+Copyright (c) 2005-2016 by Florian "octo" Forster.

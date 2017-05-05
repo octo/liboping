@@ -1,6 +1,6 @@
 /**
  * Object oriented C module to send ICMP and ICMPv6 `echo's.
- * Copyright (C) 2006-2011  Florian octo Forster <ff at octo.it>
+ * Copyright (C) 2006-2016  Florian octo Forster <ff at octo.it>
  *
  * This library is free software; you can redistribute it and/or modify it
  * under the terms of the GNU Lesser General Public License as published by the
@@ -16,6 +16,10 @@
  * along with this library; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
+
+#ifdef __APPLE__
+#define __APPLE_USE_RFC_3542
+#endif
 
 #if HAVE_CONFIG_H
 # include <config.h>
@@ -142,10 +146,13 @@ struct pingobj
 
 	char                    *device;
 
+	char                    set_mark;
+	int                     mark;
+
 	char                     errmsg[PING_ERRMSG_LEN];
 
 	pinghost_t              *head;
-	pinghost_t		*table[PING_TABLE_LEN];
+	pinghost_t              *table[PING_TABLE_LEN];
 };
 
 /*
@@ -296,23 +303,20 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	buffer     += ip_hdr_len;
 	buffer_len -= ip_hdr_len;
 
-	if (buffer_len < sizeof (struct icmp))
+	if (buffer_len < ICMP_MINLEN)
 		return (NULL);
 
 	icmp_hdr = (struct icmp *) buffer;
-	buffer     += sizeof (struct icmp);
-	buffer_len -= sizeof (struct icmp);
-
 	if (icmp_hdr->icmp_type != ICMP_ECHOREPLY)
 	{
-		dprintf ("Unexpected ICMP type: %i\n", icmp_hdr->icmp_type);
+		dprintf ("Unexpected ICMP type: %"PRIu8"\n", icmp_hdr->icmp_type);
 		return (NULL);
 	}
 
 	recv_checksum = icmp_hdr->icmp_cksum;
+	/* This writes to buffer. */
 	icmp_hdr->icmp_cksum = 0;
-	calc_checksum = ping_icmp4_checksum ((char *) icmp_hdr,
-			sizeof (struct icmp) + buffer_len);
+	calc_checksum = ping_icmp4_checksum (buffer, buffer_len);
 
 	if (recv_checksum != calc_checksum)
 	{
@@ -389,12 +393,12 @@ static pinghost_t *ping_receive_ipv6 (pingobj_t *obj, char *buffer,
 
 	pinghost_t *ptr;
 
-	if (buffer_len < sizeof (struct icmp6_hdr))
+	if (buffer_len < ICMP_MINLEN)
 		return (NULL);
 
 	icmp_hdr = (struct icmp6_hdr *) buffer;
-	buffer     += sizeof (struct icmp);
-	buffer_len -= sizeof (struct icmp);
+	buffer     += ICMP_MINLEN;
+	buffer_len -= ICMP_MINLEN;
 
 	if (icmp_hdr->icmp6_type != ICMP6_ECHO_REPLY)
 	{
@@ -545,6 +549,7 @@ static int ping_receive_one (pingobj_t *obj, struct timeval *now, int addrfam)
 						sizeof (recv_qos));
 				dprintf ("TOSv6 = 0x%02"PRIx8";\n", recv_qos);
 			} else
+#ifdef IPV6_HOPLIMIT
 			if (cmsg->cmsg_type == IPV6_HOPLIMIT)
 			{
 				memcpy (&recv_ttl, CMSG_DATA (cmsg),
@@ -552,6 +557,25 @@ static int ping_receive_one (pingobj_t *obj, struct timeval *now, int addrfam)
 				dprintf ("TTLv6 = %i;\n", recv_ttl);
 			}
 			else
+#endif
+#ifdef IPV6_UNICAST_HOPS
+			if (cmsg->cmsg_type == IPV6_UNICAST_HOPS)
+			{
+				memcpy (&recv_ttl, CMSG_DATA (cmsg),
+						sizeof (recv_ttl));
+				dprintf ("TTLv6 = %i;\n", recv_ttl);
+			}
+			else
+#endif
+#ifdef IPV6_MULTICAST_HOPS
+			if (cmsg->cmsg_type == IPV6_MULTICAST_HOPS)
+			{
+				memcpy (&recv_ttl, CMSG_DATA (cmsg),
+						sizeof (recv_ttl));
+				dprintf ("TTLv6 = %i;\n", recv_ttl);
+			}
+			else
+#endif
 			{
 				dprintf ("Not handling option %i.\n",
 						cmsg->cmsg_type);
@@ -655,29 +679,28 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph, int fd)
 	struct icmp *icmp4;
 	int status;
 
-	char buf[4096];
-	int  buflen;
+	char   buf[4096] = {0};
+	size_t buflen;
 
 	char *data;
-	int   datalen;
+	size_t datalen;
 
 	dprintf ("ph->hostname = %s\n", ph->hostname);
 
-	memset (buf, '\0', sizeof (buf));
 	icmp4 = (struct icmp *) buf;
-	data  = (char *) (icmp4 + 1);
+	*icmp4 = (struct icmp) {
+		.icmp_type = ICMP_ECHO,
+		.icmp_id   = htons (ph->ident),
+		.icmp_seq  = htons (ph->sequence),
+	};
 
-	icmp4->icmp_type  = ICMP_ECHO;
-	icmp4->icmp_code  = 0;
-	icmp4->icmp_cksum = 0;
-	icmp4->icmp_id    = htons (ph->ident);
-	icmp4->icmp_seq   = htons (ph->sequence);
+	datalen = strlen (ph->data);
+	buflen = ICMP_MINLEN + datalen;
+	if (sizeof (buf) < buflen)
+		return (EINVAL);
 
-	buflen = 4096 - sizeof (struct icmp);
-	strncpy (data, ph->data, buflen);
-	datalen = strlen (data);
-
-	buflen = datalen + sizeof (struct icmp);
+	data  = buf + ICMP_MINLEN;
+	memcpy (data, ph->data, datalen);
 
 	icmp4->icmp_cksum = ping_icmp4_checksum (buf, buflen);
 
@@ -700,7 +723,7 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph, int fd)
 	struct icmp6_hdr *icmp6;
 	int status;
 
-	char buf[4096];
+	char buf[4096] = {0};
 	int  buflen;
 
 	char *data;
@@ -708,23 +731,22 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph, int fd)
 
 	dprintf ("ph->hostname = %s\n", ph->hostname);
 
-	memset (buf, '\0', sizeof (buf));
 	icmp6 = (struct icmp6_hdr *) buf;
-	data  = (char *) (icmp6 + 1);
+	*icmp6 = (struct icmp6_hdr) {
+		.icmp6_type  = ICMP6_ECHO_REQUEST,
+		.icmp6_id    = htons (ph->ident),
+		.icmp6_seq   = htons (ph->sequence),
+	};
 
-	icmp6->icmp6_type  = ICMP6_ECHO_REQUEST;
-	icmp6->icmp6_code  = 0;
-	/* The checksum will be calculated by the TCP/IP stack.  */
-	/* FIXME */
-	icmp6->icmp6_cksum = 0;
-	icmp6->icmp6_id    = htons (ph->ident);
-	icmp6->icmp6_seq   = htons (ph->sequence);
+	datalen = strlen (ph->data);
+	buflen = sizeof (*icmp6) + datalen;
+	if (sizeof (buf) < buflen)
+		return (EINVAL);
 
-	buflen = 4096 - sizeof (struct icmp6_hdr);
-	strncpy (data, ph->data, buflen);
-	datalen = strlen (data);
+	data  = buf + ICMP_MINLEN;
+	memcpy (data, ph->data, datalen);
 
-	buflen = datalen + sizeof (struct icmp6_hdr);
+	/* The checksum will be calculated by the TCP/IP stack. */
 
 	dprintf ("Sending ICMPv6 package with ID 0x%04x\n", ph->ident);
 
@@ -974,6 +996,15 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 		ping_set_errno (obj, errno);
 		return -1;
 	}
+	else if (fd >= FD_SETSIZE)
+	{
+		dprintf ("socket(2) returned file descriptor %d, which is above the file "
+			 "descriptor limit for select(2) (FD_SETSIZE = %d)\n",
+			 fd, FD_SETSIZE);
+		close (fd);
+		ping_set_errno (obj, EMFILE);
+		return -1;
+	}
 
 	if (obj->srcaddr != NULL)
 	{
@@ -1010,6 +1041,23 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 		}
 	}
 #endif /* SO_BINDTODEVICE */
+#ifdef SO_MARK
+	if (obj->set_mark)
+	{
+		if (setsockopt(fd, SOL_SOCKET, SO_MARK,
+				&obj->mark, sizeof(obj->mark)) != 0)
+		{
+			ping_set_errno (obj, errno);
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("setsockopt (SO_MARK): %s\n",
+				 sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+			close (fd);
+			return -1;
+		}
+	}
+#endif
 #ifdef SO_TIMESTAMP
 	if (1) /* {{{ */
 	{
@@ -1037,10 +1085,12 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 	{
 		int opt;
 
+#ifdef IP_RECVTOS
 		/* Enable receiving the TOS field */
 		opt = 1;
 		setsockopt (fd, IPPROTO_IP, IP_RECVTOS,
 				&opt, sizeof (opt));
+#endif /* IP_RECVTOS */
 
 		/* Enable receiving the TTL field */
 		opt = 1;
@@ -1285,6 +1335,19 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 		} /* case PING_OPT_DEVICE */
 		break;
 
+		case PING_OPT_MARK:
+		{
+#ifdef SO_MARK
+			obj->mark     = *(int*)(value);
+			obj->set_mark = 1;
+#else /* SO_MARK */
+			ping_set_errno (obj, ENOTSUP);
+			ret = -1;
+#endif /* !SO_MARK */
+
+		} /* case PING_OPT_MARK */
+		break;
+
 		default:
 			ret = -2;
 	} /* switch (option) */
@@ -1375,6 +1438,7 @@ int ping_send (pingobj_t *obj)
 	if (fd4 != -1) num_fds++;
 	if (fd6 != -1) num_fds++;
 	max_fd = fd4 > fd6 ? fd4 : fd6;
+	assert (max_fd < FD_SETSIZE);
 
 	while (pings > 0 || ptr != NULL)
 	{
@@ -1416,7 +1480,8 @@ int ping_send (pingobj_t *obj)
 		if ((status == -1) && (errno == EINTR))
 		{
 			dprintf ("select was interrupted by signal..\n");
-			continue;
+			ping_set_errno (obj, EINTR);
+			return (-1);
 		}
 		else if (status < 0)
 		{
@@ -1444,7 +1509,7 @@ int ping_send (pingobj_t *obj)
 				if (!ping_receive_one(obj, &nowtime, AF_INET))
 					--pings;
 			}
-			else if (ptr != NULL && ptr->addrfamily == AF_INET && 
+			else if (ptr != NULL && ptr->addrfamily == AF_INET &&
 						FD_ISSET (fd4, &write_fds))
 			{
 				if (!ping_send_one(obj, ptr, fd4))

@@ -1,3 +1,40 @@
+2016-06-27, Version 1.9.0:
+	* liboping: The new "PING_OPT_MARK" option allows to mark packets,
+	  which can be used for filtering and routing such packets on Linux.
+	* oping, noping: The new "-m" command line option allows to set a mark
+	  on packets sent by the tool.
+	* oping, noping: The new "-O" command line option allows to write
+	  measurements to an CSV file.
+	* oping, noping: The new "-w" command line option allows to specify
+	  the timeout after which a packet/reply is considered "dropped".
+
+2014-11-20, Version 1.8.0:
+	* oping, noping: Average and standard deviation have been removed from
+	  the status output, which show median and 95th percentile instead.
+	  The percentile can be chosen with the "-P" option.
+	* noping: The additional graph types "histogram" and "boxplot" have
+	  been added, which can be selected with the "-g" option.
+
+2014-09-25, Version 1.7.0:
+	* oping, noping: The new -Z option allows the exit status to indicate
+	  the number of failing hosts. Thanks to Barak Pearlmutter for the
+	  patch.
+	* noping: The ability to print a "prettyping" style graph has been
+	  added. Thanks to Antoine Beaupré for his work!
+	* src/liboping.c: Build issues on Solaris have been fixed. Thanks
+	  Scott Severtson for the fix!
+	* Build system: Creation and installation of a pkg-config file has
+	  been added. Thanks to Barak Pearlmutter for the patch.
+
+2012-01-31, Version 1.6.2:
+	* Build system: Setting capabilities and the set-UID bit has been made
+	  more fault-tolerant, so that it will work with Debian's fakeroot(1)
+	  utility.
+	* src/liboping.c: Fixed a compiler warning about an non-static format
+	  string. Thanks to Brian Edwards for pointing this out.
+	* src/liboping.c: Fixed compilation under Mac OS X and Solaris. Thanks
+	  to Clayton O'Neill for his patch.
+
 2011-03-06, Version 1.6.1:
 	* Build system: If "make install" is executed as root, the CAP_NET_RAW
 	  capability is added to the binary (on Linux) or the set-UID bit is
