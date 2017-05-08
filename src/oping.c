@@ -294,6 +294,11 @@ static void clean_history (ping_context_t *ctx) /* {{{ */
 	memcpy (ctx->history_by_value, ctx->history_by_time,
 			sizeof (ctx->history_by_time));
 
+	/* Remove impossible values caused by adding a new host */
+	for (i = 0; i < ctx->history_size; i++)
+		if (ctx->history_by_value[i] < 0)
+			ctx->history_by_value[i] = NAN;
+
 	/* Sort all RTTs. */
 	qsort (ctx->history_by_value, ctx->history_size, sizeof
 			(ctx->history_by_value[0]), compare_double);
@@ -398,6 +403,7 @@ static int ping_initialize_contexts (pingobj_t *ping) /* {{{ */
 {
 	pingobj_iter_t *iter;
 	int index;
+	size_t history_size = 0;
 
 	if (ping == NULL)
 		return (EINVAL);
@@ -409,9 +415,26 @@ static int ping_initialize_contexts (pingobj_t *ping) /* {{{ */
 	{
 		ping_context_t *context;
 		size_t buffer_size;
+		int i;
+
+		context = ping_iterator_get_context(iter);
+
+		/* if this is a previously existing host, do not recreate it */
+		if (context != NULL)
+		{
+			history_size = context->history_size;
+			context->index = index++;
+			continue;
+		}
 
 		context = context_create ();
 		context->index = index;
+
+		/* start new hosts at the same graph point as old hosts */
+		context->history_size = history_size;
+		context->history_index = history_size;
+		for (i = 0; i < history_size; i++)
+			context->history_by_time[i] = -1;
 
 		buffer_size = sizeof (context->host);
 		ping_iterator_get_info (iter, PING_INFO_HOSTNAME, context->host, &buffer_size);
@@ -1000,7 +1023,7 @@ static int update_graph_boxplot (ping_context_t *ctx) /* {{{ */
 } /* }}} int update_graph_boxplot */
 
 static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
-		double latency, unsigned int sequence)
+		double latency)
 {
 	size_t x;
 	size_t x_max;
@@ -1046,6 +1069,10 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 
 		index = (history_offset + x) % ctx->history_size;
 		latency = ctx->history_by_time[index];
+
+		if (latency < 0) {
+			continue;
+		}
 
 		if (latency >= 0.0)
 		{
@@ -1218,12 +1245,6 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	ping_iterator_get_info (iter, PING_INFO_LATENCY,
 			&latency, &buffer_len);
 
-	unsigned int sequence = 0;
-	buffer_len = sizeof (sequence);
-	ping_iterator_get_info (iter, PING_INFO_SEQUENCE,
-			&sequence, &buffer_len);
-
-
 	if ((ctx == NULL) || (ctx->window == NULL))
 		return (EINVAL);
 
@@ -1259,7 +1280,7 @@ static int update_stats_from_context (ping_context_t *ctx, pingobj_iter_t *iter)
 	}
 
 	if (opt_show_graph == 1)
-		update_graph_prettyping (ctx, latency, sequence);
+		update_graph_prettyping (ctx, latency);
 	else if (opt_show_graph == 2)
 		update_graph_histogram (ctx);
 	else if (opt_show_graph == 3)
@@ -1332,6 +1353,30 @@ static int check_resize (pingobj_t *ping) /* {{{ */
 				opt_show_graph = 1;
 			else if (opt_show_graph > 0)
 				opt_show_graph++;
+		}
+		else if (key == 'a')
+		{
+			char host[NI_MAXHOST];
+
+			wprintw (main_win, "New Host: ");
+			echo ();
+			wgetnstr (main_win, host, sizeof (host));
+			noecho ();
+
+			if (ping_host_add(ping, host) < 0)
+			{
+				const char *errmsg = ping_get_error (ping);
+
+				wprintw (main_win, "Adding host `%s' failed: %s\n", host, errmsg);
+			}
+			else
+			{
+				/* FIXME - scroll main_win correctly so that old
+				 * data is still visible */
+				need_resize = 1;
+				host_num++;
+				ping_initialize_contexts(ping);
+			}
 		}
 	}
 
