@@ -104,6 +104,7 @@
 #endif
 
 #define PING_ERRMSG_LEN 256
+#define PING_TABLE_LEN 5381
 
 struct pinghost
 {
@@ -114,7 +115,6 @@ struct pinghost
 	struct sockaddr_storage *addr;
 	socklen_t                addrlen;
 	int                      addrfamily;
-	int                      fd;
 	int                      ident;
 	int                      sequence;
 	struct timeval          *timer;
@@ -127,6 +127,7 @@ struct pinghost
 	void                    *context;
 
 	struct pinghost         *next;
+	struct pinghost         *table_next;
 };
 
 struct pingobj
@@ -136,6 +137,9 @@ struct pingobj
 	int                      addrfamily;
 	uint8_t                  qos;
 	char                    *data;
+
+	int                      fd4;
+	int                      fd6;
 
 	struct sockaddr         *srcaddr;
 	socklen_t                srcaddrlen;
@@ -148,6 +152,7 @@ struct pingobj
 	char                     errmsg[PING_ERRMSG_LEN];
 
 	pinghost_t              *head;
+	pinghost_t              *table[PING_TABLE_LEN];
 };
 
 /*
@@ -324,9 +329,8 @@ static pinghost_t *ping_receive_ipv4 (pingobj_t *obj, char *buffer,
 	ident = ntohs (icmp_hdr->icmp_id);
 	seq   = ntohs (icmp_hdr->icmp_seq);
 
-	/* We have to iterate over all hosts, since ICMPv4 packets may
-	 * be received on any raw v4 socket. */
-	for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
+	for (ptr = obj->table[ident % PING_TABLE_LEN];
+			ptr != NULL; ptr = ptr->table_next)
 	{
 		dprintf ("hostname = %s, ident = 0x%04x, seq = %i\n",
 				ptr->hostname, ptr->ident, ((ptr->sequence - 1) & 0xFFFF));
@@ -447,18 +451,14 @@ static pinghost_t *ping_receive_ipv6 (pingobj_t *obj, char *buffer,
 	return (ptr);
 }
 
-static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
-		struct timeval *now)
+static int ping_receive_one (pingobj_t *obj, struct timeval *now, int addrfam)
 {
-	/* Note: 'ph' is not necessarily the host object for which we receive a
-	 * reply. The right object will be returned by ping_receive_ipv*(). For
-	 * now, we can only rely on ph->fd and ph->addrfamily. */
-
+	int fd = addrfam == AF_INET6 ? obj->fd6 : obj->fd4;
 	struct timeval diff, pkt_now = *now;
 	pinghost_t *host = NULL;
 	int recv_ttl;
 	uint8_t recv_qos;
-	
+
 	/*
 	 * Set up the receive buffer..
 	 */
@@ -489,7 +489,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	msghdr.msg_flags |= MSG_XPG4_2;
 #endif
 
-	payload_buffer_len = recvmsg (ph->fd, &msghdr, /* flags = */ 0);
+	payload_buffer_len = recvmsg (fd, &msghdr, /* flags = */ 0);
 	if (payload_buffer_len < 0)
 	{
 #if WITH_DEBUG
@@ -499,7 +499,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 #endif
 		return (-1);
 	}
-	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, ph->fd);
+	dprintf ("Read %zi bytes from fd = %i\n", payload_buffer_len, fd);
 
 	/* Iterate over all auxiliary data in msghdr */
 	recv_ttl = -1;
@@ -515,7 +515,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 				memcpy (&pkt_now, CMSG_DATA (cmsg), sizeof (pkt_now));
 #endif /* SO_TIMESTAMP */
 		}
-		else if (ph->addrfamily == AF_INET) /* {{{ */
+		else if (addrfam == AF_INET) /* {{{ */
 		{
 			if (cmsg->cmsg_level != IPPROTO_IP)
 				continue;
@@ -538,7 +538,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 						cmsg->cmsg_type);
 			}
 		} /* }}} */
-		else if (ph->addrfamily == AF_INET6) /* {{{ */
+		else if (addrfam == AF_INET6) /* {{{ */
 		{
 			if (cmsg->cmsg_level != IPPROTO_IPV6)
 				continue;
@@ -589,13 +589,13 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 		}
 	} /* }}} for (cmsg) */
 
-	if (ph->addrfamily == AF_INET)
+	if (addrfam == AF_INET)
 	{
 		host = ping_receive_ipv4 (obj, payload_buffer, payload_buffer_len);
 		if (host == NULL)
 			return (-1);
 	}
-	else if (ph->addrfamily == AF_INET6)
+	else if (addrfam == AF_INET6)
 	{
 		host = ping_receive_ipv6 (obj, payload_buffer, payload_buffer_len);
 		if (host == NULL)
@@ -604,7 +604,7 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	else
 	{
 		dprintf ("ping_receive_one: Unknown address family %i.\n",
-				ph->addrfamily);
+				addrfam);
 		return (-1);
 	}
 
@@ -637,140 +637,6 @@ static int ping_receive_one (pingobj_t *obj, const pinghost_t *ph,
 	return (0);
 }
 
-/* Blocks until a packet was received from all hosts or the timeout is reached.
- * When interrupted, (-EINTR) is returned. On error, -1 is returned. On
- * success, returns zero. */
-static int ping_receive_all (pingobj_t *obj)
-{
-	fd_set read_fds;
-	fd_set err_fds;
-	int num_fds;
-	int max_fd;
-
-	pinghost_t *ph;
-	pinghost_t *ptr;
-
-	struct timeval endtime;
-	struct timeval nowtime;
-	struct timeval timeout;
-	int status;
-
-	int ret;
-
-	ph = obj->head;
-	ret = 0;
-
-	for (ptr = ph; ptr != NULL; ptr = ptr->next)
-	{
-		ptr->latency  = -1.0;
-		ptr->recv_ttl = -1;
-	}
-
-	if (gettimeofday (&nowtime, NULL) == -1)
-	{
-		ping_set_errno (obj, errno);
-		return (-1);
-	}
-
-	/* Set up timeout */
-	timeout.tv_sec = (time_t) obj->timeout;
-	timeout.tv_usec = (suseconds_t) (1000000 * (obj->timeout - ((double) timeout.tv_sec)));
-
-	dprintf ("Set timeout to %i.%06i seconds\n",
-			(int) timeout.tv_sec,
-			(int) timeout.tv_usec);
-
-	ping_timeval_add (&nowtime, &timeout, &endtime);
-
-	while (1)
-	{
-		FD_ZERO (&read_fds);
-		FD_ZERO (&err_fds);
-		num_fds =  0;
-		max_fd = -1;
-
-		for (ptr = ph; ptr != NULL; ptr = ptr->next)
-		{
-			if (!timerisset (ptr->timer))
-				continue;
-
-			assert (ptr->fd < FD_SETSIZE);
-			FD_SET (ptr->fd, &read_fds);
-			FD_SET (ptr->fd, &err_fds);
-			num_fds++;
-
-			if (max_fd < ptr->fd)
-				max_fd = ptr->fd;
-		}
-
-		if (num_fds == 0)
-			break;
-
-		if (gettimeofday (&nowtime, NULL) == -1)
-		{
-			ping_set_errno (obj, errno);
-			return (-1);
-		}
-
-		if (ping_timeval_sub (&endtime, &nowtime, &timeout) == -1)
-			break;
-
-		dprintf ("Waiting on %i sockets for %i.%06i seconds\n", num_fds,
-				(int) timeout.tv_sec,
-				(int) timeout.tv_usec);
-
-		status = select (max_fd + 1, &read_fds, NULL, &err_fds, &timeout);
-
-		if (gettimeofday (&nowtime, NULL) == -1)
-		{
-			ping_set_errno (obj, errno);
-			return (-1);
-		}
-		
-		if ((status == -1) && (errno == EINTR))
-		{
-			dprintf ("select was interrupted by signal..\n");
-			ping_set_errno (obj, EINTR);
-			return (-EINTR);
-		}
-		else if (status < 0)
-		{
-#if WITH_DEBUG
-			char errbuf[PING_ERRMSG_LEN];
-			dprintf ("select: %s\n",
-					sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-			break;
-		}
-		else if (status == 0)
-		{
-			dprintf ("select timed out\n");
-			for (ptr = ph; ptr != NULL; ptr = ptr->next)
-				if (ptr->latency < 0.0)
-					ptr->dropped++;
-			break;
-		}
-
-		for (ptr = ph; ptr != NULL; ptr = ptr->next)
-		{
-			if (FD_ISSET (ptr->fd, &read_fds))
-			{
-				if (ping_receive_one (obj, ptr, &nowtime) == 0)
-					ret++;
-			}
-			else if (FD_ISSET (ptr->fd, &err_fds))
-			{
-				/* clear the timer in this case so that we
-				 * don't run into an endless loop. */
-				/* TODO: Set an error flag in this case. */
-				timerclear (ptr->timer);
-			}
-		}
-	} /* while (1) */
-	
-	return (ret);
-} /* int ping_receive_all */
-
 /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
  * Sending functions:                                                        *
  *                                                                           *
@@ -779,7 +645,7 @@ static int ping_receive_all (pingobj_t *obj)
  * `-> ping_send_one_ipv6                                                    *
  * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * * */
 static ssize_t ping_sendto (pingobj_t *obj, pinghost_t *ph,
-		const void *buf, size_t buflen)
+		const void *buf, size_t buflen, int fd)
 {
 	ssize_t ret;
 
@@ -789,7 +655,7 @@ static ssize_t ping_sendto (pingobj_t *obj, pinghost_t *ph,
 		return (-1);
 	}
 
-	ret = sendto (ph->fd, buf, buflen, 0,
+	ret = sendto (fd, buf, buflen, 0,
 			(struct sockaddr *) ph->addr, ph->addrlen);
 
 	if (ret < 0)
@@ -808,7 +674,7 @@ static ssize_t ping_sendto (pingobj_t *obj, pinghost_t *ph,
 	return (ret);
 }
 
-static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
+static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph, int fd)
 {
 	struct icmp *icmp4;
 	int status;
@@ -840,7 +706,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 
 	dprintf ("Sending ICMPv4 package with ID 0x%04x\n", ph->ident);
 
-	status = ping_sendto (obj, ph, buf, buflen);
+	status = ping_sendto (obj, ph, buf, buflen, fd);
 	if (status < 0)
 	{
 		perror ("ping_sendto");
@@ -852,7 +718,7 @@ static int ping_send_one_ipv4 (pingobj_t *obj, pinghost_t *ph)
 	return (0);
 }
 
-static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
+static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph, int fd)
 {
 	struct icmp6_hdr *icmp6;
 	int status;
@@ -884,7 +750,7 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 
 	dprintf ("Sending ICMPv6 package with ID 0x%04x\n", ph->ident);
 
-	status = ping_sendto (obj, ph, buf, buflen);
+	status = ping_sendto (obj, ph, buf, buflen, fd);
 	if (status < 0)
 	{
 		perror ("ping_sendto");
@@ -896,88 +762,86 @@ static int ping_send_one_ipv6 (pingobj_t *obj, pinghost_t *ph)
 	return (0);
 }
 
-static int ping_send_all (pingobj_t *obj)
+static int ping_send_one (pingobj_t *obj, pinghost_t *ptr, int fd)
 {
-	pinghost_t *ph;
-	pinghost_t *ptr;
-
-	int ret;
-
-	ret = 0;
-	ph = obj->head;
-
-	for (ptr = ph; ptr != NULL; ptr = ptr->next)
+	if (gettimeofday (ptr->timer, NULL) == -1)
 	{
 		/* start timer.. The GNU `ping6' starts the timer before
 		 * sending the packet, so I will do that too */
-		if (gettimeofday (ptr->timer, NULL) == -1)
-		{
 #if WITH_DEBUG
-			char errbuf[PING_ERRMSG_LEN];
-			dprintf ("gettimeofday: %s\n",
-					sstrerror (errno, errbuf, sizeof (errbuf)));
+		char errbuf[PING_ERRMSG_LEN];
+		dprintf ("gettimeofday: %s\n",
+				sstrerror (errno, errbuf, sizeof (errbuf)));
 #endif
-			timerclear (ptr->timer);
-			ret--;
-			continue;
-		}
-		else
-		{
-			dprintf ("timer set for hostname = %s\n", ptr->hostname);
-		}
-
-		if (ptr->addrfamily == AF_INET6)
-		{	
-			dprintf ("Sending ICMPv6 echo request to `%s'\n", ptr->hostname);
-			if (ping_send_one_ipv6 (obj, ptr) != 0)
-			{
-				timerclear (ptr->timer);
-				ret--;
-				continue;
-			}
-		}
-		else if (ptr->addrfamily == AF_INET)
-		{
-			dprintf ("Sending ICMPv4 echo request to `%s'\n", ptr->hostname);
-			if (ping_send_one_ipv4 (obj, ptr) != 0)
-			{
-				timerclear (ptr->timer);
-				ret--;
-				continue;
-			}
-		}
-		else /* this should not happen */
-		{
-			dprintf ("Unknown address family: %i\n", ptr->addrfamily);
-			timerclear (ptr->timer);
-			ret--;
-			continue;
-		}
-
-		ptr->sequence++;
+		timerclear (ptr->timer);
+		return (-1);
+	}
+	else
+	{
+		dprintf ("timer set for hostname = %s\n", ptr->hostname);
 	}
 
-	return (ret);
+	if (ptr->addrfamily == AF_INET6)
+	{
+		dprintf ("Sending ICMPv6 echo request to `%s'\n", ptr->hostname);
+		if (ping_send_one_ipv6 (obj, ptr, fd) != 0)
+		{
+			timerclear (ptr->timer);
+			return (-1);
+		}
+	}
+	else if (ptr->addrfamily == AF_INET)
+	{
+		dprintf ("Sending ICMPv4 echo request to `%s'\n", ptr->hostname);
+		if (ping_send_one_ipv4 (obj, ptr, fd) != 0)
+		{
+			timerclear (ptr->timer);
+			return (-1);
+		}
+	}
+	else /* this should not happen */
+	{
+		dprintf ("Unknown address family: %i\n", ptr->addrfamily);
+		timerclear (ptr->timer);
+		return (-1);
+	}
+
+	ptr->sequence++;
+
+	return (0);
 }
 
 /*
  * Set the TTL of a socket protocol independently.
  */
-static int ping_set_ttl (pinghost_t *ph, int ttl)
+static int ping_set_ttl (pingobj_t *obj, int ttl)
 {
-	int ret = -2;
+	int ret = 0;
+	char errbuf[PING_ERRMSG_LEN];
 
-	if (ph->addrfamily == AF_INET)
+	if (obj->fd4 != -1)
 	{
-		dprintf ("Setting TTLv4 to %i\n", ttl);
-		ret = setsockopt (ph->fd, IPPROTO_IP, IP_TTL,
-				&ttl, sizeof (ttl));
+		if (setsockopt (obj->fd4, IPPROTO_IP, IP_TTL,
+				&ttl, sizeof (ttl)))
+		{
+			ret = errno;
+			ping_set_error (obj, "ping_set_ttl",
+					sstrerror (ret, errbuf, sizeof (errbuf)));
+			dprintf ("Setting TTLv4 failed: %s\n", errbuf);
+		}
 	}
-	else if (ph->addrfamily == AF_INET6)
+
+	if (obj->fd6 != -1)
 	{
 		dprintf ("Setting TTLv6 to %i\n", ttl);
-		ret = setsockopt (ph->fd, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
-				&ttl, sizeof (ttl));
+		if (setsockopt (obj->fd6, IPPROTO_IPV6, IPV6_UNICAST_HOPS,
+				&ttl, sizeof (ttl)))
+		{
+			ret = errno;
+			ping_set_error (obj, "ping_set_ttl",
+					sstrerror (ret, errbuf, sizeof (errbuf)));
+			dprintf ("Setting TTLv6 failed: %s\n", errbuf);
+		}
 	}
 
 	return (ret);
@@ -989,17 +853,16 @@ static int ping_set_ttl (pinghost_t *ph, int ttl)
  * Using SOL_SOCKET / SO_PRIORITY might be a protocol independent way to
  * set this. See socket(7) for details.
  */
-static int ping_set_qos (pingobj_t *obj, pinghost_t *ph, uint8_t qos)
+static int ping_set_qos (pingobj_t *obj, uint8_t qos)
 {
-	int ret = EINVAL;
+	int ret = 0;
 	char errbuf[PING_ERRMSG_LEN];
 
-	if (ph->addrfamily == AF_INET)
+	if (obj->fd4 != -1)
 	{
 		dprintf ("Setting TP_TOS to %#04"PRIx8"\n", qos);
-		ret = setsockopt (ph->fd, IPPROTO_IP, IP_TOS,
-				&qos, sizeof (qos));
-		if (ret != 0)
+		if (setsockopt (obj->fd4, IPPROTO_IP, IP_TOS,
+				&qos, sizeof (qos)))
 		{
 			ret = errno;
 			ping_set_error (obj, "ping_set_qos",
@@ -1007,15 +870,15 @@ static int ping_set_qos (pingobj_t *obj, pinghost_t *ph, uint8_t qos)
 			dprintf ("Setting TP_TOS failed: %s\n", errbuf);
 		}
 	}
-	else if (ph->addrfamily == AF_INET6)
+
+	if (obj->fd6 != -1)
 	{
 		/* IPV6_TCLASS requires an "int". */
 		int tmp = (int) qos;
 
 		dprintf ("Setting IPV6_TCLASS to %#04"PRIx8" (%i)\n", qos, tmp);
-		ret = setsockopt (ph->fd, IPPROTO_IPV6, IPV6_TCLASS,
-				&tmp, sizeof (tmp));
-		if (ret != 0)
+		if (setsockopt (obj->fd6, IPPROTO_IPV6, IPV6_TCLASS,
+			&tmp, sizeof (tmp)))
 		{
 			ret = errno;
 			ping_set_error (obj, "ping_set_qos",
@@ -1062,7 +925,7 @@ static int ping_get_ident (void)
 	retval = (int) random ();
 
 	dprintf ("Random number: %#x\n", retval);
-	
+
 	return (retval);
 }
 
@@ -1085,7 +948,6 @@ static pinghost_t *ping_alloc (void)
 	ph->addr    = (struct sockaddr_storage *) (ph->timer + 1);
 
 	ph->addrlen = sizeof (struct sockaddr_storage);
-	ph->fd      = -1;
 	ph->latency = -1.0;
 	ph->dropped = 0;
 	ph->ident   = ping_get_ident () & 0xFFFF;
@@ -1095,9 +957,6 @@ static pinghost_t *ping_alloc (void)
 
 static void ping_free (pinghost_t *ph)
 {
-	if (ph->fd >= 0)
-		close (ph->fd);
-	
 	if (ph->username != NULL)
 		free (ph->username);
 
@@ -1108,6 +967,162 @@ static void ping_free (pinghost_t *ph)
 		free (ph->data);
 
 	free (ph);
+}
+
+/* ping_open_socket opens, initializes and returns a new raw socket to use for
+ * ICMPv4 or ICMPv6 packets. addrfam must be either AF_INET or AF_INET6. On
+ * error, -1 is returned and obj->errmsg is set appropriately. */
+static int ping_open_socket(pingobj_t *obj, int addrfam)
+{
+	int fd;
+	if (addrfam == AF_INET6)
+	{
+		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMPV6);
+	}
+	else if (addrfam == AF_INET)
+	{
+		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMP);
+	}
+	else /* this should not happen */
+	{
+		ping_set_error (obj, "ping_open_socket", "Unknown address family");
+		dprintf ("Unknown address family: %i\n", addrfam);
+		return -1;
+	}
+
+	if (fd == -1)
+	{
+		ping_set_errno (obj, errno);
+#if WITH_DEBUG
+		char errbuf[PING_ERRMSG_LEN];
+		dprintf ("socket: %s\n",
+				sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+		return -1;
+	}
+	else if (fd >= FD_SETSIZE)
+	{
+		ping_set_errno (obj, EMFILE);
+		dprintf ("socket(2) returned file descriptor %d, which is above the file "
+			 "descriptor limit for select(2) (FD_SETSIZE = %d)\n",
+			 fd, FD_SETSIZE);
+		close (fd);
+		return -1;
+	}
+
+	if (obj->srcaddr != NULL)
+	{
+		assert (obj->srcaddrlen > 0);
+		assert (obj->srcaddrlen <= sizeof (struct sockaddr_storage));
+
+		if (bind (fd, obj->srcaddr, obj->srcaddrlen) == -1)
+		{
+			ping_set_errno (obj, errno);
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("bind: %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+			close (fd);
+			return -1;
+		}
+	}
+
+#ifdef SO_BINDTODEVICE
+	if (obj->device != NULL)
+	{
+		if (setsockopt (fd, SOL_SOCKET, SO_BINDTODEVICE,
+				obj->device, strlen (obj->device) + 1) != 0)
+		{
+			ping_set_errno (obj, errno);
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("setsockopt (SO_BINDTODEVICE): %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+			close (fd);
+			return -1;
+		}
+	}
+#endif /* SO_BINDTODEVICE */
+#ifdef SO_MARK
+	if (obj->set_mark)
+	{
+		if (setsockopt(fd, SOL_SOCKET, SO_MARK,
+				&obj->mark, sizeof(obj->mark)) != 0)
+		{
+			ping_set_errno (obj, errno);
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("setsockopt (SO_MARK): %s\n",
+				 sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+			close (fd);
+			return -1;
+		}
+	}
+#endif
+#ifdef SO_TIMESTAMP
+	if (1) /* {{{ */
+	{
+		int status;
+		int opt = 1;
+
+		status = setsockopt (fd,
+				SOL_SOCKET, SO_TIMESTAMP,
+				&opt, sizeof (opt));
+		if (status != 0)
+		{
+			ping_set_errno (obj, errno);
+#if WITH_DEBUG
+			char errbuf[PING_ERRMSG_LEN];
+			dprintf ("setsockopt (SO_TIMESTAMP): %s\n",
+					sstrerror (errno, errbuf, sizeof (errbuf)));
+#endif
+			close (fd);
+			return -1;
+		}
+	} /* }}} if (1) */
+#endif /* SO_TIMESTAMP */
+
+	if (addrfam == AF_INET)
+	{
+		int opt;
+
+#ifdef IP_RECVTOS
+		/* Enable receiving the TOS field */
+		opt = 1;
+		setsockopt (fd, IPPROTO_IP, IP_RECVTOS,
+				&opt, sizeof (opt));
+#endif /* IP_RECVTOS */
+
+		/* Enable receiving the TTL field */
+		opt = 1;
+		setsockopt (fd, IPPROTO_IP, IP_RECVTTL,
+				&opt, sizeof (opt));
+	}
+#if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_RECVTCLASS)
+	else if (addrfam == AF_INET6)
+	{
+		int opt;
+
+# if defined(IPV6_RECVHOPLIMIT)
+		/* For details see RFC 3542, section 6.3. */
+		opt = 1;
+		setsockopt (fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
+				&opt, sizeof (opt));
+# endif /* IPV6_RECVHOPLIMIT */
+
+# if defined(IPV6_RECVTCLASS)
+		/* For details see RFC 3542, section 6.5. */
+		opt = 1;
+		setsockopt (fd, IPPROTO_IPV6, IPV6_RECVTCLASS,
+				&opt, sizeof (opt));
+# endif /* IPV6_RECVTCLASS */
+	}
+#endif /* IPV6_RECVHOPLIMIT || IPV6_RECVTCLASS */
+
+	return fd;
 }
 
 /*
@@ -1133,6 +1148,8 @@ pingobj_t *ping_construct (void)
 	obj->addrfamily = PING_DEF_AF;
 	obj->data       = strdup (PING_DEF_DATA);
 	obj->qos        = 0;
+	obj->fd4        = -1;
+	obj->fd6        = -1;
 
 	return (obj);
 }
@@ -1164,6 +1181,12 @@ void ping_destroy (pingobj_t *obj)
 	if (obj->device != NULL)
 		free (obj->device);
 
+	if (obj->fd4 != -1)
+		close(obj->fd4);
+
+	if (obj->fd6 != -1)
+		close(obj->fd6);
+
 	free (obj);
 
 	return;
@@ -1180,11 +1203,8 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 	{
 		case PING_OPT_QOS:
 		{
-			pinghost_t *ph;
-
 			obj->qos = *((uint8_t *) value);
-			for (ph = obj->head; ph != NULL; ph = ph->next)
-				ping_set_qos (obj, ph, obj->qos);
+			ret = ping_set_qos (obj, obj->qos);
 			break;
 		}
 
@@ -1198,18 +1218,16 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			break;
 
 		case PING_OPT_TTL:
-			obj->ttl = *((int *) value);
-			if ((obj->ttl < 1) || (obj->ttl > 255))
+			ret = *((int *) value);
+			if ((ret < 1) || (ret > 255))
 			{
 				obj->ttl = PING_DEF_TTL;
 				ret = -1;
 			}
 			else
 			{
-				pinghost_t *ph;
-
-				for (ph = obj->head; ph != NULL; ph = ph->next)
-					ping_set_ttl (ph, obj->ttl);
+				obj->ttl = ret;
+				ret = ping_set_ttl (obj, obj->ttl);
 			}
 			break;
 
@@ -1330,7 +1348,7 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 			ping_set_errno (obj, ENOTSUP);
 			ret = -1;
 #endif /* !SO_MARK */
-			
+
 		} /* case PING_OPT_MARK */
 		break;
 
@@ -1341,17 +1359,200 @@ int ping_setopt (pingobj_t *obj, int option, void *value)
 	return (ret);
 } /* int ping_setopt */
 
-
 int ping_send (pingobj_t *obj)
 {
-	if (obj == NULL)
-		return (-1);
+	pinghost_t *ptr;
 
-	if (ping_send_all (obj) < 0)
-		return (-1);
+	struct timeval endtime;
+	struct timeval nowtime;
+	struct timeval timeout;
 
-	return (ping_receive_all (obj));
-}
+	_Bool need_ipv4_socket = 0;
+	_Bool need_ipv6_socket = 0;
+
+	for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
+	{
+		ptr->latency  = -1.0;
+		ptr->recv_ttl = -1;
+
+		if (ptr->addrfamily == AF_INET)
+			need_ipv4_socket = 1;
+		else if (ptr->addrfamily == AF_INET6)
+			need_ipv6_socket = 1;
+	}
+
+	if (!need_ipv4_socket && !need_ipv6_socket)
+	{
+		ping_set_error (obj, "ping_send", "No hosts to ping");
+		return (-1);
+	}
+
+	if (need_ipv4_socket && obj->fd4 == -1)
+	{
+		obj->fd4 = ping_open_socket(obj, AF_INET);
+		if (obj->fd4 == -1)
+			return (-1);
+		ping_set_ttl (obj, obj->ttl);
+		ping_set_qos (obj, obj->qos);
+	}
+	if (need_ipv6_socket && obj->fd6 == -1)
+	{
+		obj->fd6 = ping_open_socket(obj, AF_INET6);
+		if (obj->fd6 == -1)
+			return (-1);
+		ping_set_ttl (obj, obj->ttl);
+		ping_set_qos (obj, obj->qos);
+	}
+
+	if (gettimeofday (&nowtime, NULL) == -1)
+	{
+		ping_set_errno (obj, errno);
+		return (-1);
+	}
+
+	/* Set up timeout */
+	timeout.tv_sec = (time_t) obj->timeout;
+	timeout.tv_usec = (suseconds_t) (1000000 * (obj->timeout - ((double) timeout.tv_sec)));
+
+	dprintf ("Set timeout to %i.%06i seconds\n",
+			(int) timeout.tv_sec,
+			(int) timeout.tv_usec);
+
+	ping_timeval_add (&nowtime, &timeout, &endtime);
+
+	/* host_to_ping points to the host to which to send the next ping. The
+	 * pointer is advanced to the next host in the linked list after the
+	 * ping has been sent. If host_to_ping is NULL, no more pings need to be
+	 * send out. */
+	pinghost_t *host_to_ping = obj->head;
+
+	/* pings_in_flight is the number of hosts we sent a "ping" to but didn't
+	 * receive a "pong" yet. */
+	int pings_in_flight = 0;
+
+	/* pongs_received is the number of echo replies received. Unless there
+	 * is an error, this is used as the return value of ping_send(). */
+	int pongs_received = 0;
+
+	int error_count = 0;
+
+	while (pings_in_flight > 0 || host_to_ping != NULL)
+	{
+		fd_set read_fds;
+		fd_set write_fds;
+
+		int write_fd = -1;
+		int max_fd = -1;
+
+		FD_ZERO (&read_fds);
+		FD_ZERO (&write_fds);
+
+		if (obj->fd4 != -1)
+		{
+			FD_SET(obj->fd4, &read_fds);
+			if (host_to_ping != NULL && host_to_ping->addrfamily == AF_INET)
+				write_fd = obj->fd4;
+
+			if (max_fd < obj->fd4)
+				max_fd = obj->fd4;
+		}
+
+		if (obj->fd6 != -1)
+		{
+			FD_SET(obj->fd6, &read_fds);
+			if (host_to_ping != NULL && host_to_ping->addrfamily == AF_INET6)
+				write_fd = obj->fd6;
+
+			if (max_fd < obj->fd6)
+				max_fd = obj->fd6;
+		}
+
+		if (write_fd != -1)
+			FD_SET(write_fd, &write_fds);
+
+		assert (max_fd != -1);
+		assert (max_fd < FD_SETSIZE);
+
+		if (gettimeofday (&nowtime, NULL) == -1)
+		{
+			ping_set_errno (obj, errno);
+			return (-1);
+		}
+
+		if (ping_timeval_sub (&endtime, &nowtime, &timeout) == -1)
+			break;
+
+		dprintf ("Waiting on %i sockets for %u.%06u seconds\n",
+				((obj->fd4 != -1) ? 1 : 0) + ((obj->fd6 != -1) ? 1 : 0),
+				(unsigned) timeout.tv_sec,
+				(unsigned) timeout.tv_usec);
+
+		int status = select (max_fd + 1, &read_fds, &write_fds, NULL, &timeout);
+
+		if (gettimeofday (&nowtime, NULL) == -1)
+		{
+			ping_set_errno (obj, errno);
+			return (-1);
+		}
+
+		if (status == -1)
+		{
+			ping_set_errno (obj, errno);
+			dprintf ("select: %s\n", obj->errmsg);
+			return (-1);
+		}
+		else if (status == 0)
+		{
+			dprintf ("select timed out\n");
+
+			pinghost_t *ph;
+			for (ph = obj->head; ph != NULL; ph = ph->next)
+				if (ph->latency < 0.0)
+					ph->dropped++;
+			break;
+		}
+
+		/* first, check if we can receive a reply ... */
+		if (obj->fd6  != -1 && FD_ISSET (obj->fd6, &read_fds))
+		{
+			if (ping_receive_one (obj, &nowtime, AF_INET6) == 0)
+			{
+				pings_in_flight--;
+				pongs_received++;
+			}
+			continue;
+		}
+		if (obj->fd4 != -1 && FD_ISSET (obj->fd4, &read_fds))
+		{
+			if (ping_receive_one (obj, &nowtime, AF_INET) == 0)
+			{
+				pings_in_flight--;
+				pongs_received++;
+			}
+			continue;
+		}
+
+		/* ... and if no reply is available to read, continue sending
+		 * out pings. */
+
+		/* this condition should always be true. We keep it for
+		 * consistency with the read blocks above and just to be on the
+		 * safe side. */
+		if (write_fd != -1 && FD_ISSET (write_fd, &write_fds))
+		{
+			if (ping_send_one (obj, host_to_ping, write_fd) == 0)
+				pings_in_flight++;
+			else
+				error_count++;
+			host_to_ping = host_to_ping->next;
+			continue;
+		}
+	} /* while (1) */
+
+	if (error_count)
+		return (-1 * error_count);
+	return (pongs_received);
+} /* int ping_send */
 
 static pinghost_t *ping_host_search (pinghost_t *ph, const char *host)
 {
@@ -1445,8 +1646,6 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 	for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next)
 	{
-		ph->fd = -1;
-
 		if (ai_ptr->ai_family == AF_INET)
 		{
 			ai_ptr->ai_socktype = SOCK_RAW;
@@ -1469,107 +1668,6 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			continue;
 		}
 
-		/* TODO: Move this to a static function `ping_open_socket' and
-		 * call it whenever the socket dies. */
-		ph->fd = socket (ai_ptr->ai_family, ai_ptr->ai_socktype, ai_ptr->ai_protocol);
-		if (ph->fd == -1)
-		{
-#if WITH_DEBUG
-			char errbuf[PING_ERRMSG_LEN];
-			dprintf ("socket: %s\n",
-					sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-			ping_set_errno (obj, errno);
-			continue;
-		}
-		else if (ph->fd >= FD_SETSIZE)
-		{
-			dprintf("socket(2) returned file descriptor %d, which is above the file "
-				"descriptor limit for select(2) (FD_SETSIZE = %d)\n",
-				ph->fd, FD_SETSIZE);
-			close(ph->fd);
-			ph->fd = -1;
-			ping_set_errno(obj, EMFILE);
-			continue;
-		}
-
-		if (obj->srcaddr != NULL)
-		{
-			assert (obj->srcaddrlen > 0);
-			assert (obj->srcaddrlen <= sizeof (struct sockaddr_storage));
-
-			if (bind (ph->fd, obj->srcaddr, obj->srcaddrlen) == -1)
-			{
-#if WITH_DEBUG
-				char errbuf[PING_ERRMSG_LEN];
-				dprintf ("bind: %s\n",
-						sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-				ping_set_errno (obj, errno);
-				close (ph->fd);
-				ph->fd = -1;
-				continue;
-			}
-		}
-
-#ifdef SO_BINDTODEVICE
-		if (obj->device != NULL)
-		{
-			if (setsockopt (ph->fd, SOL_SOCKET, SO_BINDTODEVICE,
-					obj->device, strlen (obj->device) + 1) != 0)
-			{
-#if WITH_DEBUG
-				char errbuf[PING_ERRMSG_LEN];
-				dprintf ("setsockopt (SO_BINDTODEVICE): %s\n",
-						sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-				ping_set_errno (obj, errno);
-				close (ph->fd);
-				ph->fd = -1;
-				continue;
-			}
-		}
-#endif /* SO_BINDTODEVICE */
-#ifdef SO_MARK
-		if(obj->set_mark)
-		{
-			if(setsockopt(ph->fd, SOL_SOCKET, SO_MARK, &(obj->mark), sizeof(obj->mark)) != 0)
-			{
-#if WITH_DEBUG
-				char errbuf[PING_ERRMSG_LEN];
-				dprintf ("setsockopt (SO_MARK): %s\n",
-						sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-				ping_set_errno (obj, errno);
-				close (ph->fd);
-				ph->fd = -1;
-				continue;
-			}
-		}
-#endif
-#ifdef SO_TIMESTAMP
-		if (1) /* {{{ */
-		{
-			int status;
-			int opt = 1;
-
-			status = setsockopt (ph->fd,
-					SOL_SOCKET, SO_TIMESTAMP,
-					&opt, sizeof (opt));
-			if (status != 0)
-			{
-#if WITH_DEBUG
-				char errbuf[PING_ERRMSG_LEN];
-				dprintf ("setsockopt (SO_TIMESTAMP): %s\n",
-						sstrerror (errno, errbuf, sizeof (errbuf)));
-#endif
-				ping_set_errno (obj, errno);
-				close (ph->fd);
-				ph->fd = -1;
-				continue;
-			}
-		} /* }}} if (1) */
-#endif /* SO_TIMESTAMP */
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));
 		memcpy (ph->addr, ai_ptr->ai_addr, ai_ptr->ai_addrlen);
@@ -1597,54 +1695,9 @@ int ping_host_add (pingobj_t *obj, const char *host)
 			}
 		}
 #endif /* AI_CANONNAME */
-
-		if (ph->addrfamily == AF_INET)
-		{
-			int opt;
-
-#ifdef IP_RECVTOS
-			/* Enable receiving the TOS field */
-			opt = 1;
-			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTOS,
-					&opt, sizeof (opt));
-#endif	/* IP_RECVTOS */
-
-			/* Enable receiving the TTL field */
-			opt = 1;
-			setsockopt (ph->fd, IPPROTO_IP, IP_RECVTTL,
-					&opt, sizeof (opt));
-		}
-#if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_RECVTCLASS)
-		else if (ph->addrfamily == AF_INET6)
-		{
-			int opt;
-
-# if defined(IPV6_RECVHOPLIMIT)
-			/* For details see RFC 3542, section 6.3. */
-			opt = 1;
-			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
-					&opt, sizeof (opt));
-# endif /* IPV6_RECVHOPLIMIT */
-
-# if defined(IPV6_RECVTCLASS)
-			/* For details see RFC 3542, section 6.5. */
-			opt = 1;
-			setsockopt (ph->fd, IPPROTO_IPV6, IPV6_RECVTCLASS,
-					&opt, sizeof (opt));
-# endif /* IPV6_RECVTCLASS */
-		}
-#endif /* IPV6_RECVHOPLIMIT || IPV6_RECVTCLASS */
-
-		break;
 	} /* for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next) */
 
 	freeaddrinfo (ai_list);
-
-	if (ph->fd < 0)
-	{
-		ping_free (ph);
-		return (-1);
-	}
 
 	/*
 	 * Adding in the front is much easier, but then the iterator will
@@ -1667,15 +1720,15 @@ int ping_host_add (pingobj_t *obj, const char *host)
 		hptr->next = ph;
 	}
 
-	ping_set_ttl (ph, obj->ttl);
-	ping_set_qos (obj, ph, obj->qos);
+	ph->table_next = obj->table[ph->ident % PING_TABLE_LEN];
+	obj->table[ph->ident % PING_TABLE_LEN] = ph;
 
 	return (0);
 } /* int ping_host_add */
 
 int ping_host_remove (pingobj_t *obj, const char *host)
 {
-	pinghost_t *pre, *cur;
+	pinghost_t *pre, *cur, *target;
 
 	if ((obj == NULL) || (host == NULL))
 		return (-1);
@@ -1702,7 +1755,33 @@ int ping_host_remove (pingobj_t *obj, const char *host)
 		obj->head = cur->next;
 	else
 		pre->next = cur->next;
-	
+
+	target = cur;
+	pre = NULL;
+
+	cur = obj->table[target->ident % PING_TABLE_LEN];
+
+	while (cur != NULL)
+	{
+		if (cur == target)
+			break;
+
+		pre = cur;
+		cur = cur->table_next;
+	}
+
+	if (cur == NULL)
+	{
+		ping_set_error(obj, "ping_host_remove", "Host not found (T)");
+		ping_free(target);
+		return (-1);
+	}
+
+	if (pre == NULL)
+		obj->table[target->ident % PING_TABLE_LEN] = cur->table_next;
+	else
+		pre->table_next = cur->table_next;
+
 	ping_free (cur);
 
 	return (0);
