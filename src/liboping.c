@@ -1123,9 +1123,9 @@ pingobj_t *ping_construct (void)
 {
 	pingobj_t *obj;
 
-	if ((obj = (pingobj_t *) malloc (sizeof (pingobj_t))) == NULL)
+	if ((obj = malloc (sizeof (*obj))) == NULL)
 		return (NULL);
-	memset (obj, 0, sizeof (pingobj_t));
+	memset (obj, 0, sizeof (*obj));
 
 	obj->timeout    = PING_DEF_TIMEOUT;
 	obj->ttl        = PING_DEF_TTL;
