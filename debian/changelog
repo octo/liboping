@@ -1,59 +1,241 @@
-liboping (0.3.5-0octo1) unstable; urgency=low
+liboping (1.6.2-6) unstable; urgency=medium
 
-  * New upstream version.
+  * build dependency on pkg-config (closes: 749058)
 
- -- Florian Forster <octo@leeloo.home.verplant.org>  Tue, 27 Mar 2007 11:20:33 +0200
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 27 May 2014 17:02:04 +0100
 
-liboping (0.3.4-0octo1) unstable; urgency=low
+liboping (1.6.2-5) unstable; urgency=medium
 
-  * New upstream version.
+  * merge upstream mods
+  * enable "pkg-config oping"
 
- -- Florian octo Forster <octo@alice.lan.home.verplant.org>  Fri,  1 Dec 2006 09:23:19 +0100
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 22 May 2014 23:19:13 +0100
+
+liboping (1.6.2-4) unstable; urgency=low
+
+  * always rebuild man pages (closes: 733341)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Tue, 14 Jan 2014 13:44:56 +0000
+
+liboping (1.6.2-3) unstable; urgency=medium
+
+  * prettyping patch requires swizzling build dependency from libncurses
+    to libncursesw (oops!)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Fri, 27 Dec 2013 15:44:51 +0100
+
+liboping (1.6.2-2) unstable; urgency=low
+
+  * remove phony target declarations from debian/rules (closes: #720008)
+  * dh 9
+  * bump standards version
+  * remove unused/uninformative debian/ files: *.dirs, liboping.docs, README
+  * stop installing docs COPYING, INSTALL, NEWS, replicated upstream changelog
+  * print rpath before deleting it (when none, can remove chrpath removal code)
+  * enable multiarch support
+  * add quilt patch with prettyping support (closes: #731207)
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 26 Dec 2013 16:58:42 +0100
+
+liboping (1.6.2-1) unstable; urgency=low
+
+  * New upstream version
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Thu, 02 Feb 2012 23:00:14 +0000
+
+liboping (1.6.1+2.g207d51d-3) unstable; urgency=low
+
+  * Update/modernize debian packaging info:
+    - Bump to dh 8.
+    - Use dh and override_* to dramatically shorten debian/rules.
+    - Use dh --parallel for multicore goodness.
+    - Use dh --with autoreconf to build derived files like ./configure.
+    - Use dh_xxx, e.g. dh_lintian, to reduce debian/rules boilerplate.
+    - Generalise debian/*.install files
+    - Single debian patch source option: when operative see git patches.
+    - Trim trailing whitespace.
+    - Convert officially depricated constructs to blessed replacements.
+  * git ignore debian build debris.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Sun, 16 Oct 2011 14:33:33 +0100
+
+liboping (1.6.1+2.g207d51d-2) unstable; urgency=low
+
+  [ Barak A. Pearlmutter ]
+  * debian/control:
+    - Updated standards-version to 3.9.2; no changes.
+  * Simplified debian/liboping-dev.install, debian/oping.install.
+
+  [ Sebastian Harl ]
+  * debian/source/format:
+    - Switched to '3.0 (quilt)' format.
+  * debian/control:
+    - Added Barak to uploaders.
+  * debian/patches:
+    - Added recvtos -- patch for #618729 (missing IP_RECVTOS on FreeBSD) as
+      separate patch.
+    - Added z-option -- upstream patch adding option -Z to enable non-zero
+      exit codes in case a certain amount of replies were lost.
+  * debian/rules:
+    - Split target 'build' into 'build-arch' and 'build-indep'.
+
+ -- Sebastian Harl <tokkee@debian.org>  Thu, 13 Oct 2011 16:32:46 +0200
+
+liboping (1.6.1+2.g207d51d-1.1) unstable; urgency=low
+
+  * Fix FTBS on kfreebsd due to IP_RECVTOS nonexistence (closes: #618729).
+  * Kill inappropriate rpath in built perl library, which presumably appeared
+    due to toolchain changes.
+
+ -- Barak A. Pearlmutter <bap@debian.org>  Mon, 19 Sep 2011 09:39:54 +0100
+
+liboping (1.6.1+2.g207d51d-1) unstable; urgency=low
+
+  * New upstream release.
+    - Based on release 1.6.1 plus upstream Git commits up to 207d51d, which
+      fix two build issues.
+  * debian/rules:
+    - Do not install .la files in favor of the goal to remove those files (for
+      details see <http://lists.debian.org/debian-devel/2009/08/
+      msg00783.html>).
+    - Use 'dh_prep' rather than 'dh_clean -k'.
+  * debian/control:
+    - Updated standards-version to 3.9.1.
+    - Depend on debhelper (>=7) rather than (>=5) -- this is required for
+      'dh_prep'.
+
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 13 Mar 2011 22:27:08 +0100
+
+liboping (1.4.0-1) unstable; urgency=low
+
+  * New upstream release.
+  * debian/control:
+    - Updated standards-version to 3.8.4 -- no changes.
+    - Build-depend on libncurses5-dev, required by the new "noping" ncurses
+      front-end to liboping.
+    - Let all packages depend on ${misc:Depends} as recommended by debhelper.
+    - Improved oping's package description.
+  * debian/oping.install:
+    - Added /usr/bin/noping.
+  * debian/oping.links:
+    - Make noping.8 be a symlink to oping.8.
+  * debian/rules, debian/oping.overrides:
+    - Install /usr/bin/noping setuid root and document that in overrides.
+
+ -- Sebastian Harl <tokkee@debian.org>  Tue, 15 Jun 2010 00:08:46 +0200
+
+liboping (1.3.4-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Sebastian Harl <tokkee@debian.org>  Sat, 26 Dec 2009 23:17:45 +0100
+
+liboping (1.3.3-1) unstable; urgency=high
+
+  * New upstream release:
+    - Disable the "-f" command line option (read hosts from a file) if the
+      real and affective user IDs don't match (e.g. when running setuid),
+      unless "-" (STDIN) has been specified; thanks a lot to Steve Kemp for
+      reporting this (Closes: #548684).
+  * Set urgency to "high" because of the fix for #548684.
+  * debian/control:
+    - Updated Standards-Version to 3.8.3 - no changes.
+
+ -- Sebastian Harl <tokkee@debian.org>  Wed, 30 Sep 2009 01:12:26 +0200
+
+liboping (1.3.2-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Sebastian Harl <tokkee@debian.org>  Sun, 02 Aug 2009 22:44:30 +0200
+
+liboping (1.3.1-1) unstable; urgency=low
+
+  * New upstream release.
+  * Added liboping0.symbols:
+    - Use 0.3.2 as MINVER for all symbols - all symbols exist since 0.1.0 but
+      0.3.2 is the first version that introduced a SONAME version.
+    - Use 'Build-Depends-Package: liboping-dev' to let a user specify the
+      minimal version required for optional features.
+  * debian/rules:
+    - Do not ignore 'make clean' errors.
+    - Use config.{guess,sub} provided by autotools-dev to fix a FTBFS on
+      avr32, thanks to Bradley Smith for reporting this (Closes: #529460).
+    - Use dh_install's --fail-missing instead of --list-missing.
+    - Pass CFLAGS as arguments to configure instead of setting them in the
+      environment - this is the recommended way.
+    - Remove manpages to force a rebuild to avoid errors from man.
+  * debian/control:
+    - Use ${binary:Version} instead of ${Source-Version}.
+    - Updated Standards-Version to 3.8.2.
+    - Added Homepage and Vcs-{Git,Browser} fields.
+    - Removed duplicate field "Section" for package "liboping0".
+    - Added versioned build dependency on dpkg-dev (>= 1.14.13) to support the
+      Homepage and Vcs-* fields and Build-Depends-Package.
+    - Let the -dev package depend on a strict version of the lib package - the
+      -dev package includes a symlink to the full soname, not only the major
+      version.
+    - Let the binary packages oping and libnet-oping-perl depend on liboping0
+      (>= ${source:Upstream-Version}) explicitly since we do not want to build
+      depend on liboping-dev to get the right version through 'Build-Depends-
+      Package'.
+    - Build depend on perl, required for pod2man.
+  * debian/compat:
+    - Updated to compat version 5.
+  * Added new binary package "libnet-oping-perl":
+    - Since Net::Oping uses its own version number, $srcver-$perlver-$debrev
+      is used for the package version.
+    - Added libnet-oping-perl.install.
+    - Build-depend on perl-modules - debian/rules now requires the ExtUtils:MM
+      module.
+  * debian/liboping0.shlibs:
+    - Updated version to >= 1.3.0.
+  * Added debian/README.Debian:
+    - Added a note explaining the use of the 'Build-Depends-Package' field.
+
+ -- Sebastian Harl <tokkee@debian.org>  Tue, 21 Jul 2009 13:29:31 +0200
+
+liboping (0.3.5-1) unstable; urgency=low
+
+  * New upstream release (Closes: #418277).
+    - Added support for C++.
+  * Added watch file.
+
+ -- Sebastian Harl <sh@tokkee.org>  Tue, 10 Apr 2007 11:52:48 +0000
+
+liboping (0.3.4-1) unstable; urgency=low
+
+  * New upstream release.
+
+ -- Sebastian Harl <sh@tokkee.org>  Fri,  1 Dec 2006 11:46:01 +0000
+
+liboping (0.3.3-4) unstable; urgency=low
+
+  * Renamed liboping0-dev to liboping-dev.
+
+ -- Sebastian Harl <sh@tokkee.org>  Sun, 23 Jul 2006 20:12:33 +0000
+
+liboping (0.3.3-3) unstable; urgency=low
+
+  * Added shlibs file.
+
+ -- Sebastian Harl <sh@tokkee.org>  Sat, 22 Jul 2006 22:38:07 +0200
+
+liboping (0.3.3-2) unstable; urgency=low
+
+  * Fixed switched long package descriptions (Closes: #378473).
+
+ -- Sebastian Harl <sh@tokkee.org>  Sun, 16 Jul 2006 16:05:31 +0000
 
 liboping (0.3.3-1) unstable; urgency=low
 
-  * New upstream version.
+  * New upstream release.
 
- -- Florian Forster <octo@leeloo.home.verplant.org>  Sun, 16 Jul 2006 12:32:23 +0200
+ -- Sebastian Harl <sh@tokkee.org>  Sun, 16 Jul 2006 14:31:02 +0200
 
 liboping (0.3.2-1) unstable; urgency=low
 
-  * New upstream version.
+  * Initial release (Closes: #377527).
 
- -- Florian Forster <octo@crystal.wlan.home.verplant.org>  Thu, 13 Jul 2006 16:05:43 +0200
+ -- Sebastian Harl <sh@tokkee.org>  Mon, 10 Jul 2006 00:29:07 +0200
 
-liboping (0.3.1-1) unstable; urgency=low
-
-  * New upstream version.
-
- -- Florian Forster <octo@leeloo.home.verplant.org>  Mon, 10 Jul 2006 00:18:08 +0200
-
-liboping (0.2.2) unstable; urgency=low
-
-  * New upstream version. 
-
- -- Florian Forster <octo@leeloo.home.verplant.org>  Mon,  5 Jun 2006 10:02:15 +0200
-
-liboping (0.2.1) unstable; urgency=low
-
-  * New upstream version. 
-
- -- Florian Forster <octo@leeloo.home.verplant.org>  Thu,  1 Jun 2006 22:31:25 +0200
-
-liboping (0.2.0) unstable; urgency=low
-
-  * New upstream version. 
-
- -- Florian Forster <octo@leeloo.home.verplant.org>  Mon, 29 May 2006 10:00:42 +0200
-
-liboping (0.1.1) unstable; urgency=low
-
-  * New upstream version.
-
- -- Florian Forster <octo@verplant.org>  Fri, 12 May 2006 17:37:23 +0200
-
-liboping (0.1.0) unstable; urgency=low
-
-  * Initial Release.
-
- -- Florian Forster <octo@verplant.org>  Sun, 30 Apr 2006 18:46:29 +0200

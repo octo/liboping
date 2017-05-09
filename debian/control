@@ -1,36 +1,68 @@
 Source: liboping
 Section: libs
 Priority: optional
-Maintainer: Florian Forster <octo@verplant.org>
-Build-Depends: debhelper (>= 4.0.0), autotools-dev
-Standards-Version: 3.6.2
-
-Package: liboping
-Section: libs
-Architecture: any
-Depends: ${shlibs:Depends}
-Description: Library to send ICMPv4/ICMPv6 echo packets to multiple hosts
- liboping was inspired by ping, libping and fping: It differs from these
- existing solutions in that it can `ping' multiple hosts in parallel using IPv4
- or IPv6 transparently. Other design principles were an object oriented
- interface, simplicity and extensibility.
+Maintainer: Sebastian Harl <tokkee@debian.org>
+Uploaders: Barak A. Pearlmutter <bap@debian.org>
+Build-Depends: debhelper (>= 9),
+	dh-autoreconf,
+	pkg-config,
+	chrpath,
+	perl, perl-modules,
+	libncursesw5-dev
+Standards-Version: 3.9.5
+Homepage: http://verplant.org/liboping/
+Vcs-Git: git://git.tokkee.org/pkg-liboping.git
+Vcs-Browser: http://git.tokkee.org/?p=pkg-liboping.git
 
 Package: liboping-dev
 Section: libdevel
 Architecture: any
-Depends: liboping (= ${Source-Version})
-Description: Development files for the liboping library
- liboping was inspired by ping, libping and fping: It differs from these
- existing solutions in that it can `ping' multiple hosts in parallel using IPv4
- or IPv6 transparently. Other design principles were an object oriented
- interface, simplicity and extensibility.
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: liboping0 (= ${binary:Version}), ${misc:Depends}
+Conflicts: liboping0-dev
+Replaces: liboping0-dev
+Description: C/C++ library to generate ICMP ECHO_REQUESTs (development files)
+ liboping features pinging multiple hosts in parallel using IPv4 or IPv6
+ transparently. The interface is object oriented.
+ .
+ This package contains the header files, the static library and the manpages.
+
+Package: liboping0
+Architecture: any
+Multi-Arch: same
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: C/C++ library to generate ICMP ECHO_REQUESTs
+ liboping features pinging multiple hosts in parallel using IPv4 or IPv6
+ transparently. The interface is object oriented.
+ .
+ This package contains the shared library.
 
 Package: oping
 Section: net
 Architecture: any
-Depends: liboping (= ${Source-Version}), ${shlibs:Depends}
-Description: Sends ICMPv4/ICMPv6 echo packets to multiple remote hosts
- liboping was inspired by ping, libping and fping: It differs from these
- existing solutions in that it can `ping' multiple hosts in parallel using IPv4
- or IPv6 transparently. Other design principles were an object oriented
- interface, simplicity and extensibility.
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${shlibs:Depends}, liboping0 (>= ${source:Upstream-Version}),
+ ${misc:Depends}
+Description: sends ICMP_ECHO requests to network hosts
+ oping uses ICMP packages (better known as "ping packets") to test the
+ reachability of network hosts. It supports pinging multiple hosts in parallel
+ using IPv4 and/or IPv6 transparently.
+ .
+ This package contains two command line applications: "oping" is a replacement
+ for tools like ping(1), ping6(1) and fping(1). "noping" is an ncurses-based
+ tool which displays statistics while pinging and highlights aberrant
+ round-trip times.
+
+Package: libnet-oping-perl
+Section: perl
+Architecture: any
+Pre-Depends: ${misc:Pre-Depends}
+Depends: ${perl:Depends}, ${shlibs:Depends},
+ liboping0 (>= ${source:Upstream-Version}), ${misc:Depends}
+Description: module for ICMP latency measurement
+ Net::Oping is a Perl module for sending ICMP ECHO_REQUESTs (better known as
+ "ping packets") and measuring the time that elapses until the reception of an
+ ICMP ECHO_REPLY packet (also known as "pong"). It supports pinging multiple
+ hosts in parallel using IPv4 or IPv6 transparently.

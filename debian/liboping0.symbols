@@ -1,0 +1,14 @@
+liboping.so.0 liboping0 #MINVER#
+* Build-Depends-Package: liboping-dev
+ ping_construct@Base 0.3.2
+ ping_destroy@Base 0.3.2
+ ping_get_error@Base 0.3.2
+ ping_host_add@Base 0.3.2
+ ping_host_remove@Base 0.3.2
+ ping_iterator_get@Base 0.3.2
+ ping_iterator_get_context@Base 0.3.2
+ ping_iterator_get_info@Base 0.3.2
+ ping_iterator_next@Base 0.3.2
+ ping_iterator_set_context@Base 0.3.2
+ ping_send@Base 0.3.2
+ ping_setopt@Base 0.3.2

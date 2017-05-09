@@ -1,0 +1,15 @@
+liboping on Debian
+==================
+
+Notes on using liboping-dev:
+----------------------------
+
+The liboping library provides two functions, namely ping_setopt() and
+ping_iterator_get_info(), whose functionality is defined by a set of numerical
+IDs, each defining a specific feature. New features may be added by adding
+support for additional IDs without breaking the API or ABI. If your software
+uses those functions, make sure to build-depend on the appropriate version of
+liboping-dev. This will also ensure - by means of the 'Build-Depends-Package'
+field in liboping's symbols file (see dpkg-shlibdeps(1) for details) - that
+the resulting binary package depends on the right version of liboping while
+not imposing the latest version on all packages.
