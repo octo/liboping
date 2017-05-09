@@ -1,4 +1,4 @@
-liboping has been written by Florian octo Forster <octo at verplant.org>
+liboping has been written by Florian octo Forster <ff at octo.it>
 
 The following people have contributed to liboping:
 
@@ -9,3 +9,5 @@ The following people have contributed to liboping:
  * "Wojtek" <wojtek at gni.pl>
  * Dan Sully <daniel at electricrain.com>
  * Vladimir Melnikov <wlad.w.m at gmail.com>
+ * Luke Heberling <collectd at c-ware.com>
+ * Hamish Coleman <hamish at zot.org>
