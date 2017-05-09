@@ -1141,17 +1141,15 @@ pingobj_t *ping_construct (void)
 void ping_destroy (pingobj_t *obj)
 {
 	pinghost_t *current;
-	pinghost_t *next;
 
 	if (obj == NULL)
 		return;
 
 	current = obj->head;
-	next = NULL;
 
 	while (current != NULL)
 	{
-		next = current->next;
+		pinghost_t *next = current->next;
 		ping_free (current);
 		current = next;
 	}
