@@ -76,12 +76,11 @@ L<ping_iterator_get_context(3)>
 
 =head1 LICENSE
 
-liboping is licensed under the GPLv2. No other version of the license is
-applicable.
+liboping is licensed under the LGPL 2.1 or later.
 
 =head1 AUTHOR
 
 liboping is written by Florian "octo" Forster E<lt>ff at octo.itE<gt>.
 Its homepage can be found at L<http://noping.cc/>.
 
-Copyright (c) 2005-2016 by Florian "octo" Forster.
+Copyright (c) 2005-2017 by Florian "octo" Forster.
