@@ -957,14 +957,12 @@ static pinghost_t *ping_alloc (void)
 
 static void ping_free (pinghost_t *ph)
 {
-	if (ph->username != NULL)
-		free (ph->username);
+	if (ph == NULL)
+		return;
 
-	if (ph->hostname != NULL)
-		free (ph->hostname);
-
-	if (ph->data != NULL)
-		free (ph->data);
+	free (ph->username);
+	free (ph->hostname);
+	free (ph->data);
 
 	free (ph);
 }
@@ -1172,14 +1170,9 @@ void ping_destroy (pingobj_t *obj)
 		current = next;
 	}
 
-	if (obj->data != NULL)
-		free (obj->data);
-
-	if (obj->srcaddr != NULL)
-		free (obj->srcaddr);
-
-	if (obj->device != NULL)
-		free (obj->device);
+	free (obj->data);
+	free (obj->srcaddr);
+	free (obj->device);
 
 	if (obj->fd4 != -1)
 		close(obj->fd4);
