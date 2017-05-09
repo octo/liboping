@@ -134,6 +134,14 @@ _ping_iterator_next (iter)
 	OUTPUT:
 		RETVAL
 
+int
+_ping_iterator_count (obj)
+	pingobj_t *obj
+	CODE:
+		RETVAL = ping_iterator_count (obj);
+	OUTPUT:
+		RETVAL
+
 double
 _ping_iterator_get_latency (iter)
 	pingobj_iter_t *iter

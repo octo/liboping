@@ -1,0 +1,33 @@
+=head1 NAME
+
+ping_iterator_count - Count the number of hosts in a liboping object
+
+=head1 SYNOPSIS
+
+  #include <oping.h>
+
+  int ping_iterator_count (pingobj_t *obj);
+
+=head1 DESCRIPTION
+
+This functions is used to count the number of hosts currently associated
+with a liboping object.
+
+=head1 RETURN VALUE
+
+The B<ping_iterator_count> returns an integer number or zero if no host is
+associated with I<obj>.
+
+=head1 SEE ALSO
+
+L<ping_host_add(3)>,
+L<ping_iterator_get(3)>,
+L<ping_iterator_next(3)>,
+L<liboping(3)>
+
+=head1 AUTHOR
+
+liboping is written by Florian "octo" Forster E<lt>ff at octo.itE<gt>.
+Its homepage can be found at L<http://noping.cc/>.
+
+Copyright (c) 2005-2016 by Florian "octo" Forster.

@@ -69,6 +69,7 @@ L<ping_setopt(3)>,
 L<ping_host_add(3)>,
 L<ping_send(3)>,
 L<ping_get_error(3)>,
+L<ping_iterator_count(3)>,
 L<ping_iterator_get(3)>,
 L<ping_iterator_get_info(3)>,
 L<ping_iterator_get_context(3)>
