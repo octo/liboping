@@ -1063,12 +1063,8 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 #ifdef SO_TIMESTAMP
 	if (1) /* {{{ */
 	{
-		int status;
-		int opt = 1;
-
-		status = setsockopt (fd,
-				SOL_SOCKET, SO_TIMESTAMP,
-				&opt, sizeof (opt));
+		int status = setsockopt (fd, SOL_SOCKET, SO_TIMESTAMP,
+		                         &(int){1}, sizeof(int));
 		if (status != 0)
 		{
 			ping_set_errno (obj, errno);
@@ -1085,37 +1081,27 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 
 	if (addrfam == AF_INET)
 	{
-		int opt;
-
 #ifdef IP_RECVTOS
 		/* Enable receiving the TOS field */
-		opt = 1;
-		setsockopt (fd, IPPROTO_IP, IP_RECVTOS,
-				&opt, sizeof (opt));
+		setsockopt (fd, IPPROTO_IP, IP_RECVTOS, &(int){1}, sizeof(int));
 #endif /* IP_RECVTOS */
 
 		/* Enable receiving the TTL field */
-		opt = 1;
-		setsockopt (fd, IPPROTO_IP, IP_RECVTTL,
-				&opt, sizeof (opt));
+		setsockopt (fd, IPPROTO_IP, IP_RECVTTL, &(int){1}, sizeof(int));
 	}
 #if defined(IPV6_RECVHOPLIMIT) || defined(IPV6_RECVTCLASS)
 	else if (addrfam == AF_INET6)
 	{
-		int opt;
-
 # if defined(IPV6_RECVHOPLIMIT)
 		/* For details see RFC 3542, section 6.3. */
-		opt = 1;
 		setsockopt (fd, IPPROTO_IPV6, IPV6_RECVHOPLIMIT,
-				&opt, sizeof (opt));
+		            &(int){1}, sizeof(int));
 # endif /* IPV6_RECVHOPLIMIT */
 
 # if defined(IPV6_RECVTCLASS)
 		/* For details see RFC 3542, section 6.5. */
-		opt = 1;
 		setsockopt (fd, IPPROTO_IPV6, IPV6_RECVTCLASS,
-				&opt, sizeof (opt));
+		            &(int){1}, sizeof(int));
 # endif /* IPV6_RECVTCLASS */
 	}
 #endif /* IPV6_RECVHOPLIMIT || IPV6_RECVTCLASS */
