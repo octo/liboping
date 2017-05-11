@@ -1,3 +1,31 @@
+2017-05-11, Version 1.10.0:
+	* Build system: Search the "rt" library for clock_gettime(). This
+	  fixes build issues on Mac OS X. Thanks to Yann E. Morni for this
+	  fix. #9
+	* Build system: The "--with[out]-ncurses" option has been added and
+	  allows to enforce/disable the building of "noping". Thanks to Thomas
+	  Deutschmann for the patch. #15
+	* Build system: Compatibility code to work with pkg-config < 0.27 has
+	  been added. #22
+	* liboping: Creation of ICMPv4 packets has been fixed: due to an
+	  incorrect sizeof() the payload may have been prefixed by 20 zero
+	  bytes, resulting in larger packets than desired. Thanks to Kyle Zhou
+	  for reporting and fixing this. #10
+	* liboping: The number of file descriptors used has been reduced to at
+	  most two (from one per host). This and a few other optimizations
+	  significantly improve performance. Thanks to Luke Heberling for the
+	  patch. #11
+	* oping, noping: Handling of the "-O" command line flag has been
+	  fixed.
+	* oping, noping: The "-b" option has been added and enables a bell
+	  whenever an echo reply is received. Thanks to Antoine Beaupré for
+	  the patch. #6
+	* noping: The background color has been changed to use the terminal
+	  default. Thanks to @middleO. #18
+	* noping: The ability to add hosts after noping has started (the "a"
+	  key) has been added. Thanks to Hamish Coleman for the patch. #20,
+	  #23
+
 2016-06-27, Version 1.9.0:
 	* liboping: The new "PING_OPT_MARK" option allows to mark packets,
 	  which can be used for filtering and routing such packets on Linux.
