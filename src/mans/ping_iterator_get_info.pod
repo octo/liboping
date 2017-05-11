@@ -111,17 +111,6 @@ If the requested information didn't fit into I<buffer> then the size that would
 have been needed is written into I<buffer_len>; I<buffer> itself is left
 untouched. The return value is B<ENOMEM> in this case.
 
-=head1 KNOWN BUGS
-
-=over 4
-
-=item
-
-B<PING_INFO_RECV_TTL> is not available under Debian Etch due to a missing
-define in the header files.
-
-=back
-
 =head1 SEE ALSO
 
 L<ping_iterator_get(3)>,
