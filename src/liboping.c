@@ -1465,6 +1465,7 @@ int ping_send (pingobj_t *obj)
 				(unsigned) timeout.tv_usec);
 
 		int status = select (max_fd + 1, &read_fds, &write_fds, NULL, &timeout);
+		int select_errno = errno;
 
 		if (gettimeofday (&nowtime, NULL) == -1)
 		{
@@ -1474,7 +1475,7 @@ int ping_send (pingobj_t *obj)
 
 		if (status == -1)
 		{
-			ping_set_errno (obj, errno);
+			ping_set_errno (obj, select_errno);
 			dprintf ("select: %s\n", obj->errmsg);
 			return (-1);
 		}
