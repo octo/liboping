@@ -2042,7 +2042,6 @@ int main (int argc, char **argv) /* {{{ */
 	while (opt_count != 0)
 	{
 		int index;
-		int status;
 
 		if (gettimeofday (&tv_begin, NULL) < 0)
 		{
@@ -2050,16 +2049,11 @@ int main (int argc, char **argv) /* {{{ */
 			return (1);
 		}
 
-		status = ping_send (ping);
-		if (status == -EINTR)
-		{
-			continue;
-		}
-		else if (status < 0)
+		if (ping_send (ping) < 0)
 		{
 			fprintf (stderr, "ping_send failed: %s\n",
 					ping_get_error (ping));
-			return (1);
+			continue;
 		}
 
 		index = 0;
@@ -2086,7 +2080,7 @@ int main (int argc, char **argv) /* {{{ */
 		time_calc (&ts_wait, &ts_int, &tv_begin, &tv_end);
 
 		/* printf ("Sleeping for %i.%09li seconds\n", (int) ts_wait.tv_sec, ts_wait.tv_nsec); */
-		while ((status = nanosleep (&ts_wait, &ts_wait)) != 0)
+		while (nanosleep (&ts_wait, &ts_wait) != 0)
 		{
 			if (errno == EINTR)
 			{
