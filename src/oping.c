@@ -833,16 +833,16 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case 'U':
 				opt_utf8 = 1;
 				break;
-                        case 'C':
-                        {
-                                int new_columns = atoi(optarg);
-                                if (new_columns > 0)
-                                    opt_columns = new_columns;
-                                else
-                                    fprintf (stderr, "Ignoring invalid number of columns: %s\n",
-                                                    optarg);
-                                break;
-                        }
+			case 'C':
+			{
+				int new_columns = atoi(optarg);
+				if (new_columns > 0)
+					opt_columns = new_columns;
+				else
+					fprintf (stderr, "Ignoring invalid number of columns: %s\n",
+					optarg);
+				break;
+			}
 #endif
 			case 'b':
 				opt_bell = 1;
@@ -1368,8 +1368,8 @@ static int create_windows (pingobj_t *ping) /* {{{ */
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-        /* calculate the number of box rows, rounding up */
-        int box_rows_count = (host_num+opt_columns-1) / opt_columns;
+	/* calculate the number of box rows, rounding up */
+	int box_rows_count = (host_num+opt_columns-1) / opt_columns;
 
 	main_win_height = height - (box_height * box_rows_count);
         if (main_win != NULL )
@@ -1389,7 +1389,7 @@ static int create_windows (pingobj_t *ping) /* {{{ */
         wmove (main_win, /* y = */ main_win_height - 1, /* x = */ 0);
 	wrefresh (main_win);
 
-        width = width / opt_columns;
+	width = width / opt_columns;
 
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
