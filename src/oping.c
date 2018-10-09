@@ -208,6 +208,7 @@ static char   *opt_device     = NULL;
 static char   *opt_mark       = NULL;
 static char   *opt_filename   = NULL;
 static int     opt_count      = -1;
+static int     opt_resetcount = -1;
 static int     opt_send_ttl   = 64;
 static uint8_t opt_send_qos   = 0;
 #define OPING_DEFAULT_PERCENTILE 95.0
@@ -461,6 +462,7 @@ static void usage_exit (const char *name, int status) /* {{{ */
 
 			"\nAvailable options:\n"
 			"  -4|-6        force the use of IPv4 or IPv6\n"
+			"  -C count     number of ICMP requests in a flow (reset ICMP ID)\n"
 			"  -c count     number of ICMP packets to send\n"
 			"  -i interval  interval with which to send ICMP packets\n"
 			"  -w timeout   time to wait for replies, in seconds\n"
@@ -682,7 +684,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:b"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:bC:"
 #if USE_NCURSES
 				"uUg:H:"
 #endif
@@ -696,6 +698,20 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case '4':
 			case '6':
 				opt_addrfamily = (optchar == '4') ? AF_INET : AF_INET6;
+				break;
+
+                        case 'C':
+				{
+					int new_count;
+					new_count = atoi (optarg);
+					if (new_count > 0)
+					{
+						opt_resetcount = new_count;
+					}
+					else
+						fprintf(stderr, "Ignoring invalid count: %s\n",
+								optarg);
+				}
 				break;
 
 			case 'c':
@@ -1790,6 +1806,7 @@ int main (int argc, char **argv) /* {{{ */
 
 	int optind;
 	int i;
+        int opt_resetcount_loop;
 	int status;
 #if _POSIX_SAVED_IDS
 	uid_t saved_set_uid;
@@ -2036,12 +2053,25 @@ int main (int argc, char **argv) /* {{{ */
 		perror ("sigaction");
 		return (1);
 	}
+        opt_resetcount_loop = opt_resetcount;
 
 	pre_loop_hook (ping);
 
 	while (opt_count != 0)
 	{
 		int index;
+                if (opt_resetcount_loop > 0)
+                {
+                    opt_resetcount_loop--;
+                    if (opt_resetcount_loop == 0)
+                    {
+                        opt_resetcount_loop = opt_resetcount;
+                        for (i = optind; i < argc; i++)
+                        {
+                                ping_host_update_ident (ping, argv[i]);
+                        }
+                    }
+                }
 
 		if (gettimeofday (&tv_begin, NULL) < 0)
 		{
