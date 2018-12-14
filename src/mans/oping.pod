@@ -288,6 +288,8 @@ configuration:
  load-sample-lazy x11-bell /usr/share/sounds/freedesktop/stereo/complete.oga
  load-module module-x11-bell sample=x11-bell
 
+Also make sure the system sounds volume are raised in pavucontrol.
+
 =back
 
 =item B<-P> I<percent>
