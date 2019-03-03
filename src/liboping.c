@@ -73,6 +73,10 @@
 # include <netdb.h>
 #endif
 
+#ifdef HAVE_SYS_CAPABILITY_H
+# include <sys/capability.h>
+#endif
+
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
 #endif
@@ -967,6 +971,58 @@ static void ping_free (pinghost_t *ph)
 	free (ph);
 }
 
+#if defined(HAVE_SYS_CAPABILITY_H) && defined(_EFFECTIVE_CAPABILITIES_MANAGEMENT_)
+static inline void manage_effective_cap_net_raw(pingobj_t *obj,const cap_flag_value_t operation)
+{
+	const uid_t euid = geteuid();
+	if (euid != 0)
+	{
+		if ((CAP_IS_SUPPORTED(CAP_SETFCAP)) && (CAP_IS_SUPPORTED(CAP_SETPCAP)))
+		{
+			cap_t capabilities = cap_get_proc();
+			if (capabilities)
+			{
+				const cap_value_t caps[] =
+				{
+						CAP_NET_RAW
+				};
+				const int ncaps = sizeof(caps)/sizeof(caps[0]);
+				if (cap_set_flag(capabilities,CAP_EFFECTIVE,ncaps,caps,operation) == 0)
+				{
+					if (cap_set_proc(capabilities) != 0)
+					{
+						const int error = errno;
+						ping_set_errno (obj, error);
+						dprintf ("cap_set_proc(3) error %d",error);
+					}
+				}
+				else
+				{
+					const int error = errno;
+					ping_set_errno (obj, error);
+					dprintf ("cap_set_flag(3) error %d",error);
+				}
+				cap_free(capabilities);
+				capabilities = NULL;
+			}
+			else
+			{
+				const int error = errno;
+				ping_set_errno (obj, error);
+				dprintf ("cap_get_proc(3) error %d",error);
+			}
+		}
+		else
+		{
+			ping_set_errno (obj, EPERM);
+			ping_set_error (obj,"ping_open_socket","System doesn't have capabilities support enabled");
+		}
+	}
+}
+#else /* defined(HAVE_SYS_CAPABILITY_H) && defined(_EFFECTIVE_CAPABILITIES_MANAGEMENT_) */
+#define manage_effective_cap_net_raw(obj,operation)
+#endif /* defined(HAVE_SYS_CAPABILITY_H) && defined(_EFFECTIVE_CAPABILITIES_MANAGEMENT_) */
+
 /* ping_open_socket opens, initializes and returns a new raw socket to use for
  * ICMPv4 or ICMPv6 packets. addrfam must be either AF_INET or AF_INET6. On
  * error, -1 is returned and obj->errmsg is set appropriately. */
@@ -975,11 +1031,15 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 	int fd;
 	if (addrfam == AF_INET6)
 	{
+		manage_effective_cap_net_raw(obj,CAP_SET);
 		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMPV6);
+		manage_effective_cap_net_raw(obj,CAP_CLEAR);
 	}
 	else if (addrfam == AF_INET)
 	{
+		manage_effective_cap_net_raw(obj,CAP_SET);
 		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMP);
+		manage_effective_cap_net_raw(obj,CAP_CLEAR);
 	}
 	else /* this should not happen */
 	{

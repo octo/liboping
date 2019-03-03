@@ -24,7 +24,9 @@ lib_LTLIBRARIES = liboping.la
 liboping_la_SOURCES = oping.h liboping.c
 
 liboping_la_CPPFLAGS = $(AM_CPPFLAGS)
+liboping_la_CPPFLAGS += `pkg-config --cflags libcap`
 liboping_la_LDFLAGS = $(AM_LDFLAGS) -version-info @LIBOPING_CURRENT@:@LIBOPING_REVISION@:@LIBOPING_AGE@
+liboping_la_LDFLAGS += `pkg-config --libs libcap`
 liboping_la_LIBADD = $(LIBOPING_PC_LIBS_PRIVATE)
 
 pkgconfig_DATA = liboping.pc
