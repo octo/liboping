@@ -920,7 +920,7 @@ static void time_calc (struct timespec *ts_dest, /* {{{ */
 #if USE_NCURSES
 static _Bool has_utf8() /* {{{ */
 {
-# if HAVE_NCURSESW_NCURSES_H
+# if HAVE_NCURSESW_CURSES_H
 	if (!opt_utf8)
 	{
 		/* Automatically determine */
