@@ -1630,15 +1630,18 @@ int ping_host_add_multi (pingobj_t *obj, const char *host, int max_hosts)
 			return (-1);
 		}
 
+		char * afi_str = NULL;
 		if (ai_ptr->ai_family == AF_INET)
 		{
 			ai_ptr->ai_socktype = SOCK_RAW;
 			ai_ptr->ai_protocol = IPPROTO_ICMP;
+			afi_str = "v4";
 		}
 		else if (ai_ptr->ai_family == AF_INET6)
 		{
 			ai_ptr->ai_socktype = SOCK_RAW;
 			ai_ptr->ai_protocol = IPPROTO_ICMPV6;
+			afi_str = "v6";
 		}
 		else
 		{
@@ -1653,13 +1656,14 @@ int ping_host_add_multi (pingobj_t *obj, const char *host, int max_hosts)
 			continue;
 		}
 
-		if ((ph->hostname = strdup (host)) == NULL)
+		if ((ph->hostname = malloc ( strlen(host)+4) ) == NULL)
 		{
 			dprintf ("Out of memory!\n");
 			ping_set_errno (obj, errno);
 			ping_free (ph);
 			return (-1);
 		}
+		sprintf( ph->hostname, "%s/%s", host, afi_str );
 
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));
@@ -1677,13 +1681,15 @@ int ping_host_add_multi (pingobj_t *obj, const char *host, int max_hosts)
 					ph->hostname, ai_ptr->ai_canonname);
 
 			old_hostname = ph->hostname;
-			if ((ph->hostname = strdup (ai_ptr->ai_canonname)) == NULL)
+			if ((ph->hostname = malloc( strlen(ai_ptr->ai_canonname)+4 )) == NULL)
 			{
 				/* strdup failed, falling back to old hostname */
 				ph->hostname = old_hostname;
 			}
-			else if (old_hostname != NULL)
+			else
 			{
+				sprintf( ph->hostname, "%s/%s", 
+					 ai_ptr->ai_canonname, afi_str );
 				free (old_hostname);
 			}
 		}
