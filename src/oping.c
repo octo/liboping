@@ -220,6 +220,7 @@ static int     opt_utf8       = 0;
 #endif
 static char   *opt_outfile    = NULL;
 static int     opt_bell       = 0;
+static int     opt_max_hosts  = 1;
 
 static int host_num  = 0;
 static FILE *outfile = NULL;
@@ -682,7 +683,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 	while (1)
 	{
-		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:b"
+		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:ba"
 #if USE_NCURSES
 				"uUg:H:"
 #endif
@@ -854,6 +855,10 @@ static int read_options (int argc, char **argv) /* {{{ */
 
 				break;
 			}
+
+			case 'a':
+				opt_max_hosts = -1;	/* all */
+				break;
 
 			case 'h':
 				usage_exit (argv[0], 0);
@@ -1944,7 +1949,8 @@ int main (int argc, char **argv) /* {{{ */
 			if ((host[0] == 0) || (host[0] == '#'))
 				continue;
 
-			if (ping_host_add(ping, host) < 0)
+			int n = ping_host_add_multi(ping, host, opt_max_hosts);
+			if (n < 0)
 			{
 				const char *errmsg = ping_get_error (ping);
 
@@ -1953,7 +1959,7 @@ int main (int argc, char **argv) /* {{{ */
 			}
 			else
 			{
-				host_num++;
+				host_num+=n;
 			}
 		}
 
@@ -1984,7 +1990,8 @@ int main (int argc, char **argv) /* {{{ */
 
 	for (i = optind; i < argc; i++)
 	{
-		if (ping_host_add (ping, argv[i]) < 0)
+		int n = ping_host_add_multi (ping, argv[i], opt_max_hosts);
+		if (n < 0)
 		{
 			const char *errmsg = ping_get_error (ping);
 
@@ -1993,7 +2000,7 @@ int main (int argc, char **argv) /* {{{ */
 		}
 		else
 		{
-			host_num++;
+			host_num+=n;
 		}
 	}
 

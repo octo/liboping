@@ -1550,13 +1550,23 @@ static pinghost_t *ping_host_search (pinghost_t *ph, const char *host)
 	return (ph);
 }
 
+/* wrapper around ping_host_add_multi() to preserve existing
+ * calling / return convention
+ */
 int ping_host_add (pingobj_t *obj, const char *host)
+{
+	int n = ping_host_add_multi( obj, host, 1 );
+	return n < 0 ? n: 0;
+}
+
+int ping_host_add_multi (pingobj_t *obj, const char *host, int max_hosts)
 {
 	pinghost_t *ph;
 
 	struct addrinfo  ai_hints;
 	struct addrinfo *ai_list, *ai_ptr;
 	int              ai_return;
+	int		 hosts_added = 0;
 
 	if ((obj == NULL) || (host == NULL))
 		return (-1);
@@ -1577,37 +1587,6 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	ai_hints.ai_family    = obj->addrfamily;
 	ai_hints.ai_socktype  = SOCK_RAW;
 
-	if ((ph = ping_alloc ()) == NULL)
-	{
-		dprintf ("Out of memory!\n");
-		return (-1);
-	}
-
-	if ((ph->username = strdup (host)) == NULL)
-	{
-		dprintf ("Out of memory!\n");
-		ping_set_errno (obj, errno);
-		ping_free (ph);
-		return (-1);
-	}
-
-	if ((ph->hostname = strdup (host)) == NULL)
-	{
-		dprintf ("Out of memory!\n");
-		ping_set_errno (obj, errno);
-		ping_free (ph);
-		return (-1);
-	}
-
-	/* obj->data is not garuanteed to be != NULL */
-	if ((ph->data = strdup (obj->data == NULL ? PING_DEF_DATA : obj->data)) == NULL)
-	{
-		dprintf ("Out of memory!\n");
-		ping_set_errno (obj, errno);
-		ping_free (ph);
-		return (-1);
-	}
-
 	if ((ai_return = getaddrinfo (host, NULL, &ai_hints, &ai_list)) != 0)
 	{
 #if defined(EAI_SYSTEM)
@@ -1620,7 +1599,6 @@ int ping_host_add (pingobj_t *obj, const char *host)
 						? sstrerror (errno, errbuf, sizeof (errbuf)) :
 #endif
 				gai_strerror (ai_return));
-		ping_free (ph);
 		return (-1);
 	}
 
@@ -1629,15 +1607,41 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 	for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next)
 	{
+		if ((ph = ping_alloc ()) == NULL)
+		{
+			dprintf ("Out of memory!\n");
+			return (-1);
+		}
+
+		if ((ph->username = strdup (host)) == NULL)
+		{
+			dprintf ("Out of memory!\n");
+			ping_set_errno (obj, errno);
+			ping_free (ph);
+			return (-1);
+		}
+
+		/* obj->data is not garuanteed to be != NULL */
+		if ((ph->data = strdup (obj->data == NULL ? PING_DEF_DATA : obj->data)) == NULL)
+		{
+			dprintf ("Out of memory!\n");
+			ping_set_errno (obj, errno);
+			ping_free (ph);
+			return (-1);
+		}
+
+		char * afi_str = NULL;
 		if (ai_ptr->ai_family == AF_INET)
 		{
 			ai_ptr->ai_socktype = SOCK_RAW;
 			ai_ptr->ai_protocol = IPPROTO_ICMP;
+			afi_str = "v4";
 		}
 		else if (ai_ptr->ai_family == AF_INET6)
 		{
 			ai_ptr->ai_socktype = SOCK_RAW;
 			ai_ptr->ai_protocol = IPPROTO_ICMPV6;
+			afi_str = "v6";
 		}
 		else
 		{
@@ -1648,8 +1652,18 @@ int ping_host_add (pingobj_t *obj, const char *host)
 
 			dprintf ("%s", errmsg);
 			ping_set_error (obj, "getaddrinfo", errmsg);
+			ping_free (ph);
 			continue;
 		}
+
+		if ((ph->hostname = malloc ( strlen(host)+4) ) == NULL)
+		{
+			dprintf ("Out of memory!\n");
+			ping_set_errno (obj, errno);
+			ping_free (ph);
+			return (-1);
+		}
+		sprintf( ph->hostname, "%s/%s", host, afi_str );
 
 		assert (sizeof (struct sockaddr_storage) >= ai_ptr->ai_addrlen);
 		memset (ph->addr, '\0', sizeof (struct sockaddr_storage));
@@ -1667,46 +1681,55 @@ int ping_host_add (pingobj_t *obj, const char *host)
 					ph->hostname, ai_ptr->ai_canonname);
 
 			old_hostname = ph->hostname;
-			if ((ph->hostname = strdup (ai_ptr->ai_canonname)) == NULL)
+			if ((ph->hostname = malloc( strlen(ai_ptr->ai_canonname)+4 )) == NULL)
 			{
 				/* strdup failed, falling back to old hostname */
 				ph->hostname = old_hostname;
 			}
-			else if (old_hostname != NULL)
+			else
 			{
+				sprintf( ph->hostname, "%s/%s", 
+					 ai_ptr->ai_canonname, afi_str );
 				free (old_hostname);
 			}
 		}
 #endif /* AI_CANONNAME */
+
+		/*
+		 * Adding in the front is much easier, but then the iterator will
+		 * return the host that was added last as first host. That's just not
+		 * nice. -octo
+		 */
+		if (obj->head == NULL)
+		{
+			obj->head = ph;
+		}
+		else
+		{
+			pinghost_t *hptr;
+
+			hptr = obj->head;
+			while (hptr->next != NULL)
+				hptr = hptr->next;
+
+			assert ((hptr != NULL) && (hptr->next == NULL));
+			hptr->next = ph;
+		}
+
+		ph->table_next = obj->table[ph->ident % PING_TABLE_LEN];
+		obj->table[ph->ident % PING_TABLE_LEN] = ph;
+		hosts_added++;
+
+		if ( max_hosts > 0 && hosts_added >= max_hosts )
+		{
+			break;
+		}
+
 	} /* for (ai_ptr = ai_list; ai_ptr != NULL; ai_ptr = ai_ptr->ai_next) */
 
 	freeaddrinfo (ai_list);
 
-	/*
-	 * Adding in the front is much easier, but then the iterator will
-	 * return the host that was added last as first host. That's just not
-	 * nice. -octo
-	 */
-	if (obj->head == NULL)
-	{
-		obj->head = ph;
-	}
-	else
-	{
-		pinghost_t *hptr;
-
-		hptr = obj->head;
-		while (hptr->next != NULL)
-			hptr = hptr->next;
-
-		assert ((hptr != NULL) && (hptr->next == NULL));
-		hptr->next = ph;
-	}
-
-	ph->table_next = obj->table[ph->ident % PING_TABLE_LEN];
-	obj->table[ph->ident % PING_TABLE_LEN] = ph;
-
-	return (0);
+	return (hosts_added);
 } /* int ping_host_add */
 
 int ping_host_remove (pingobj_t *obj, const char *host)
