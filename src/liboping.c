@@ -203,9 +203,9 @@ static char *sstrerror (int errnum, char *buf, size_t buflen)
 static void ping_set_error (pingobj_t *obj, const char *function,
 	       	const char *message)
 {
-	snprintf (obj->errmsg, sizeof (obj->errmsg),
-			"%s: %s", function, message);
-	obj->errmsg[sizeof (obj->errmsg) - 1] = 0;
+	if (snprintf (obj->errmsg, sizeof (obj->errmsg),
+			"%s: %s", function, message) >= sizeof (obj->errmsg))
+		obj->errmsg[sizeof (obj->errmsg) - 1] = 0;
 }
 
 static void ping_set_errno (pingobj_t *obj, int error_number)
