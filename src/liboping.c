@@ -73,6 +73,10 @@
 # include <netdb.h>
 #endif
 
+#ifdef HAVE_SYS_CAPABILITY_H
+# include <sys/capability.h>
+#endif
+
 #if HAVE_NETINET_IN_SYSTM_H
 # include <netinet/in_systm.h>
 #endif
@@ -972,6 +976,58 @@ static void ping_free (pinghost_t *ph)
 	free (ph);
 }
 
+#if defined(HAVE_SYS_CAPABILITY_H) && defined(_EFFECTIVE_CAPABILITIES_MANAGEMENT_)
+static inline void manage_effective_cap_net_raw(pingobj_t *obj,const cap_flag_value_t operation)
+{
+	const uid_t euid = geteuid();
+	if (euid != 0)
+	{
+		if ((CAP_IS_SUPPORTED(CAP_SETFCAP)) && (CAP_IS_SUPPORTED(CAP_SETPCAP)))
+		{
+			cap_t capabilities = cap_get_proc();
+			if (capabilities)
+			{
+				const cap_value_t caps[] =
+				{
+						CAP_NET_RAW
+				};
+				const int ncaps = sizeof(caps)/sizeof(caps[0]);
+				if (cap_set_flag(capabilities,CAP_EFFECTIVE,ncaps,caps,operation) == 0)
+				{
+					if (cap_set_proc(capabilities) != 0)
+					{
+						const int error = errno;
+						ping_set_errno (obj, error);
+						dprintf ("cap_set_proc(3) error %d",error);
+					}
+				}
+				else
+				{
+					const int error = errno;
+					ping_set_errno (obj, error);
+					dprintf ("cap_set_flag(3) error %d",error);
+				}
+				cap_free(capabilities);
+				capabilities = NULL;
+			}
+			else
+			{
+				const int error = errno;
+				ping_set_errno (obj, error);
+				dprintf ("cap_get_proc(3) error %d",error);
+			}
+		}
+		else
+		{
+			ping_set_errno (obj, EPERM);
+			ping_set_error (obj,"ping_open_socket","System doesn't have capabilities support enabled");
+		}
+	}
+}
+#else /* defined(HAVE_SYS_CAPABILITY_H) && defined(_EFFECTIVE_CAPABILITIES_MANAGEMENT_) */
+#define manage_effective_cap_net_raw(obj,operation)
+#endif /* defined(HAVE_SYS_CAPABILITY_H) && defined(_EFFECTIVE_CAPABILITIES_MANAGEMENT_) */
+
 /* ping_open_socket opens, initializes and returns a new raw socket to use for
  * ICMPv4 or ICMPv6 packets. addrfam must be either AF_INET or AF_INET6. On
  * error, -1 is returned and obj->errmsg is set appropriately. */
@@ -980,11 +1036,15 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 	int fd;
 	if (addrfam == AF_INET6)
 	{
+		manage_effective_cap_net_raw(obj,CAP_SET);
 		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMPV6);
+		manage_effective_cap_net_raw(obj,CAP_CLEAR);
 	}
 	else if (addrfam == AF_INET)
 	{
+		manage_effective_cap_net_raw(obj,CAP_SET);
 		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMP);
+		manage_effective_cap_net_raw(obj,CAP_CLEAR);
 	}
 	else /* this should not happen */
 	{
@@ -1349,41 +1409,10 @@ int ping_send (pingobj_t *obj)
 	struct timeval nowtime;
 	struct timeval timeout;
 
-	_Bool need_ipv4_socket = 0;
-	_Bool need_ipv6_socket = 0;
-
 	for (ptr = obj->head; ptr != NULL; ptr = ptr->next)
 	{
 		ptr->latency  = -1.0;
 		ptr->recv_ttl = -1;
-
-		if (ptr->addrfamily == AF_INET)
-			need_ipv4_socket = 1;
-		else if (ptr->addrfamily == AF_INET6)
-			need_ipv6_socket = 1;
-	}
-
-	if (!need_ipv4_socket && !need_ipv6_socket)
-	{
-		ping_set_error (obj, "ping_send", "No hosts to ping");
-		return (-1);
-	}
-
-	if (need_ipv4_socket && obj->fd4 == -1)
-	{
-		obj->fd4 = ping_open_socket(obj, AF_INET);
-		if (obj->fd4 == -1)
-			return (-1);
-		ping_set_ttl (obj, obj->ttl);
-		ping_set_qos (obj, obj->qos);
-	}
-	if (need_ipv6_socket && obj->fd6 == -1)
-	{
-		obj->fd6 = ping_open_socket(obj, AF_INET6);
-		if (obj->fd6 == -1)
-			return (-1);
-		ping_set_ttl (obj, obj->ttl);
-		ping_set_qos (obj, obj->qos);
 	}
 
 	if (gettimeofday (&nowtime, NULL) == -1)
@@ -1706,6 +1735,22 @@ int ping_host_add (pingobj_t *obj, const char *host)
 	ph->table_next = obj->table[ph->ident % PING_TABLE_LEN];
 	obj->table[ph->ident % PING_TABLE_LEN] = ph;
 
+	if (ph->addrfamily == AF_INET && obj->fd4 == -1)
+	{
+		obj->fd4 = ping_open_socket(obj, AF_INET);
+		if (obj->fd4 == -1)
+			return (-1);
+		ping_set_ttl (obj, obj->ttl);
+		ping_set_qos (obj, obj->qos);
+	}
+	if (ph->addrfamily == AF_INET6 && obj->fd6 == -1)
+	{
+		obj->fd6 = ping_open_socket(obj, AF_INET6);
+		if (obj->fd6 == -1)
+			return (-1);
+		ping_set_ttl (obj, obj->ttl);
+		ping_set_qos (obj, obj->qos);
+	}
 	return (0);
 } /* int ping_host_add */
 

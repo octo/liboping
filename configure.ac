@@ -2,7 +2,7 @@
 
 AC_PREREQ([2.65])
 AC_INIT([liboping],
-	[1.10.0],
+	[1.10.0.1],
 	[liboping@verplant.org],
 	[],
 	[http://noping.cc/])
@@ -24,7 +24,7 @@ AC_SUBST(LIBOPING_PATCH)
 
 # ABI version
 LIBOPING_CURRENT=3
-LIBOPING_REVISION=0
+LIBOPING_REVISION=1
 LIBOPING_AGE=3
 AC_SUBST(LIBOPING_CURRENT)
 AC_SUBST(LIBOPING_REVISION)
@@ -62,7 +62,7 @@ AC_SUBST([pkgconfigdir])
 # Checks for header files.
 AC_HEADER_STDC
 AC_HEADER_TIME
-AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h locale.h langinfo.h])
+AC_CHECK_HEADERS([math.h signal.h fcntl.h inttypes.h netdb.h stdint.h stdlib.h string.h sys/socket.h sys/time.h unistd.h locale.h langinfo.h sys/capability.h])
 
 # This sucks, but what can I do..?
 AC_CHECK_HEADERS(netinet/in_systm.h, [], [],
@@ -239,6 +239,20 @@ AC_ARG_ENABLE(debug, [AS_HELP_STRING([--enable-debug], [Enable extensive debuggi
 ], [])
 AM_CONDITIONAL(BUILD_WITH_DEBUG, test "x$enable_debug" = "xyes")
 
+AC_ARG_ENABLE(effective-cap,
+        [  --enable-effective-cap enable effective capabilities management (default is yes) ],
+        [case "${enableval}" in
+         yes) enable_effective_cap="yes";;
+          no) enable_effective_cap="no" ;;
+           *) AC_MSG_ERROR(bad value ${enableval} for --enable-effective-cap) ;;
+         esac],
+        [enable_effective_cap="yes"]
+)
+if test "$enable_effective_cap" = "yes"; then
+        AC_DEFINE(_EFFECTIVE_CAPABILITIES_MANAGEMENT_, 1, [Defined if the effective capabilities management is enabled.])               
+fi
+
+
 AC_ARG_WITH(perl-bindings, [AS_HELP_STRING([--with-perl-bindings@<:@=OPTIONS@:>@], [Options passed to "perl Makefile.PL".])],
 [
 	if test "x$withval" != "xno" && test "x$withval" != "xyes"
@@ -267,9 +281,12 @@ AC_SUBST(PERL_BINDINGS_OPTIONS)
 AC_SUBST(BINDINGS)
 
 # Checks for library functions.
+AC_C_INLINE
 AC_FUNC_MALLOC
 AC_FUNC_STRERROR_R
-AC_CHECK_FUNCS([gettimeofday memset modf select socket sqrt strcasecmp strdup strerror strncasecmp strtoul])
+AC_FUNC_STRTOD
+AC_CHECK_FUNCS([gettimeofday memset modf select socket sqrt strcasecmp strdup strerror strncasecmp strtoul nl_langinfo setlocale strtol])
+
 
 AC_CONFIG_FILES([Makefile src/Makefile src/liboping.pc src/mans/Makefile bindings/Makefile])
 AC_OUTPUT
