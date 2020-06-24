@@ -290,6 +290,12 @@ configuration:
 
 =back
 
+=item B<-C> I<columns>
+
+Sets the number of columns to display in the I<noping> graph layout.  Note
+that if the window is not wide enough to display all the information then
+some of the graph data will display in a corrupted fashion.
+
 =item B<-P> I<percent>
 
 Configures the latency percentile to report. I<percent> must be a number

@@ -217,6 +217,7 @@ static double  opt_exit_status_threshold = 1.0;
 static int     opt_show_graph = 1;
 static int     opt_box_height = MAX_BOX_HEIGHT;
 static int     opt_utf8       = 0;
+static int     opt_columns    = 1;
 #endif
 static char   *opt_outfile    = NULL;
 static int     opt_bell       = 0;
@@ -684,7 +685,7 @@ static int read_options (int argc, char **argv) /* {{{ */
 	{
 		optchar = getopt (argc, argv, "46c:hi:I:t:Q:f:D:Z:O:P:m:w:b"
 #if USE_NCURSES
-				"uUg:H:"
+				"uUg:H:C:"
 #endif
 				);
 
@@ -832,6 +833,16 @@ static int read_options (int argc, char **argv) /* {{{ */
 			case 'U':
 				opt_utf8 = 1;
 				break;
+			case 'C':
+			{
+				int new_columns = atoi(optarg);
+				if (new_columns > 0)
+					opt_columns = new_columns;
+				else
+					fprintf (stderr, "Ignoring invalid number of columns: %s\n",
+					optarg);
+				break;
+			}
 #endif
 			case 'b':
 				opt_bell = 1;
@@ -1357,7 +1368,10 @@ static int create_windows (pingobj_t *ping) /* {{{ */
 	if ((height < 1) || (width < 1))
 		return (EINVAL);
 
-	main_win_height = height - (box_height * host_num);
+	/* calculate the number of box rows, rounding up */
+	int box_rows_count = (host_num+opt_columns-1) / opt_columns;
+
+	main_win_height = height - (box_height * box_rows_count);
         if (main_win != NULL )
         {
             delwin(main_win);
@@ -1367,7 +1381,6 @@ static int create_windows (pingobj_t *ping) /* {{{ */
                            /* width = */ width,
                            /* y = */ 0, /* x = */ 0);
 
-
 	/* Allow scrolling */
 	scrollok (main_win, TRUE);
 	/* wsetscrreg (main_win, 0, main_win_height - 1); */
@@ -1375,6 +1388,8 @@ static int create_windows (pingobj_t *ping) /* {{{ */
 	idlok (main_win, TRUE);
         wmove (main_win, /* y = */ main_win_height - 1, /* x = */ 0);
 	wrefresh (main_win);
+
+	width = width / opt_columns;
 
 	for (iter = ping_iterator_get (ping);
 			iter != NULL;
@@ -1395,8 +1410,8 @@ static int create_windows (pingobj_t *ping) /* {{{ */
 		}
 		context->window = newwin (/* height = */ box_height,
 				/* width = */ width,
-				/* y = */ main_win_height + (box_height * context->index),
-				/* x = */ 0);
+				/* y = */ main_win_height + (box_height * (context->index / opt_columns)),
+				/* x = */ width * (context->index % opt_columns));
 	}
 
 	return (0);
