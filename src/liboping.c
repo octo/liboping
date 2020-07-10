@@ -1784,6 +1784,65 @@ pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter)
 	return ((pingobj_iter_t *) iter->next);
 }
 
+int ping_host_update_ident (pingobj_t *obj, const char *host)
+{
+	pinghost_t *pre, *cur, *target;
+
+	if ((obj == NULL) || (host == NULL))
+		return (-1);
+
+	pre = NULL;
+	cur = obj->head;
+
+	while (cur != NULL)
+	{
+		if (strcasecmp (host, cur->username) == 0)
+			break;
+
+		pre = cur;
+		cur = cur->next;
+	}
+
+	if (cur == NULL)
+	{
+		ping_set_error (obj, "ping_host_update_ident", "Host not found");
+		return (-1);
+	}
+
+	target = cur;
+	pre = NULL;
+
+	cur = obj->table[target->ident % PING_TABLE_LEN];
+
+	while (cur != NULL)
+	{
+		if (cur == target)
+			break;
+
+		pre = cur;
+		cur = cur->table_next;
+	}
+
+	if (cur == NULL)
+	{
+		ping_set_error(obj, "ping_host_update_ident", "Host not found (T)");
+		ping_free(target);
+		return (-1);
+	}
+
+	if (pre == NULL)
+		obj->table[target->ident % PING_TABLE_LEN] = cur->table_next;
+	else
+		pre->table_next = cur->table_next;
+
+	target->ident   = ping_get_ident () & 0xFFFF;
+
+	target->table_next = obj->table[target->ident % PING_TABLE_LEN];
+	obj->table[target->ident % PING_TABLE_LEN] = target;
+
+	return (0);
+}
+
 int ping_iterator_count (pingobj_t *obj)
 {
 	if (obj == NULL)

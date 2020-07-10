@@ -72,6 +72,7 @@ int ping_send (pingobj_t *obj);
 
 int ping_host_add (pingobj_t *obj, const char *host);
 int ping_host_remove (pingobj_t *obj, const char *host);
+int ping_host_update_ident (pingobj_t *obj, const char *host);
 
 pingobj_iter_t *ping_iterator_get (pingobj_t *obj);
 pingobj_iter_t *ping_iterator_next (pingobj_iter_t *iter);
