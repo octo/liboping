@@ -189,6 +189,10 @@ and routing.
 I<noping only> B<-u> forces UTF-8 output, B<-U> disables UTF-8 output. If
 neither is given, the codeset is automatically determined from the locale.
 
+=item B<-B>
+
+I<noping only> B<-B> disables drawing boxes around the ping results.
+
 =item B<-g> B<none>|B<prettyping>|B<boxplot>|B<histogram>
 
 I<noping only> Selects the graph to display.
@@ -237,14 +241,6 @@ percentile, yellow up to and including the 95th percentile and red for the
 remainder.
 
 =back
-
-=item B<-H> I<height>
-
-Sets the height of the boxs containing each graph.  The <height> must
-be a number between 1 and 5.  The default is B<5> lines, which shows the
-maximum amount of information.  Reducing the size will remove the textual
-information and will eventually remove the box drawn around the graph -
-showing only the graph when set to B<1> line.
 
 =item B<-b>
 
@@ -329,10 +325,8 @@ printed in red.
 =head1 INTERACTIVE KEYBOARD CONTROLS
 
 When running I<noping>, the type of graph being displayed can be
-changed by using the B<g> key.
-The height of the graph boxes can also be increased and decreased with B<+> and
-B<-> keys.
-A new host can be added at any time with the B<a> key.
+changed by using the B<g> key.  A new host can be added at any time
+with the B<a> key.
 
 =head1 SEE ALSO
 
