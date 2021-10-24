@@ -1639,8 +1639,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 
 			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 					data_len, context->host, context->addr,
-					sequence, recv_ttl,
-					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+					sequence, recv_ttl);
 			if ((recv_qos != 0) || (opt_send_qos != 0))
 			{
 				HOST_PRINTF ("qos=%s ",
