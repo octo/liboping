@@ -1156,7 +1156,7 @@ static int update_graph_prettyping (ping_context_t *ctx, /* {{{ */
 			wattron (ctx->window, COLOR_PAIR(color));
 
 		if (has_utf8())
-			mvwprintw (ctx->window, /* y = */ y_max, /* x = */ x + 2, symbol);
+			mvwprintw (ctx->window, /* y = */ y_max, /* x = */ x + 2, "%s", symbol);
 		else
 			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2, symbolc);
 
@@ -1262,7 +1262,7 @@ static int update_graph_histogram (ping_context_t *ctx) /* {{{ */
 			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2, ' ');
 		else if (has_utf8 ())
 			mvwprintw (ctx->window, /* y = */ y_max, /* x = */ x + 2,
-					hist_symbols_utf8[index]);
+					"%s", hist_symbols_utf8[index]);
 		else
 			mvwaddch (ctx->window, /* y = */ y_max, /* x = */ x + 2,
 					hist_symbols_acs[index] | A_ALTCHARSET);
@@ -1639,8 +1639,7 @@ static void update_host_hook (pingobj_iter_t *iter, /* {{{ */
 
 			HOST_PRINTF ("%zu bytes from %s (%s): icmp_seq=%u ttl=%i ",
 					data_len, context->host, context->addr,
-					sequence, recv_ttl,
-					format_qos (recv_qos, recv_qos_str, sizeof (recv_qos_str)));
+					sequence, recv_ttl);
 			if ((recv_qos != 0) || (opt_send_qos != 0))
 			{
 				HOST_PRINTF ("qos=%s ",
