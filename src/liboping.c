@@ -203,8 +203,15 @@ static char *sstrerror (int errnum, char *buf, size_t buflen)
 static void ping_set_error (pingobj_t *obj, const char *function,
 	       	const char *message)
 {
+#if __GNUC__ >= 7
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wformat-truncation"
+#endif
 	snprintf (obj->errmsg, sizeof (obj->errmsg),
 			"%s: %s", function, message);
+#if __GNUC__ >= 7
+#pragma GCC diagnostic pop
+#endif
 	obj->errmsg[sizeof (obj->errmsg) - 1] = 0;
 }
 
