@@ -980,11 +980,33 @@ static int ping_open_socket(pingobj_t *obj, int addrfam)
 	int fd;
 	if (addrfam == AF_INET6)
 	{
+#ifdef __APPLE__
+		if (getuid())
+		{
+			fd = socket(addrfam, SOCK_DGRAM, IPPROTO_ICMPV6);
+		}
+		else
+		{
+			fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMPV6);
+		}
+#else /* ! __APPLE__ */
 		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMPV6);
+#endif
 	}
 	else if (addrfam == AF_INET)
 	{
+#ifdef __APPLE__
+		if (getuid())
+		{
+			fd = socket(addrfam, SOCK_DGRAM, IPPROTO_ICMP);
+		}
+		else
+		{
+			fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMP);
+		}
+#else /* ! __APPLE__ */
 		fd = socket(addrfam, SOCK_RAW, IPPROTO_ICMP);
+#endif
 	}
 	else /* this should not happen */
 	{
